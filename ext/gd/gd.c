@@ -25,6 +25,7 @@
 
 #include "php.h"
 #include "php_ini.h"
+#include "php_version.h"
 #include <math.h>
 #include "SAPI.h"
 #include "php_gd.h"
@@ -144,7 +145,13 @@ static zend_function *php_gd_image_object_get_constructor(zend_object *object)
 	return NULL;
 }
 
-#define php_gd_exgdimage_from_zobj_p(obj) ZEND_CONTAINER_OF(obj, php_gd_image_object, std)
+#if PHP_VERSION_ID < 80600
+  static inline php_gd_image_object *php_gd_exgdimage_from_zobj_p(zend_object *obj) {
+    return (php_gd_image_object *)((char*)(obj) - XtOffsetOf(php_gd_image_object, std));
+  }
+#else
+  #define php_gd_exgdimage_from_zobj_p(obj) ZEND_CONTAINER_OF(obj, php_gd_image_object, std)
+#endif
 
 /**
  * Converts an extension GdImage instance contained within a zval into the gdImagePtr

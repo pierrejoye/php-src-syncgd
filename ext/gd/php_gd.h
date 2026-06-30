@@ -18,6 +18,7 @@
 
 #include "zend_string.h"
 #include "php_streams.h"
+#include "php_version.h"
 
 #if defined(HAVE_LIBGD) || defined(HAVE_GD_BUNDLED)
 
@@ -119,6 +120,10 @@ PHP_GD_API struct gdImageStruct *php_gd_libgdimageptr_from_zval_p(zval* zp);
 
 #define phpext_gd_ptr NULL
 
+#endif
+
+#if PHP_VERSION_ID < 80600
+  #define zend_ini_bool_literal(name) zend_ini_parse_bool(zend_ini_str((name), sizeof("" name) - 1, false))
 #endif
 
 #endif /* PHP_GD_H */
