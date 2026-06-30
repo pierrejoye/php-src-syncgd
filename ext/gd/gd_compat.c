@@ -1,7 +1,9 @@
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#else
-#include <php_config.h>
+#ifdef HAVE_GD_BUNDLED
+  #ifdef HAVE_CONFIG_H
+    #include <config.h>
+  #else
+    #include <php_config.h>
+  #endif
 #endif
 
 #include "gd_compat.h"
