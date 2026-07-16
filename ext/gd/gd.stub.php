@@ -463,7 +463,58 @@ const PNG_ALL_FILTERS = 0x08 | 0x10 | 0x20 | 0x40 | 0x80;
  * @strict-properties
  * @not-serializable
  */
-final class GdImage {}
+final class GdImage
+{
+    /**
+     * @throws \Gd\Codec\CodecException
+     */
+    public function saveTo(
+        string $path,
+        ?\Gd\Codec\Format $format = null,
+        ?\Gd\Codec\WriteOptions $options = null,
+    ): void {}
+
+    /**
+     * @param resource|null $stream
+     * @throws \Gd\Codec\CodecException
+     */
+    public function saveToStream(
+        $stream = null,
+        ?\Gd\Codec\Format $format = null,
+        ?\Gd\Codec\WriteOptions $options = null,
+    ): void {}
+
+    /**
+     * @throws \Gd\Codec\CodecException
+     */
+    public function saveToString(
+        \Gd\Codec\Format $format,
+        ?\Gd\Codec\WriteOptions $options = null,
+    ): string {}
+
+    public function rotate(
+        float $angle,
+        ?\Gd\RotateOptions $options = null,
+    ): GdImage {}
+
+    public function scale(
+        ?int $width = null,
+        ?int $height = null,
+        ?\Gd\ScaleOptions $options = null,
+    ): GdImage {}
+
+    public function autoCrop(
+        ?\Gd\AutoCropOptions $options = null,
+    ): GdImage {}
+
+    public function getContext(): \Gd\Context {}
+
+    public function perceptualDiff(
+        GdImage $image,
+        float $threshold,
+        \Gd\PerceptualDiffOptions $options = new \Gd\PerceptualDiffOptions(),
+    ): \Gd\PerceptualDiffResult {}
+}
 
 /**
  * @strict-properties

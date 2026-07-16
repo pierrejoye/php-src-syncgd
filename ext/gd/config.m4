@@ -34,6 +34,13 @@ PHP_ARG_WITH([webp],
   [no],
   [no])
 
+PHP_ARG_WITH([jxl],
+  [for libjxl],
+  [AS_HELP_STRING([--with-jxl],
+    [GD: Enable JPEG XL support (only for bundled libgd)])],
+  [no],
+  [no])
+
 PHP_ARG_WITH([jpeg],
   [for libjpeg],
   [AS_HELP_STRING([--with-jpeg],
@@ -122,7 +129,7 @@ AC_DEFUN([PHP_GD_HEIF], [
 
 AC_DEFUN([PHP_GD_UHDR], [
   AS_VAR_IF([PHP_UHDR], [no],, [
-    PKG_CHECK_MODULES([UHDR], [libuhdr >= 1.4.0])
+    PKG_CHECK_MODULES([UHDR], [libuhdr >= 1.3.2])
     PHP_EVAL_LIBLINE([$UHDR_LIBS], [GD_SHARED_LIBADD])
     PHP_EVAL_INCLINE([$UHDR_CFLAGS])
 
@@ -140,13 +147,31 @@ AC_DEFUN([PHP_GD_UHDR], [
 AC_DEFUN([PHP_GD_WEBP],[
   AS_VAR_IF([PHP_WEBP], [no],, [
     PKG_CHECK_MODULES([WEBP],
-      [libwebp >= 0.2.0 libwebpdemux libwebpmux])
+      [libwebp >= 1.3.0 libwebpdemux libwebpmux])
     PHP_EVAL_LIBLINE([$WEBP_LIBS], [GD_SHARED_LIBADD])
     PHP_EVAL_INCLINE([$WEBP_CFLAGS])
     AC_DEFINE([HAVE_LIBWEBP], [1],
       [Define to 1 if you have the libwebp library.])
     AC_DEFINE([HAVE_GD_WEBP], [1],
       [Define to 1 if gd extension has WebP support.])
+  ])
+])
+
+AC_DEFUN([PHP_GD_JXL],[
+  AS_VAR_IF([PHP_JXL], [no],, [
+    PKG_CHECK_MODULES([JXL], [libjxl libjxl_cms])
+    PHP_EVAL_LIBLINE([$JXL_LIBS], [GD_SHARED_LIBADD])
+    PHP_EVAL_INCLINE([$JXL_CFLAGS])
+    AC_DEFINE([HAVE_LIBJXL], [1],
+      [Define to 1 if you have the libjxl library.])
+    AC_DEFINE([HAVE_GD_JXL], [1],
+      [Define to 1 if gd extension has JXL support.])
+    AC_DEFINE([HAVE_GD_JXL_CODEC], [1],
+      [Define to 1 if GD library has the JXL codec API.])
+    AC_DEFINE([HAVE_GD_JXL_ANIM_READ_API], [1],
+      [Define to 1 if GD library has the JXL animation reader API.])
+    AC_DEFINE([HAVE_GD_JXL_ANIM_WRITE_API], [1],
+      [Define to 1 if GD library has the JXL animation writer API.])
   ])
 ])
 
@@ -221,6 +246,10 @@ AC_DEFUN([PHP_GD_TIFF], [
       [Define to 1 if you have the libtiff library.])
     AC_DEFINE([HAVE_GD_TIFF], [1],
       [Define to 1 if gd extension has TIFF support.])
+    AC_DEFINE([HAVE_GD_TIFF_WRITE_API], [1],
+      [Define to 1 if GD library has the TIFF writer API.])
+    AC_DEFINE([HAVE_GD_TIFF_READ_API], [1],
+      [Define to 1 if GD library has the TIFF reader API.])
   ])
 ])
 
@@ -306,6 +335,36 @@ AC_DEFUN([PHP_GD_CHECK_VERSION],[
       function.])],
     [],
     [$GD_SHARED_LIBADD])
+  PHP_CHECK_LIBRARY([gd], [gdImageEntropyCropRegion],
+    [AC_DEFINE([HAVE_GD_ENTROPY_CROP], [1],
+      [Define to 1 if GD library has entropy crop region support.])],
+    [],
+    [$GD_SHARED_LIBADD])
+  PHP_CHECK_LIBRARY([gd], [gdImageInterestingCropRegion],
+    [AC_DEFINE([HAVE_GD_INTERESTING_CROP], [1],
+      [Define to 1 if GD library has content-aware crop region support.])],
+    [],
+    [$GD_SHARED_LIBADD])
+  PHP_CHECK_LIBRARY([gd], [gdImageScaleWithOptions],
+    [AC_DEFINE([HAVE_GD_SCALE_WITH_OPTIONS], [1],
+      [Define to 1 if GD library has options-based scale support.])],
+    [],
+    [$GD_SHARED_LIBADD])
+  PHP_CHECK_LIBRARY([gd], [gdImageAutoCropWithOptions],
+    [AC_DEFINE([HAVE_GD_AUTOCROP_WITH_OPTIONS], [1],
+      [Define to 1 if GD library has options-based autocrop support.])],
+    [],
+    [$GD_SHARED_LIBADD])
+  PHP_CHECK_LIBRARY([gd], [gdImageReadCtxEx],
+    [AC_DEFINE([HAVE_GD_IMAGE_READ_CTX_EX], [1],
+      [Define to 1 if GD library has the image read codec API.])],
+    [],
+    [$GD_SHARED_LIBADD])
+  PHP_CHECK_LIBRARY([gd], [gdImagePerceptualDiff],
+    [AC_DEFINE([HAVE_GD_PERCEPTUAL_DIFF], [1],
+      [Define to 1 if GD library has perceptual diff support.])],
+    [],
+    [$GD_SHARED_LIBADD])
 ])
 
 dnl
@@ -325,6 +384,7 @@ if test "$PHP_GD" != "no"; then
       libgd/gd_gif_in.c
       libgd/gd_gif_out.c
       libgd/gd_interpolation.c
+      libgd/gd_interesting.c
       libgd/gd_io_dp.c
       libgd/gd_io_file.c
       libgd/gd_io_ss.c
@@ -380,6 +440,7 @@ if test "$PHP_GD" != "no"; then
       libgd/gd_path_matrix.c
       libgd/gd_path_stroke.c
       libgd/gd_draw.c
+      libgd/gd_text.c
       libgd/gd_draw_blend.c
       libgd/gd_perceptual_diff.c
     "])
@@ -391,8 +452,32 @@ if test "$PHP_GD" != "no"; then
       [Define to 1 if GD library has the 'gdImageGetInterpolationMethod'
       function.])
 
+    AC_DEFINE([HAVE_GD_ENTROPY_CROP], [1],
+      [Define to 1 if GD library has entropy crop region support.])
+
+    AC_DEFINE([HAVE_GD_INTERESTING_CROP], [1],
+      [Define to 1 if GD library has content-aware crop region support.])
+
+    AC_DEFINE([HAVE_GD_SCALE_WITH_OPTIONS], [1],
+      [Define to 1 if GD library has options-based scale support.])
+
+    AC_DEFINE([HAVE_GD_AUTOCROP_WITH_OPTIONS], [1],
+      [Define to 1 if GD library has options-based autocrop support.])
+
+    AC_DEFINE([HAVE_GD_IMAGE_READ_CTX_EX], [1],
+      [Define to 1 if GD library has the image read codec API.])
+
+    AC_DEFINE([HAVE_GD_PERCEPTUAL_DIFF], [1],
+      [Define to 1 if GD library has perceptual diff support.])
+
     AC_DEFINE([HAVE_GD_PNG_GET_VERSION_STRING], [1],
       [Define to 1 if GD library has the 'gdPngGetVersionString' function.])
+
+    AC_DEFINE([HAVE_GD_PNG_CODEC], [1],
+      [Define to 1 if GD library has the PNG codec API.])
+
+    AC_DEFINE([HAVE_GD_JPEG_CODEC], [1],
+      [Define to 1 if GD library has the JPEG codec API.])
 
 dnl Various checks for GD features
     PHP_SETUP_ZLIB([GD_SHARED_LIBADD])
@@ -401,6 +486,7 @@ dnl Various checks for GD features
     PHP_GD_HEIF
     PHP_GD_UHDR
     PHP_GD_WEBP
+    PHP_GD_JXL
     PHP_GD_JPEG
     PHP_GD_XPM
     PHP_GD_FREETYPE2
@@ -408,8 +494,25 @@ dnl Various checks for GD features
     PHP_GD_IMAGEQUANT
     PHP_GD_TIFF
 
+    AC_DEFINE([HAVE_GD_QOI], [1],
+      [Define to 1 if GD library has QOI support.])
+
+    AC_DEFINE([HAVE_GD_GIF_ANIM_READ_API], [1],
+      [Define to 1 if GD library has the GIF animation reader API.])
+
+    AC_DEFINE([HAVE_GD_GIF_ANIM_WRITE_API], [1],
+      [Define to 1 if GD library has the GIF animation writer API.])
+
+    AS_VAR_IF([PHP_WEBP], [no],, [
+      AC_DEFINE([HAVE_GD_WEBP_ANIM_READ_API], [1],
+        [Define to 1 if GD library has the WebP animation reader API.])
+
+      AC_DEFINE([HAVE_GD_WEBP_ANIM_WRITE_API], [1],
+        [Define to 1 if GD library has the WebP animation writer API.])
+    ])
+
     PHP_NEW_EXTENSION([gd],
-      [gd.c $extra_sources],
+      [gd.c gd_2d.c gd_text.c gd_image.c gd_codec_write.c gd_png.c gd_gif.c gd_webp.c gd_bmp.c gd_avif.c gd_heif.c gd_jxl.c gd_qoi.c gd_tiff.c gd_jpeg.c $extra_sources],
       [$ext_shared],,
       [-Wno-strict-prototypes -I@ext_srcdir@/libgd])
     PHP_ADD_BUILD_DIR([$ext_builddir/libgd])
@@ -437,7 +540,159 @@ dnl Various checks for GD features
       [Define to 1 if gd extension uses external system GD library.])
     PHP_GD_CHECK_VERSION
 
-    PHP_NEW_EXTENSION([gd], [gd.c $extra_sources], [$ext_shared])
+    PHP_CHECK_LIBRARY([gd], [gdPngGetInfoPtr],
+      [PHP_CHECK_LIBRARY([gd], [gdImagePngWithOptions],
+        [AC_DEFINE([HAVE_GD_PNG_CODEC], [1],
+          [Define to 1 if GD library has the PNG codec API.])],
+        [],
+        [$GD_SHARED_LIBADD])],
+      [],
+      [$GD_SHARED_LIBADD])
+
+    PHP_CHECK_LIBRARY([gd], [gdImageQoiPtrEx],
+      [AC_DEFINE([HAVE_GD_QOI], [1],
+        [Define to 1 if GD library has QOI support.])],
+      [],
+      [$GD_SHARED_LIBADD])
+
+    AC_CACHE_CHECK([whether gd.h declares BMP extended writer constants],
+      [php_cv_lib_gd_bmp_extended_constants], [
+      AC_COMPILE_IFELSE([AC_LANG_SOURCE([
+#include <gd.h>
+#if !defined(GD_BMP_COMPRESS_NONE) || \
+    !defined(GD_BMP_COMPRESS_RLE8) || \
+    !defined(GD_BMP_COMPRESS_RLE4) || \
+    !defined(GD_BMP_FLAG_NONE) || \
+    !defined(GD_BMP_FLAG_FORCE_V4HDR) || \
+    !defined(GD_BMP_FLAG_QUANTIZE) || \
+    !defined(GD_BMP_FLAG_RGB555)
+# error "missing gd BMP extended writer constants"
+#endif
+int main(void) { return 0; }
+      ])],
+        [php_cv_lib_gd_bmp_extended_constants=yes],
+        [php_cv_lib_gd_bmp_extended_constants=no])
+    ])
+    AS_VAR_IF([php_cv_lib_gd_bmp_extended_constants], [yes], [
+      PHP_CHECK_LIBRARY([gd], [gdImageBmpPtrEx],
+        [AC_DEFINE([HAVE_GD_BMP_EXTENDED], [1],
+          [Define to 1 if GD library has the BMP extended writer API.])],
+        [],
+        [$GD_SHARED_LIBADD])
+    ])
+
+    AC_CACHE_CHECK([whether gd.h declares GIF animation constants],
+      [php_cv_lib_gd_gif_anim_constants], [
+      AC_COMPILE_IFELSE([AC_LANG_SOURCE([
+#include <gd.h>
+#if !defined(GD_GIF_DISPOSAL_UNKNOWN) || \
+    !defined(GD_GIF_DISPOSAL_NONE) || \
+    !defined(GD_GIF_DISPOSAL_RESTORE_BACKGROUND) || \
+    !defined(GD_GIF_DISPOSAL_RESTORE_PREVIOUS)
+# error "missing gd GIF animation constants"
+#endif
+int main(void) { return 0; }
+      ])],
+        [php_cv_lib_gd_gif_anim_constants=yes],
+        [php_cv_lib_gd_gif_anim_constants=no])
+    ])
+    AS_VAR_IF([php_cv_lib_gd_gif_anim_constants], [yes], [
+      PHP_CHECK_LIBRARY([gd], [gdGifReadOpenPtr], [
+        PHP_CHECK_LIBRARY([gd], [gdGifReadGetInfo], [
+          PHP_CHECK_LIBRARY([gd], [gdGifReadNextImage], [
+            PHP_CHECK_LIBRARY([gd], [gdGifReadCloneImage], [
+              PHP_CHECK_LIBRARY([gd], [gdGifIsAnimatedPtr],
+                [AC_DEFINE([HAVE_GD_GIF_ANIM_READ_API], [1],
+                  [Define to 1 if GD library has the GIF animation reader API.])],
+                [], [$GD_SHARED_LIBADD])
+            ], [], [$GD_SHARED_LIBADD])
+          ], [], [$GD_SHARED_LIBADD])
+        ], [], [$GD_SHARED_LIBADD])
+      ], [], [$GD_SHARED_LIBADD])
+      PHP_CHECK_LIBRARY([gd], [gdImageGifAnimBeginCtx], [
+        PHP_CHECK_LIBRARY([gd], [gdImageGifAnimAddCtx], [
+          PHP_CHECK_LIBRARY([gd], [gdImageGifAnimEndCtx],
+            [AC_DEFINE([HAVE_GD_GIF_ANIM_WRITE_API], [1],
+              [Define to 1 if GD library has the GIF animation writer API.])],
+            [], [$GD_SHARED_LIBADD])
+        ], [], [$GD_SHARED_LIBADD])
+      ], [], [$GD_SHARED_LIBADD])
+    ])
+
+AC_CACHE_CHECK([whether gd.h declares WebP animation constants],
+      [php_cv_lib_gd_webp_anim_constants], [
+      AC_COMPILE_IFELSE([AC_LANG_SOURCE([
+#include <gd.h>
+int main(void) {
+  gdWebpReadOpenPtr(0, 0, 0);
+  return gdWebpDisposeNone + gdWebpDisposeBackground + gdWebpBlendAlpha + gdWebpBlendNone;
+}
+      ])],
+        [php_cv_lib_gd_webp_anim_constants=yes],
+        [php_cv_lib_gd_webp_anim_constants=no])
+    ])
+    AS_VAR_IF([php_cv_lib_gd_webp_anim_constants], [yes], [
+      PHP_CHECK_LIBRARY([gd], [gdWebpReadOpenPtr], [
+        PHP_CHECK_LIBRARY([gd], [gdWebpReadGetInfo], [
+          PHP_CHECK_LIBRARY([gd], [gdWebpReadNextImage], [
+            PHP_CHECK_LIBRARY([gd], [gdWebpIsAnimatedPtr],
+              [AC_DEFINE([HAVE_GD_WEBP_ANIM_READ_API], [1],
+                [Define to 1 if GD library has the WebP animation reader API.])],
+              [], [$GD_SHARED_LIBADD])
+          ], [], [$GD_SHARED_LIBADD])
+        ], [], [$GD_SHARED_LIBADD])
+      ], [], [$GD_SHARED_LIBADD])
+      PHP_CHECK_LIBRARY([gd], [gdWebpWriteOpenPtr], [
+        PHP_CHECK_LIBRARY([gd], [gdWebpWriteAddImage], [
+          PHP_CHECK_LIBRARY([gd], [gdWebpWritePtrFinish],
+            [AC_DEFINE([HAVE_GD_WEBP_ANIM_WRITE_API], [1],
+              [Define to 1 if GD library has the WebP animation writer API.])],
+            [], [$GD_SHARED_LIBADD])
+        ], [], [$GD_SHARED_LIBADD])
+      ], [], [$GD_SHARED_LIBADD])
+    ])
+
+    AC_CHECK_HEADER([tiff.h], [
+      AC_CACHE_CHECK([whether gd.h declares TIFF option constants],
+        [php_cv_lib_gd_tiff_constants], [
+        AC_COMPILE_IFELSE([AC_LANG_SOURCE([
+#include <gd.h>
+int main(void) {
+  gdTiffReadOpenPtr(0, 0, 0);
+  return GD_TIFF_COMPRESSION_NONE + GD_TIFF_COMPRESSION_CCITT_RLE +
+    GD_TIFF_COMPRESSION_CCITT_FAX3 + GD_TIFF_COMPRESSION_CCITT_FAX4 +
+    GD_TIFF_COMPRESSION_LZW + GD_TIFF_COMPRESSION_JPEG +
+    GD_TIFF_COMPRESSION_ADOBE_DEFLATE + GD_TIFF_COMPRESSION_DEFLATE +
+    GD_TIFF_COMPRESSION_PACKBITS + GD_TIFF_PHOTOMETRIC_MINISWHITE +
+    GD_TIFF_PHOTOMETRIC_MINISBLACK + GD_TIFF_PHOTOMETRIC_RGB +
+    GD_TIFF_PHOTOMETRIC_PALETTE + GD_TIFF_PHOTOMETRIC_TRANSPARENCY_MASK +
+    GD_TIFF_PHOTOMETRIC_SEPARATED + GD_TIFF_PHOTOMETRIC_YCBCR +
+    GD_TIFF_PHOTOMETRIC_CIELAB + GD_TIFF_PLANARCONFIG_CONTIG +
+    GD_TIFF_PLANARCONFIG_SEPARATE + GD_TIFF_RESUNIT_NONE +
+    GD_TIFF_RESUNIT_INCH + GD_TIFF_RESUNIT_CENTIMETER;
+}
+        ])],
+          [php_cv_lib_gd_tiff_constants=yes],
+          [php_cv_lib_gd_tiff_constants=no])
+      ])
+      AS_VAR_IF([php_cv_lib_gd_tiff_constants], [yes], [
+        PHP_CHECK_LIBRARY([gd], [gdTiffWriteOpenPtr],
+          [AC_DEFINE([HAVE_GD_TIFF_WRITE_API], [1],
+            [Define to 1 if GD library has the TIFF writer API.])],
+          [],
+          [$GD_SHARED_LIBADD])
+        PHP_CHECK_LIBRARY([gd], [gdTiffReadOpenPtr], [
+          PHP_CHECK_LIBRARY([gd], [gdTiffReadGetInfo], [
+            PHP_CHECK_LIBRARY([gd], [gdTiffReadNextImage],
+              [AC_DEFINE([HAVE_GD_TIFF_READ_API], [1],
+                [Define to 1 if GD library has the TIFF reader API.])],
+              [], [$GD_SHARED_LIBADD])
+          ], [], [$GD_SHARED_LIBADD])
+        ], [], [$GD_SHARED_LIBADD])
+      ])
+    ])
+
+    PHP_NEW_EXTENSION([gd], [gd.c gd_image.c gd_codec_write.c gd_png.c gd_gif.c gd_webp.c gd_bmp.c gd_avif.c gd_heif.c gd_jxl.c gd_qoi.c gd_tiff.c gd_jpeg.c $extra_sources], [$ext_shared])
     PHP_INSTALL_HEADERS([ext/gd], [php_gd.h])
     PHP_CHECK_LIBRARY([gd], [gdImageCreate],
       [],
@@ -446,4 +701,5 @@ dnl Various checks for GD features
   fi
 
   PHP_SUBST([GD_SHARED_LIBADD])
+  PHP_ADD_EXTENSION_DEP(gd, spl)
 fi

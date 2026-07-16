@@ -320,6 +320,7 @@
 #define gdImageSaveAlpha php_gd_gdImageSaveAlpha
 #define gdImageSelectiveBlur php_gd_gdImageSelectiveBlur
 #define gdImageSetAntiAliased php_gd_gdImageSetAntiAliased
+#define gdImageAALine php_gd_gdImageAALine
 #define gdImageSetAntiAliasedDontBlend php_gd_gdImageSetAntiAliasedDontBlend
 #define gdImageSetBrush php_gd_gdImageSetBrush
 #define gdImageSetClip php_gd_gdImageSetClip

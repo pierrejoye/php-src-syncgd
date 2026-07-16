@@ -113,7 +113,12 @@ PHP_MINIT_FUNCTION(gd);
 PHP_MSHUTDOWN_FUNCTION(gd);
 PHP_RSHUTDOWN_FUNCTION(gd);
 
+struct gdIOCtx;
 PHP_GD_API struct gdImageStruct *php_gd_libgdimageptr_from_zval_p(zval* zp);
+PHP_GD_API void php_gd_assign_libgdimageptr_as_extgdimage(zval *val, struct gdImageStruct *image);
+PHP_GD_API struct gdIOCtx *php_gd_create_output_context(zval *to_zval, uint32_t arg_num);
+PHP_GD_API zend_class_entry *php_gd_get_codec_exception_ce(void);
+extern zend_class_entry *gd_image_ce;
 
 #else
 

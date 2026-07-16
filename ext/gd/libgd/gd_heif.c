@@ -30,34 +30,24 @@ typedef enum gd_heif_brand {
     GD_HEIF_BRAND_HEIX = 8,
 } gd_heif_brand;
 
-/*
-  Function: gdImageCreateFromHeif
+static gdImagePtr _gdImageCreateFromHeifCtx(gdIOCtx *infile, gd_heif_brand expected_brand,
+                                            const gdHeifReadOptions *options);
 
-        <gdImageCreateFromHeif> is called to load truecolor images from
-        HEIF format files. Invoke <gdImageCreateFromHeif> with an
-        already opened pointer to a file containing the desired
-        image. <gdImageCreateFromHeif> returns a <gdImagePtr> to the new
-        truecolor image, or NULL if unable to load the image (most often
-        because the file is corrupt or does not contain a HEIF
-        image). <gdImageCreateFromHeif> does not close the file.
+BGD_DECLARE(void) gdHeifReadOptionsInit(gdHeifReadOptions *options)
+{
+    memset(options, 0, sizeof(*options));
+    options->ignore_transformations = GD_TRUE;
+}
 
-        You can inspect the sx and sy members of the image to determine
-        its size. The image must eventually be destroyed using
-        <gdImageDestroy>.
+BGD_DECLARE(void) gdHeifWriteOptionsInit(gdHeifWriteOptions *options)
+{
+    memset(options, 0, sizeof(*options));
+    options->quality = -1;
+    options->lossless = GD_FALSE;
+    options->codec = GD_HEIF_CODEC_HEVC;
+    options->chroma = GD_HEIF_CHROMA_444;
+}
 
-        *The returned image is always a truecolor image.*
-
-  Parameters:
-
-        infile - The input FILE pointer.
-
-  Returns:
-
-        A pointer to the new *truecolor* image.  This will need to be
-        destroyed with <gdImageDestroy> once it is no longer needed.
-
-        On error, returns NULL.
-*/
 BGD_DECLARE(gdImagePtr) gdImageCreateFromHeif(FILE *inFile)
 {
     gdImagePtr im;
@@ -71,24 +61,21 @@ BGD_DECLARE(gdImagePtr) gdImageCreateFromHeif(FILE *inFile)
     return im;
 }
 
-/*
-  Function: gdImageCreateFromHeifPtr
-
-        See <gdImageCreateFromHeif>.
-
-  Parameters:
-
-        size            - size of HEIF data in bytes.
-        data            - pointer to HEIF data.
-*/
 BGD_DECLARE(gdImagePtr) gdImageCreateFromHeifPtr(int size, void *data)
+{
+    return gdImageCreateFromHeifPtrWithOptions(size, data, NULL);
+}
+
+BGD_DECLARE(gdImagePtr)
+gdImageCreateFromHeifPtrWithOptions(int size, void *data, const gdHeifReadOptions *options)
 {
     gdImagePtr im;
     gdIOCtx *in = gdNewDynamicCtxEx(size, data, 0);
 
     if (!in)
         return NULL;
-    im = gdImageCreateFromHeifCtx(in);
+    im = _gdImageCreateFromHeifCtx(in, GD_HEIF_BRAND_AVIF | GD_HEIF_BRAND_MIF1 |
+                                           GD_HEIF_BRAND_HEIC | GD_HEIF_BRAND_HEIX, options);
     in->gd_free(in);
 
     return im;
@@ -110,7 +97,8 @@ static int _gdHeifCheckBrand(unsigned char *magic, gd_heif_brand expected_brand)
     return GD_FALSE;
 }
 
-static gdImagePtr _gdImageCreateFromHeifCtx(gdIOCtx *infile, gd_heif_brand expected_brand)
+static gdImagePtr _gdImageCreateFromHeifCtx(gdIOCtx *infile, gd_heif_brand expected_brand,
+                                            const gdHeifReadOptions *options)
 {
     struct heif_context *heif_ctx;
     struct heif_decoding_options *heif_dec_opts;
@@ -127,6 +115,12 @@ static gdImagePtr _gdImageCreateFromHeifCtx(gdIOCtx *infile, gd_heif_brand expec
     int x, y;
     uint8_t *p, *row_start;
     int stride;
+    gdHeifReadOptions default_options;
+
+    if (options == NULL) {
+        gdHeifReadOptionsInit(&default_options);
+        options = &default_options;
+    }
 
     magic_len = gdGetBuf(magic, GD_HEIF_HEADER, infile);
     if (magic_len != GD_HEIF_HEADER || !_gdHeifCheckBrand(magic, expected_brand)) {
@@ -186,7 +180,7 @@ static gdImagePtr _gdImageCreateFromHeifCtx(gdIOCtx *infile, gd_heif_brand expec
     }
 
     heif_dec_opts->convert_hdr_to_8bit = GD_TRUE;
-    heif_dec_opts->ignore_transformations = GD_TRUE;
+    heif_dec_opts->ignore_transformations = options->ignore_transformations;
     err = heif_decode_image(heif_imhandle, &heif_im, heif_colorspace_RGB,
                             heif_chroma_interleaved_RGBA, heif_dec_opts);
     heif_decoding_options_free(heif_dec_opts);
@@ -239,15 +233,11 @@ static gdImagePtr _gdImageCreateFromHeifCtx(gdIOCtx *infile, gd_heif_brand expec
     return im;
 }
 
-/*
-  Function: gdImageCreateFromHeifCtx
-
-        See <gdImageCreateFromHeif>.
-*/
 BGD_DECLARE(gdImagePtr) gdImageCreateFromHeifCtx(gdIOCtx *infile)
 {
     return _gdImageCreateFromHeifCtx(infile, GD_HEIF_BRAND_AVIF | GD_HEIF_BRAND_MIF1 |
-                                                 GD_HEIF_BRAND_HEIC | GD_HEIF_BRAND_HEIX);
+                                                 GD_HEIF_BRAND_HEIC | GD_HEIF_BRAND_HEIX,
+                                     NULL);
 }
 
 static struct heif_error _gdImageWriteHeif(struct heif_context *heif_ctx, const void *data,
@@ -282,8 +272,7 @@ static struct heif_error _gdImageWriteHeif(struct heif_context *heif_ctx, const 
 }
 
 /* returns GD_TRUE on success, GD_FALSE on failure */
-static int _gdImageHeifCtx(gdImagePtr im, gdIOCtx *outfile, int quality, gdHeifCodec codec,
-                           gdHeifChroma chroma)
+static int _gdImageHeifCtx(gdImagePtr im, gdIOCtx *outfile, const gdHeifWriteOptions *options)
 {
     struct heif_context *heif_ctx;
     struct heif_encoder *heif_enc;
@@ -295,6 +284,22 @@ static int _gdImageHeifCtx(gdImagePtr im, gdIOCtx *outfile, int quality, gdHeifC
     uint8_t *p;
     uint8_t *row_start;
     int stride;
+    gdHeifWriteOptions default_options;
+    int quality;
+    gdHeifCodec codec;
+    gdHeifChroma chroma;
+    int lossless;
+
+    if (options == NULL) {
+        gdHeifWriteOptionsInit(&default_options);
+        options = &default_options;
+    }
+
+    quality = options->quality;
+    codec = options->codec;
+    chroma = options->chroma;
+    lossless = options->lossless || quality == 200;
+
     if (im == NULL) {
         return GD_FALSE;
     }
@@ -332,7 +337,7 @@ static int _gdImageHeifCtx(gdImagePtr im, gdIOCtx *outfile, int quality, gdHeifC
         return GD_FALSE;
     }
 
-    if (quality == 200) {
+    if (lossless) {
         err = heif_encoder_set_lossless(heif_enc, GD_TRUE);
     } else if (quality == -1) {
         err = heif_encoder_set_lossy_quality(heif_enc, 80);
@@ -425,119 +430,67 @@ static int _gdImageHeifCtx(gdImagePtr im, gdIOCtx *outfile, int quality, gdHeifC
     return GD_TRUE;
 }
 
-/*
-  Function: gdImageHeifCtx
-
-        Write the image as HEIF data via a <gdIOCtx>. See <gdImageHeifEx>
-        for more details.
-
-  Parameters:
-
-        im          - The image to write.
-        outfile     - The output sink.
-        quality     - Image quality.
-        codec       - The output coding format.
-        chroma      - The output chroma subsampling format.
-
-  Returns:
-
-        Nothing.
-*/
 BGD_DECLARE(void)
 gdImageHeifCtx(gdImagePtr im, gdIOCtx *outfile, int quality, gdHeifCodec codec, gdHeifChroma chroma)
 {
-    _gdImageHeifCtx(im, outfile, quality, codec, chroma);
+    gdHeifWriteOptions options;
+
+    gdHeifWriteOptionsInit(&options);
+    options.quality = quality;
+    options.lossless = quality == 200;
+    options.codec = codec;
+    options.chroma = chroma;
+    _gdImageHeifCtx(im, outfile, &options);
 }
 
-/*
-  Function: gdImageHeifEx
-
-        <gdImageHeifEx> outputs the specified image to the specified file in
-        HEIF format. The file must be open for writing. Under MSDOS and
-        all versions of Windows, it is important to use "wb" as opposed to
-        simply "w" as the mode when opening the file, and under Unix there
-        is no penalty for doing so. <gdImageHeifEx> does not close the file;
-        your code must do so.
-
-        If _quality_ is -1, a reasonable quality value (which should yield a
-        good general quality / size tradeoff for most situations) is used. Otherwise
-        _quality_ should be a value in the range 0-100, higher quality values
-        usually implying both higher quality and larger image sizes or 200, for
-        lossless codec.
-
-        For _codec_, the default and most widely supported option is
-        GD_HEIF_CODEC_HEVC. GD_HEIF_CODEC_AV1 is a newer codec that may not be
-        supported by all decoders but can offer better compression efficiency.
-        They must be installed on the system and enabled at compile time to be used.
-
-  Variants:
-
-        <gdImageHeifCtx> stores the image using a <gdIOCtx> struct.
-
-        <gdImageHeifPtrEx> stores the image to RAM.
-
-  Parameters:
-
-        im          - The image to save.
-        outFile     - The FILE pointer to write to.
-        quality     - Codec quality (0-100).
-        codec       - The output coding format.
-        chroma      - The output chroma subsampling format.
-
-  Returns:
-
-        Nothing.
-*/
 BGD_DECLARE(void)
 gdImageHeifEx(gdImagePtr im, FILE *outFile, int quality, gdHeifCodec codec, gdHeifChroma chroma)
 {
     gdIOCtx *out = gdNewFileCtx(outFile);
+    gdHeifWriteOptions options;
+
     if (out == NULL) {
         return;
     }
-    _gdImageHeifCtx(im, out, quality, codec, chroma);
+    gdHeifWriteOptionsInit(&options);
+    options.quality = quality;
+    options.lossless = quality == 200;
+    options.codec = codec;
+    options.chroma = chroma;
+    _gdImageHeifCtx(im, out, &options);
     out->gd_free(out);
 }
 
-/*
-  Function: gdImageHeif
-
-        Variant of <gdImageHeifEx> which uses the default quality (-1), the
-        default codec (GD_HEIF_Codec_HEVC) and the default chroma
-        subsampling (GD_HEIF_CHROMA_444).
-
-  Parameters:
-
-        im      - The image to save
-        outFile - The FILE pointer to write to.
-
-  Returns:
-
-        Nothing.
-*/
 BGD_DECLARE(void) gdImageHeif(gdImagePtr im, FILE *outFile)
 {
     gdIOCtx *out = gdNewFileCtx(outFile);
+    gdHeifWriteOptions options;
+
     if (out == NULL) {
         return;
     }
-    _gdImageHeifCtx(im, out, -1, GD_HEIF_CODEC_HEVC, GD_HEIF_CHROMA_444);
+    gdHeifWriteOptionsInit(&options);
+    _gdImageHeifCtx(im, out, &options);
     out->gd_free(out);
 }
 
-/*
-  Function: gdImageHeifPtr
-
-        See <gdImageHeifEx>.
-*/
 BGD_DECLARE(void *) gdImageHeifPtr(gdImagePtr im, int *size)
+{
+    gdHeifWriteOptions options;
+
+    gdHeifWriteOptionsInit(&options);
+    return gdImageHeifPtrWithOptions(im, size, &options);
+}
+
+BGD_DECLARE(void *)
+gdImageHeifPtrWithOptions(gdImagePtr im, int *size, const gdHeifWriteOptions *options)
 {
     void *rv;
     gdIOCtx *out = gdNewDynamicCtx(2048, NULL);
     if (out == NULL) {
         return NULL;
     }
-    if (_gdImageHeifCtx(im, out, -1, GD_HEIF_CODEC_HEVC, GD_HEIF_CHROMA_444)) {
+    if (_gdImageHeifCtx(im, out, options)) {
         rv = gdDPExtractData(out, size);
     } else {
         rv = NULL;
@@ -547,31 +500,37 @@ BGD_DECLARE(void *) gdImageHeifPtr(gdImagePtr im, int *size)
     return rv;
 }
 
-/*
-  Function: gdImageHeifPtrEx
-
-        See <gdImageHeifEx>.
-*/
 BGD_DECLARE(void *)
 gdImageHeifPtrEx(gdImagePtr im, int *size, int quality, gdHeifCodec codec, gdHeifChroma chroma)
 {
-    void *rv;
-    gdIOCtx *out = gdNewDynamicCtx(2048, NULL);
-    if (out == NULL) {
-        return NULL;
-    }
-    if (_gdImageHeifCtx(im, out, quality, codec, chroma)) {
-        rv = gdDPExtractData(out, size);
-    } else {
-        rv = NULL;
-    }
-    out->gd_free(out);
-    return rv;
+    gdHeifWriteOptions options;
+
+    gdHeifWriteOptionsInit(&options);
+    options.quality = quality;
+    options.lossless = quality == 200;
+    options.codec = codec;
+    options.chroma = chroma;
+    return gdImageHeifPtrWithOptions(im, size, &options);
 }
 
 #else /* HAVE_LIBHEIF */
 
 static void _noHeifError(void) { gd_error("HEIF image support has been disabled\n"); }
+
+BGD_DECLARE(void) gdHeifReadOptionsInit(gdHeifReadOptions *options)
+{
+    memset(options, 0, sizeof(*options));
+    options->ignore_transformations = GD_TRUE;
+}
+
+BGD_DECLARE(void) gdHeifWriteOptionsInit(gdHeifWriteOptions *options)
+{
+    memset(options, 0, sizeof(*options));
+    options->quality = -1;
+    options->lossless = GD_FALSE;
+    options->codec = GD_HEIF_CODEC_HEVC;
+    options->chroma = GD_HEIF_CHROMA_444;
+}
 
 BGD_DECLARE(gdImagePtr) gdImageCreateFromHeif(FILE *inFile)
 {
@@ -580,6 +539,13 @@ BGD_DECLARE(gdImagePtr) gdImageCreateFromHeif(FILE *inFile)
 }
 
 BGD_DECLARE(gdImagePtr) gdImageCreateFromHeifPtr(int size, void *data)
+{
+    _noHeifError();
+    return NULL;
+}
+
+BGD_DECLARE(gdImagePtr)
+gdImageCreateFromHeifPtrWithOptions(int size, void *data, const gdHeifReadOptions *options)
 {
     _noHeifError();
     return NULL;
@@ -613,6 +579,13 @@ BGD_DECLARE(void *) gdImageHeifPtr(gdImagePtr im, int *size)
 
 BGD_DECLARE(void *)
 gdImageHeifPtrEx(gdImagePtr im, int *size, int quality, gdHeifCodec codec, gdHeifChroma chroma)
+{
+    _noHeifError();
+    return NULL;
+}
+
+BGD_DECLARE(void *)
+gdImageHeifPtrWithOptions(gdImagePtr im, int *size, const gdHeifWriteOptions *options)
 {
     _noHeifError();
     return NULL;

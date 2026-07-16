@@ -46,12 +46,6 @@
         function is recommended.
 */
 
-/*
-TODO:
- - Optimize pixel accesses and loops once we have continuous buffer
- - Add scale support for a portion only of an image (equivalent of
-copyresized/resampled)
- */
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
@@ -126,6 +120,22 @@ typedef struct {
     unsigned int WindowSize,      /* Filter window size (of affecting source pixels) */
         LineLength;               /* Length of line (no. or rows / cols) */
 } LineContribType;
+
+typedef struct {
+    unsigned int Dst;
+    double Weight;
+} InvertedContributionType;
+
+typedef struct {
+    InvertedContributionType *Contrib;
+    unsigned int Count;
+} InvertedContributionRowType;
+
+typedef struct {
+    InvertedContributionRowType *Rows;
+    InvertedContributionType *Storage;
+    unsigned int SourceLength;
+} InvertedLineContribType;
 
 static double KernelBessel_J1(const double x)
 {
@@ -665,6 +675,120 @@ static inline int gdClampInt(const int value, const int min, const int max)
     return value < min ? min : (value > max ? max : value);
 }
 
+typedef struct {
+    double red;
+    double green;
+    double blue;
+    double opacity;
+} gdAlphaWeightedColor;
+
+typedef struct {
+    double red;
+    double green;
+    double blue;
+    double opacity;
+} gdLinearPixel;
+
+static inline double gdAlphaToOpacity(const int alpha)
+{
+    return (double)(gdAlphaMax - alpha) / (double)gdAlphaMax;
+}
+
+static inline double srgb_u8_to_linear(const int value)
+{
+    const double srgb = (double)CLAMP(value, 0, 255) / 255.0;
+
+    if (srgb <= 0.04045) {
+        return srgb / 12.92;
+    }
+    return pow((srgb + 0.055) / 1.055, 2.4);
+}
+
+static inline unsigned char linear_to_srgb_u8(double linear)
+{
+    double srgb;
+
+    linear = CLAMP(linear, 0.0, 1.0);
+    if (linear <= 0.0031308) {
+        srgb = 12.92 * linear;
+    } else {
+        srgb = 1.055 * pow(linear, 1.0 / 2.4) - 0.055;
+    }
+    return uchar_clamp(srgb * 255.0, 0xFF);
+}
+
+static inline void gdAlphaWeightedColorAdd(gdAlphaWeightedColor *acc, const int color,
+                                           const double weight)
+{
+    const double opacity = gdAlphaToOpacity(gdTrueColorGetAlpha(color));
+    const double weighted_opacity = weight * opacity;
+
+    acc->red += (double)gdTrueColorGetRed(color) * weighted_opacity;
+    acc->green += (double)gdTrueColorGetGreen(color) * weighted_opacity;
+    acc->blue += (double)gdTrueColorGetBlue(color) * weighted_opacity;
+    acc->opacity += weighted_opacity;
+}
+
+static inline int gdAlphaWeightedColorResolve(const gdAlphaWeightedColor *acc,
+                                              const double rgb_scale)
+{
+    double opacity = acc->opacity;
+    unsigned char red, green, blue, alpha;
+
+    if (opacity <= 0.0) {
+        return gdTrueColorAlpha(0, 0, 0, gdAlphaTransparent);
+    }
+
+    red = uchar_clamp((acc->red / opacity) * rgb_scale, 0xFF);
+    green = uchar_clamp((acc->green / opacity) * rgb_scale, 0xFF);
+    blue = uchar_clamp((acc->blue / opacity) * rgb_scale, 0xFF);
+
+    opacity = CLAMP(opacity, 0.0, 1.0);
+    alpha = uchar_clamp((double)gdAlphaMax - opacity * (double)gdAlphaMax, 0x7F);
+
+    return gdTrueColorAlpha(red, green, blue, alpha);
+}
+
+static inline gdLinearPixel gdPixelToLinear(const int color)
+{
+    gdLinearPixel pixel;
+
+    pixel.opacity = gdAlphaToOpacity(gdTrueColorGetAlpha(color));
+    pixel.red = srgb_u8_to_linear(gdTrueColorGetRed(color)) * pixel.opacity;
+    pixel.green = srgb_u8_to_linear(gdTrueColorGetGreen(color)) * pixel.opacity;
+    pixel.blue = srgb_u8_to_linear(gdTrueColorGetBlue(color)) * pixel.opacity;
+
+    return pixel;
+}
+
+static inline void gdLinearPixelAdd(gdLinearPixel *acc, const gdLinearPixel pixel,
+                                    const double weight)
+{
+    acc->red += pixel.red * weight;
+    acc->green += pixel.green * weight;
+    acc->blue += pixel.blue * weight;
+    acc->opacity += pixel.opacity * weight;
+}
+
+static inline int gdLinearPixelToTrueColor(const gdLinearPixel *pixel)
+{
+    double opacity;
+    const double out_opacity = pixel->opacity;
+    unsigned char red, green, blue, alpha;
+
+    if (out_opacity <= 0.0) {
+        return gdTrueColorAlpha(0, 0, 0, gdAlphaTransparent);
+    }
+
+    red = linear_to_srgb_u8(pixel->red / out_opacity);
+    green = linear_to_srgb_u8(pixel->green / out_opacity);
+    blue = linear_to_srgb_u8(pixel->blue / out_opacity);
+    opacity = CLAMP(out_opacity, 0.0, 1.0);
+    alpha = uchar_clamp((double)gdAlphaMax - opacity * (double)gdAlphaMax, 0x7F);
+
+    return gdTrueColorAlpha(red, green, blue, alpha);
+}
+
 static inline interpolation_method gdImageGetEffectiveInterpolation(const gdImagePtr im)
 {
     switch (im->interpolation_id) {
@@ -709,28 +833,19 @@ static int getPixelInterpolateWeightClipped(gdImagePtr im, const double x, const
     const int c4 = im->trueColor == 1
                        ? getPixelOverflowTCClipped(im, sx - 1, sy - 1, bgColor, clip)
                        : getPixelOverflowPaletteClipped(im, sx, sy - 1, bgColor, clip);
-    int r, g, b, a;
+    gdAlphaWeightedColor acc = {0.0, 0.0, 0.0, 0.0};
 
     if (x < 0)
         sx--;
     if (y < 0)
         sy--;
 
-    /* component-wise summing-up of color values */
-    r = (int)(m1 * gdTrueColorGetRed(c1) + m2 * gdTrueColorGetRed(c2) + m3 * gdTrueColorGetRed(c3) +
-              m4 * gdTrueColorGetRed(c4));
-    g = (int)(m1 * gdTrueColorGetGreen(c1) + m2 * gdTrueColorGetGreen(c2) +
-              m3 * gdTrueColorGetGreen(c3) + m4 * gdTrueColorGetGreen(c4));
-    b = (int)(m1 * gdTrueColorGetBlue(c1) + m2 * gdTrueColorGetBlue(c2) +
-              m3 * gdTrueColorGetBlue(c3) + m4 * gdTrueColorGetBlue(c4));
-    a = (int)(m1 * gdTrueColorGetAlpha(c1) + m2 * gdTrueColorGetAlpha(c2) +
-              m3 * gdTrueColorGetAlpha(c3) + m4 * gdTrueColorGetAlpha(c4));
+    gdAlphaWeightedColorAdd(&acc, c1, m1);
+    gdAlphaWeightedColorAdd(&acc, c2, m2);
+    gdAlphaWeightedColorAdd(&acc, c3, m3);
+    gdAlphaWeightedColorAdd(&acc, c4, m4);
 
-    r = CLAMP(r, 0, 255);
-    g = CLAMP(g, 0, 255);
-    b = CLAMP(b, 0, 255);
-    a = CLAMP(a, 0, gdAlphaMax);
-    return gdTrueColorAlpha(r, g, b, a);
+    return gdAlphaWeightedColorResolve(&acc, 1.0);
 }
 
 /**
@@ -759,7 +874,7 @@ static int getPixelInterpolatedClipped(gdImagePtr im, const double x, const doub
     int i;
     double kernel, kernel_cache_y;
     double kernel_x[12], kernel_y[4];
-    double new_r = 0.0f, new_g = 0.0f, new_b = 0.0f, new_a = 0.0f;
+    gdAlphaWeightedColor acc = {0.0, 0.0, 0.0, 0.0};
     const interpolation_method interpolation = gdImageGetEffectiveInterpolation(im);
 
     /* These methods use special implementations */
@@ -796,31 +911,19 @@ static int getPixelInterpolatedClipped(gdImagePtr im, const double x, const doub
                 const int rgbs = getPixelOverflowTCClipped(im, xii, yii, bgColor, clip);
 
                 kernel = kernel_cache_y * kernel_x[xii - (xi - 1)];
-                new_r += kernel * gdTrueColorGetRed(rgbs);
-                new_g += kernel * gdTrueColorGetGreen(rgbs);
-                new_b += kernel * gdTrueColorGetBlue(rgbs);
-                new_a += kernel * gdTrueColorGetAlpha(rgbs);
+                gdAlphaWeightedColorAdd(&acc, rgbs, kernel);
             }
         } else {
             for (xii = xi - 1; xii < xi + 3; xii++) {
                 const int rgbs = getPixelOverflowPaletteClipped(im, xii, yii, bgColor, clip);
 
                 kernel = kernel_cache_y * kernel_x[xii - (xi - 1)];
-                new_r += kernel * gdTrueColorGetRed(rgbs);
-                new_g += kernel * gdTrueColorGetGreen(rgbs);
-                new_b += kernel * gdTrueColorGetBlue(rgbs);
-                new_a += kernel * gdTrueColorGetAlpha(rgbs);
+                gdAlphaWeightedColorAdd(&acc, rgbs, kernel);
             }
         }
     }
 
-    new_r = CLAMP(new_r, 0, 255);
-    new_g = CLAMP(new_g, 0, 255);
-    new_b = CLAMP(new_b, 0, 255);
-    new_a = CLAMP(new_a, 0, gdAlphaMax);
-
-    return gdTrueColorAlpha((int)(new_r + 0.5), (int)(new_g + 0.5), (int)(new_b + 0.5),
-                            (int)(new_a + 0.5));
+    return gdAlphaWeightedColorResolve(&acc, 1.0);
 }
 
 static int getPixelInterpolated(gdImagePtr im, const double x, const double y, const int bgColor)
@@ -944,43 +1047,281 @@ static inline LineContribType *_gdContributionsCalc(unsigned int line_size, unsi
     return res;
 }
 
-static inline void _gdScaleOneAxis(gdImagePtr pSrc, gdImagePtr dst, unsigned int dst_len,
-                                   unsigned int row, LineContribType *contrib, gdAxis axis)
+static inline void _gdInvertedContributionsFree(InvertedLineContribType *p)
+{
+    if (p == NULL) {
+        return;
+    }
+    gdFree(p->Storage);
+    gdFree(p->Rows);
+    gdFree(p);
+}
+
+static inline InvertedLineContribType *_gdContributionsInvert(LineContribType *contrib,
+                                                              unsigned int src_size)
+{
+    InvertedLineContribType *res;
+    unsigned int *counts;
+    unsigned int *offsets;
+    unsigned int total = 0;
+    unsigned int dst;
+    unsigned int src;
+
+    if (overflow2(src_size, sizeof(unsigned int))) {
+        return NULL;
+    }
+
+    counts = (unsigned int *)gdCalloc(src_size, sizeof(unsigned int));
+    if (counts == NULL) {
+        return NULL;
+    }
+    offsets = (unsigned int *)gdCalloc(src_size, sizeof(unsigned int));
+    if (offsets == NULL) {
+        gdFree(counts);
+        return NULL;
+    }
+
+    for (dst = 0; dst < contrib->LineLength; dst++) {
+        int i;
+
+        for (i = contrib->ContribRow[dst].Left; i <= contrib->ContribRow[dst].Right; i++) {
+            counts[i]++;
+            if (counts[i] == 0) {
+                gdFree(offsets);
+                gdFree(counts);
+                return NULL;
+            }
+        }
+    }
+
+    res = (InvertedLineContribType *)gdMalloc(sizeof(InvertedLineContribType));
+    if (res == NULL) {
+        gdFree(offsets);
+        gdFree(counts);
+        return NULL;
+    }
+    res->Rows = NULL;
+    res->Storage = NULL;
+    res->SourceLength = src_size;
+
+    if (overflow2(src_size, sizeof(InvertedContributionRowType))) {
+        _gdInvertedContributionsFree(res);
+        gdFree(offsets);
+        gdFree(counts);
+        return NULL;
+    }
+    res->Rows =
+        (InvertedContributionRowType *)gdMalloc(src_size * sizeof(InvertedContributionRowType));
+    if (res->Rows == NULL) {
+        _gdInvertedContributionsFree(res);
+        gdFree(offsets);
+        gdFree(counts);
+        return NULL;
+    }
+
+    for (src = 0; src < src_size; src++) {
+        if (UINT_MAX - total < counts[src]) {
+            _gdInvertedContributionsFree(res);
+            gdFree(offsets);
+            gdFree(counts);
+            return NULL;
+        }
+        res->Rows[src].Count = counts[src];
+        res->Rows[src].Contrib = NULL;
+        offsets[src] = total;
+        total += counts[src];
+    }
+
+    if (overflow2(total, sizeof(InvertedContributionType))) {
+        _gdInvertedContributionsFree(res);
+        gdFree(offsets);
+        gdFree(counts);
+        return NULL;
+    }
+    res->Storage = (InvertedContributionType *)gdMalloc(total * sizeof(InvertedContributionType));
+    if (res->Storage == NULL) {
+        _gdInvertedContributionsFree(res);
+        gdFree(offsets);
+        gdFree(counts);
+        return NULL;
+    }
+
+    for (src = 0; src < src_size; src++) {
+        res->Rows[src].Contrib = &res->Storage[offsets[src]];
+        counts[src] = 0;
+    }
+
+    for (dst = 0; dst < contrib->LineLength; dst++) {
+        int i;
+
+        for (i = contrib->ContribRow[dst].Left; i <= contrib->ContribRow[dst].Right; i++) {
+            const unsigned int source = (unsigned int)i;
+            const unsigned int index = offsets[source] + counts[source]++;
+
+            res->Storage[index].Dst = dst;
+            res->Storage[index].Weight =
+                contrib->ContribRow[dst].Weights[i - contrib->ContribRow[dst].Left];
+        }
+    }
+
+    gdFree(offsets);
+    gdFree(counts);
+    return res;
+}
+
+static inline gdLinearPixel *gdLinearBufferCreate(const unsigned int width,
+                                                  const unsigned int height)
+{
+    size_t count;
+
+    if (overflow2(width, height)) {
+        return NULL;
+    }
+    count = (size_t)width * (size_t)height;
+    if (overflow2(count, sizeof(gdLinearPixel))) {
+        return NULL;
+    }
+    return (gdLinearPixel *)gdMalloc(count * sizeof(gdLinearPixel));
+}
+
+static inline void gdLinearBufferClear(gdLinearPixel *buffer, const unsigned int width,
+                                       const unsigned int height)
+{
+    const gdLinearPixel zero = {0.0, 0.0, 0.0, 0.0};
+    const size_t count = (size_t)width * (size_t)height;
+    size_t i;
+
+    for (i = 0; i < count; i++) {
+        buffer[i] = zero;
+    }
+}
+
+static inline void _gdScaleOneAxisFromGd(const gdImagePtr pSrc, gdLinearPixel *dst,
+                                         const unsigned int dst_width,
+                                         const unsigned int dst_len, const unsigned int row,
+                                         LineContribType *contrib, gdAxis axis)
 {
     unsigned int ndx;
 
     for (ndx = 0; ndx < dst_len; ndx++) {
-        double r = 0, g = 0, b = 0, a = 0;
+        gdLinearPixel acc = {0.0, 0.0, 0.0, 0.0};
         const int left = contrib->ContribRow[ndx].Left;
         const int right = contrib->ContribRow[ndx].Right;
-        int *dest = (axis == HORIZONTAL) ? &dst->tpixels[row][ndx] : &dst->tpixels[ndx][row];
+        gdLinearPixel *dest = (axis == HORIZONTAL) ? &dst[row * dst_width + ndx]
+                                                   : &dst[ndx * dst_width + row];
 
         int i;
 
-        /* Accumulate each channel */
         for (i = left; i <= right; i++) {
             const int left_channel = i - left;
             const int srcpx = (axis == HORIZONTAL) ? pSrc->tpixels[row][i] : pSrc->tpixels[i][row];
 
-            r +=
-                contrib->ContribRow[ndx].Weights[left_channel] * (double)(gdTrueColorGetRed(srcpx));
-            g += contrib->ContribRow[ndx].Weights[left_channel] *
-                 (double)(gdTrueColorGetGreen(srcpx));
-            b += contrib->ContribRow[ndx].Weights[left_channel] *
-                 (double)(gdTrueColorGetBlue(srcpx));
-            a += contrib->ContribRow[ndx].Weights[left_channel] *
-                 (double)(gdTrueColorGetAlpha(srcpx));
+            gdLinearPixelAdd(&acc, gdPixelToLinear(srcpx),
+                             contrib->ContribRow[ndx].Weights[left_channel]);
         } /* for */
 
-        *dest = gdTrueColorAlpha(uchar_clamp(r, 0xFF), uchar_clamp(g, 0xFF), uchar_clamp(b, 0xFF),
-                                 uchar_clamp(a, 0x7F)); /* alpha is 0..127 */
+        *dest = acc;
     } /* for */
-} /* _gdScaleOneAxis*/
+}
 
-static inline int _gdScalePass(const gdImagePtr pSrc, const unsigned int src_len,
-                               const gdImagePtr pDst, const unsigned int dst_len,
-                               const unsigned int num_lines, const gdAxis axis,
-                               const FilterInfo *filter)
+static inline void _gdScaleOneAxisLinear(const gdLinearPixel *pSrc, const unsigned int src_width,
+                                         gdLinearPixel *dst, const unsigned int dst_width,
+                                         const unsigned int dst_len, const unsigned int row,
+                                         LineContribType *contrib, gdAxis axis)
+{
+    unsigned int ndx;
+
+    for (ndx = 0; ndx < dst_len; ndx++) {
+        gdLinearPixel acc = {0.0, 0.0, 0.0, 0.0};
+        const int left = contrib->ContribRow[ndx].Left;
+        const int right = contrib->ContribRow[ndx].Right;
+        gdLinearPixel *dest = (axis == HORIZONTAL) ? &dst[row * dst_width + ndx]
+                                                   : &dst[ndx * dst_width + row];
+        int i;
+
+        for (i = left; i <= right; i++) {
+            const int left_channel = i - left;
+            const gdLinearPixel srcpx =
+                (axis == HORIZONTAL) ? pSrc[row * src_width + i] : pSrc[i * src_width + row];
+
+            gdLinearPixelAdd(&acc, srcpx, contrib->ContribRow[ndx].Weights[left_channel]);
+        }
+
+        *dest = acc;
+    }
+}
+
+static inline int _gdScaleVerticalFromGdScatter(const gdImagePtr pSrc, gdLinearPixel *dst,
+                                                const unsigned int dst_width,
+                                                const unsigned int dst_height,
+                                                InvertedLineContribType *contrib)
+{
+    gdLinearPixel *src_row;
+    unsigned int src_y;
+
+    src_row = gdLinearBufferCreate(dst_width, 1);
+    if (src_row == NULL) {
+        return 0;
+    }
+    gdLinearBufferClear(dst, dst_width, dst_height);
+
+    for (src_y = 0; src_y < contrib->SourceLength; src_y++) {
+        InvertedContributionRowType *row_contrib = &contrib->Rows[src_y];
+        unsigned int contrib_ndx;
+        unsigned int x;
+
+        for (x = 0; x < dst_width; x++) {
+            src_row[x] = gdPixelToLinear(pSrc->tpixels[src_y][x]);
+        }
+
+        for (contrib_ndx = 0; contrib_ndx < row_contrib->Count; contrib_ndx++) {
+            const unsigned int dst_y = row_contrib->Contrib[contrib_ndx].Dst;
+            const double weight = row_contrib->Contrib[contrib_ndx].Weight;
+            gdLinearPixel *dst_row = &dst[dst_y * dst_width];
+
+            for (x = 0; x < dst_width; x++) {
+                gdLinearPixelAdd(&dst_row[x], src_row[x], weight);
+            }
+        }
+    }
+
+    gdFree(src_row);
+    return 1;
+}
+
+static inline void _gdScaleVerticalLinearScatter(const gdLinearPixel *pSrc,
+                                                 const unsigned int src_width,
+                                                 gdLinearPixel *dst,
+                                                 const unsigned int dst_width,
+                                                 const unsigned int dst_height,
+                                                 InvertedLineContribType *contrib)
+{
+    unsigned int src_y;
+
+    gdLinearBufferClear(dst, dst_width, dst_height);
+
+    for (src_y = 0; src_y < contrib->SourceLength; src_y++) {
+        const gdLinearPixel *src_row = &pSrc[src_y * src_width];
+        InvertedContributionRowType *row_contrib = &contrib->Rows[src_y];
+        unsigned int contrib_ndx;
+
+        for (contrib_ndx = 0; contrib_ndx < row_contrib->Count; contrib_ndx++) {
+            const unsigned int dst_y = row_contrib->Contrib[contrib_ndx].Dst;
+            const double weight = row_contrib->Contrib[contrib_ndx].Weight;
+            gdLinearPixel *dst_row = &dst[dst_y * dst_width];
+            unsigned int x;
+
+            for (x = 0; x < dst_width; x++) {
+                gdLinearPixelAdd(&dst_row[x], src_row[x], weight);
+            }
+        }
+    }
+}
+
+static inline int _gdScalePassFromGd(const gdImagePtr pSrc, const unsigned int src_len,
+                                     gdLinearPixel *pDst, const unsigned int dst_width,
+                                     const unsigned int dst_len, const unsigned int num_lines,
+                                     const gdAxis axis, const FilterInfo *filter)
 {
     unsigned int line_ndx;
     LineContribType *contrib;
@@ -994,13 +1335,89 @@ static inline int _gdScalePass(const gdImagePtr pSrc, const unsigned int src_len
         return 0;
     }
 
+    if (axis == VERTICAL) {
+        InvertedLineContribType *inverted = _gdContributionsInvert(contrib, src_len);
+
+        if (inverted == NULL) {
+            _gdContributionsFree(contrib);
+            return 0;
+        }
+        if (!_gdScaleVerticalFromGdScatter(pSrc, pDst, dst_width, dst_len, inverted)) {
+            _gdInvertedContributionsFree(inverted);
+            _gdContributionsFree(contrib);
+            return 0;
+        }
+        _gdInvertedContributionsFree(inverted);
+        _gdContributionsFree(contrib);
+        return 1;
+    }
+
     /* Scale each line */
     for (line_ndx = 0; line_ndx < num_lines; line_ndx++) {
-        _gdScaleOneAxis(pSrc, pDst, dst_len, line_ndx, contrib, axis);
+        _gdScaleOneAxisFromGd(pSrc, pDst, dst_width, dst_len, line_ndx, contrib, axis);
     }
     _gdContributionsFree(contrib);
     return 1;
-} /* _gdScalePass*/
+}
+
+static inline int _gdScalePassLinear(const gdLinearPixel *pSrc, const unsigned int src_width,
+                                     const unsigned int src_len, gdLinearPixel *pDst,
+                                     const unsigned int dst_width, const unsigned int dst_len,
+                                     const unsigned int num_lines, const gdAxis axis,
+                                     const FilterInfo *filter)
+{
+    unsigned int line_ndx;
+    LineContribType *contrib;
+
+    assert(dst_len != src_len);
+
+    contrib = _gdContributionsCalc(dst_len, src_len, (double)dst_len / (double)src_len,
+                                   filter->support, filter->function);
+    if (contrib == NULL) {
+        return 0;
+    }
+
+    if (axis == VERTICAL) {
+        InvertedLineContribType *inverted = _gdContributionsInvert(contrib, src_len);
+
+        if (inverted == NULL) {
+            _gdContributionsFree(contrib);
+            return 0;
+        }
+        _gdScaleVerticalLinearScatter(pSrc, src_width, pDst, dst_width, dst_len, inverted);
+        _gdInvertedContributionsFree(inverted);
+        _gdContributionsFree(contrib);
+        return 1;
+    }
+
+    for (line_ndx = 0; line_ndx < num_lines; line_ndx++) {
+        _gdScaleOneAxisLinear(pSrc, src_width, pDst, dst_width, dst_len, line_ndx, contrib, axis);
+    }
+    _gdContributionsFree(contrib);
+    return 1;
+}
+
+static gdImagePtr gdLinearBufferToImage(const gdLinearPixel *buffer, const unsigned int width,
+                                        const unsigned int height, gdInterpolationMethod method)
+{
+    gdImagePtr dst;
+    unsigned int y;
+
+    dst = gdImageCreateTrueColor(width, height);
+    if (dst == NULL) {
+        return NULL;
+    }
+    gdImageSetInterpolationMethod(dst, method);
+
+    for (y = 0; y < height; y++) {
+        unsigned int x;
+        for (x = 0; x < width; x++) {
+            dst->tpixels[y][x] = gdLinearPixelToTrueColor(&buffer[y * width + x]);
+        }
+    }
+
+    return dst;
+}
 
 static const FilterInfo filters[GD_METHOD_COUNT + 1] = {
     {filter_box, 0.0},
@@ -1045,15 +1462,17 @@ static const FilterInfo *_get_filterinfo_for_id(gdInterpolationMethod id)
     return &filters[id];
 }
 
-static gdImagePtr gdImageScaleTwoPass(const gdImagePtr src, const unsigned int new_width,
-                                      const unsigned int new_height)
+static gdImagePtr gdImageScaleTwoPassWithMethod(const gdImagePtr src, const unsigned int new_width,
+                                                const unsigned int new_height,
+                                                gdInterpolationMethod method)
 {
     const unsigned int src_width = src->sx;
     const unsigned int src_height = src->sy;
-    gdImagePtr tmp_im = NULL;
+    gdLinearPixel *tmp_buf = NULL;
+    gdLinearPixel *dst_buf = NULL;
     gdImagePtr dst = NULL;
     int scale_pass_res;
-    const FilterInfo *filter = _get_filterinfo_for_id(src->interpolation_id);
+    const FilterInfo *filter = _get_filterinfo_for_id(method);
 
     /* First, handle the trivial case. */
     if (src_width == new_width && src_height == new_height) {
@@ -1067,49 +1486,63 @@ static gdImagePtr gdImageScaleTwoPass(const gdImagePtr src, const unsigned int n
 
     /* Scale horizontally unless sizes are the same. */
     if (src_width == new_width) {
-        tmp_im = src;
+        dst_buf = gdLinearBufferCreate(new_width, new_height);
+        if (dst_buf == NULL) {
+            return NULL;
+        }
+        scale_pass_res =
+            _gdScalePassFromGd(src, src_height, dst_buf, new_width, new_height, new_width,
+                               VERTICAL, filter);
+        if (scale_pass_res != 1) {
+            gdFree(dst_buf);
+            return NULL;
+        }
     } else {
-        tmp_im = gdImageCreateTrueColor(new_width, src_height);
-        if (tmp_im == NULL) {
+        tmp_buf = gdLinearBufferCreate(new_width, src_height);
+        if (tmp_buf == NULL) {
             return NULL;
-        }
-        gdImageSetInterpolationMethod(tmp_im, src->interpolation_id);
-
-        scale_pass_res =
-            _gdScalePass(src, src_width, tmp_im, new_width, src_height, HORIZONTAL, filter);
-        if (scale_pass_res != 1) {
-            gdImageDestroy(tmp_im);
-            return NULL;
-        }
     }
 
-    /* If vertical sizes match, we're done. */
+        scale_pass_res = _gdScalePassFromGd(src, src_width, tmp_buf, new_width, new_width,
+                                            src_height, HORIZONTAL, filter);
+        if (scale_pass_res != 1) {
+            gdFree(tmp_buf);
+            return NULL;
+        }
+
     if (src_height == new_height) {
-        assert(tmp_im != src);
-        return tmp_im;
+            dst_buf = tmp_buf;
+            tmp_buf = NULL;
+        } else {
+            dst_buf = gdLinearBufferCreate(new_width, new_height);
+            if (dst_buf == NULL) {
+                gdFree(tmp_buf);
+                return NULL;
     }
-
-    /* Otherwise, we need to scale vertically. */
-    dst = gdImageCreateTrueColor(new_width, new_height);
-    if (dst != NULL) {
-        gdImageSetInterpolationMethod(dst, src->interpolation_id);
-        scale_pass_res =
-            _gdScalePass(tmp_im, src_height, dst, new_height, new_width, VERTICAL, filter);
+        scale_pass_res = _gdScalePassLinear(tmp_buf, new_width, src_height, dst_buf, new_width,
+                                   new_height, new_width, VERTICAL, filter);
         if (scale_pass_res != 1) {
-            gdImageDestroy(dst);
-            if (src != tmp_im) {
-                gdImageDestroy(tmp_im);
-            }
+            gdFree(dst_buf);
+            gdFree(tmp_buf);
             return NULL;
+            }
         }
     }
 
-    if (src != tmp_im) {
-        gdImageDestroy(tmp_im);
-    }
+    dst = gdLinearBufferToImage(dst_buf, new_width, new_height, src->interpolation_id);
 
+    gdFree(dst_buf);
+    if (tmp_buf != NULL) {
+        gdFree(tmp_buf);
+    }
     return dst;
 } /* gdImageScaleTwoPass*/
+
+static gdImagePtr gdImageScaleTwoPass(const gdImagePtr src, const unsigned int new_width,
+                                      const unsigned int new_height)
+{
+    return gdImageScaleTwoPassWithMethod(src, new_width, new_height, src->interpolation_id);
+}
 
 /*
         Bilinear, bicubic and nearest implementations are
@@ -1219,25 +1652,14 @@ static gdImagePtr gdImageScaleBilinearPalette(gdImagePtr im, const unsigned int 
             pixel4 = getPixelOverflowPalette(im, n + 1, m + 1, pixel1);
 
             {
-                const unsigned char red = uchar_clamp(
-                    f_w1 * gdTrueColorGetRed(pixel1) + f_w2 * gdTrueColorGetRed(pixel2) +
-                        f_w3 * gdTrueColorGetRed(pixel3) + f_w4 * gdTrueColorGetRed(pixel4),
-                    0xFF);
-                const unsigned char green = uchar_clamp(
-                    f_w1 * gdTrueColorGetGreen(pixel1) + f_w2 * gdTrueColorGetGreen(pixel2) +
-                        f_w3 * gdTrueColorGetGreen(pixel3) + f_w4 * gdTrueColorGetGreen(pixel4),
-                    0xFF);
-                const unsigned char blue = uchar_clamp(
-                    f_w1 * gdTrueColorGetBlue(pixel1) + f_w2 * gdTrueColorGetBlue(pixel2) +
-                        f_w3 * gdTrueColorGetBlue(pixel3) + f_w4 * gdTrueColorGetBlue(pixel4),
-                    0xFF);
-                const unsigned char alpha = uchar_clamp(
-                    f_w1 * gdTrueColorGetAlpha(pixel1) + f_w2 * gdTrueColorGetAlpha(pixel2) +
-                        f_w3 * gdTrueColorGetAlpha(pixel3) + f_w4 * gdTrueColorGetAlpha(pixel4),
-                    0x7F);
+                gdAlphaWeightedColor acc = {0.0, 0.0, 0.0, 0.0};
 
-                new_img->tpixels[dst_offset_v][dst_offset_h] =
-                    gdTrueColorAlpha(red, green, blue, alpha);
+                gdAlphaWeightedColorAdd(&acc, pixel1, f_w1);
+                gdAlphaWeightedColorAdd(&acc, pixel2, f_w2);
+                gdAlphaWeightedColorAdd(&acc, pixel3, f_w3);
+                gdAlphaWeightedColorAdd(&acc, pixel4, f_w4);
+
+                new_img->tpixels[dst_offset_v][dst_offset_h] = gdAlphaWeightedColorResolve(&acc, 1.0);
             }
 
             dst_offset_h++;
@@ -1293,25 +1715,14 @@ static gdImagePtr gdImageScaleBilinearTC(gdImagePtr im, const unsigned int new_w
             pixel4 = getPixelOverflowTC(im, n + 1, m + 1, pixel1);
 
             {
-                const unsigned char red = uchar_clamp(
-                    f_w1 * gdTrueColorGetRed(pixel1) + f_w2 * gdTrueColorGetRed(pixel2) +
-                        f_w3 * gdTrueColorGetRed(pixel3) + f_w4 * gdTrueColorGetRed(pixel4),
-                    0xFF);
-                const unsigned char green = uchar_clamp(
-                    f_w1 * gdTrueColorGetGreen(pixel1) + f_w2 * gdTrueColorGetGreen(pixel2) +
-                        f_w3 * gdTrueColorGetGreen(pixel3) + f_w4 * gdTrueColorGetGreen(pixel4),
-                    0xFF);
-                const unsigned char blue = uchar_clamp(
-                    f_w1 * gdTrueColorGetBlue(pixel1) + f_w2 * gdTrueColorGetBlue(pixel2) +
-                        f_w3 * gdTrueColorGetBlue(pixel3) + f_w4 * gdTrueColorGetBlue(pixel4),
-                    0xFF);
-                const unsigned char alpha = uchar_clamp(
-                    f_w1 * gdTrueColorGetAlpha(pixel1) + f_w2 * gdTrueColorGetAlpha(pixel2) +
-                        f_w3 * gdTrueColorGetAlpha(pixel3) + f_w4 * gdTrueColorGetAlpha(pixel4),
-                    0x7F);
+                gdAlphaWeightedColor acc = {0.0, 0.0, 0.0, 0.0};
 
-                new_img->tpixels[dst_offset_v][dst_offset_h] =
-                    gdTrueColorAlpha(red, green, blue, alpha);
+                gdAlphaWeightedColorAdd(&acc, pixel1, f_w1);
+                gdAlphaWeightedColorAdd(&acc, pixel2, f_w2);
+                gdAlphaWeightedColorAdd(&acc, pixel3, f_w3);
+                gdAlphaWeightedColorAdd(&acc, pixel4, f_w4);
+
+                new_img->tpixels[dst_offset_v][dst_offset_h] = gdAlphaWeightedColorResolve(&acc, 1.0);
             }
 
             dst_offset_h++;
@@ -1374,8 +1785,7 @@ static gdImagePtr gdImageScaleBicubicFixed(gdImagePtr src, const unsigned int wi
             const long n = gdClampInt((int)src_x, 0, src_w - 1);
             const double f_g = src_x - (double)n;
             long k;
-            double red_acc = 0.0, green_acc = 0.0, blue_acc = 0.0, alpha_acc = 0.0;
-            unsigned char red, green, blue, alpha = 0;
+            gdAlphaWeightedColor acc = {0.0, 0.0, 0.0, 0.0};
             int *dst_row = dst->tpixels[dst_offset_y];
 
             for (k = -1; k < 3; k++) {
@@ -1388,19 +1798,11 @@ static gdImagePtr gdImageScaleBicubicFixed(gdImagePtr src, const unsigned int wi
                     const double weight = weight_y * filter_cubic_spline((double)l - f_g, 0.0);
                     const int c = src->tpixels[src_y_sample][src_x_sample];
 
-                    red_acc += weight * (double)gdTrueColorGetRed(c);
-                    green_acc += weight * (double)gdTrueColorGetGreen(c);
-                    blue_acc += weight * (double)gdTrueColorGetBlue(c);
-                    alpha_acc += weight * (double)gdTrueColorGetAlpha(c);
+                    gdAlphaWeightedColorAdd(&acc, c, weight);
                 }
             }
 
-            red = uchar_clamp(red_acc * gamma, 0xFF);
-            green = uchar_clamp(green_acc * gamma, 0xFF);
-            blue = uchar_clamp(blue_acc * gamma, 0xFF);
-            alpha = uchar_clamp(alpha_acc * gamma, 0x7F);
-
-            *(dst_row + dst_offset_x) = gdTrueColorAlpha(red, green, blue, alpha);
+            *(dst_row + dst_offset_x) = gdAlphaWeightedColorResolve(&acc, gamma);
 
             dst_offset_x++;
         }
@@ -1409,32 +1811,32 @@ static gdImagePtr gdImageScaleBicubicFixed(gdImagePtr src, const unsigned int wi
     return dst;
 }
 
-/**
- * Function: gdImageScale
- *
- * Scale an image
- *
- * Creates a new image, scaled to the requested size using the current
- * <gdInterpolationMethod>.
- *
- * Note that GD_WEIGHTED4 is not yet supported by this function.
- *
- * Parameters:
- *   src        - The source image.
- *   new_width  - The new width.
- *   new_height - The new height.
- *
- * Returns:
- *   The scaled image on success, NULL on failure.
- *
- * See also:
- *   - <gdImageCopyResized>
- *   - <gdImageCopyResampled>
- */
+static inline int gdImageScaleIsDownscaleOrMixed(const gdImagePtr src,
+                                                 const unsigned int new_width,
+                                                 const unsigned int new_height)
+{
+    return new_width < (unsigned int)gdImageSX(src) || new_height < (unsigned int)gdImageSY(src);
+}
+
+static inline int gdInterpolationIsFixedFamily(const gdInterpolationMethod method)
+{
+    switch (method) {
+    case GD_DEFAULT:
+    case GD_BILINEAR_FIXED:
+    case GD_LINEAR:
+    case GD_BICUBIC_FIXED:
+    case GD_BICUBIC:
+        return 1;
+    default:
+        return 0;
+    }
+}
+
 BGD_DECLARE(gdImagePtr)
 gdImageScale(const gdImagePtr src, const unsigned int new_width, const unsigned int new_height)
 {
     gdImagePtr im_scaled = NULL;
+    int downscale_or_mixed;
 
     if (src == NULL || (uintmax_t)src->interpolation_id >= GD_METHOD_COUNT) {
         return NULL;
@@ -1446,6 +1848,12 @@ gdImageScale(const gdImagePtr src, const unsigned int new_width, const unsigned 
     if ((int)new_width == gdImageSX(src) && (int)new_height == gdImageSY(src)) {
         return gdImageClone(src);
     }
+
+    downscale_or_mixed = gdImageScaleIsDownscaleOrMixed(src, new_width, new_height);
+    if (downscale_or_mixed && gdInterpolationIsFixedFamily(src->interpolation_id)) {
+        return gdImageScaleTwoPassWithMethod(src, new_width, new_height, GD_TRIANGLE);
+    }
+
     switch (src->interpolation_id) {
     /*Special cases, optimized implementations */
     case GD_NEAREST_NEIGHBOUR:
@@ -1459,6 +1867,7 @@ gdImageScale(const gdImagePtr src, const unsigned int new_width, const unsigned 
 
     case GD_BICUBIC_FIXED:
     case GD_BICUBIC:
+    case GD_DEFAULT:
         im_scaled = gdImageScaleBicubicFixed(src, new_width, new_height);
         break;
 
@@ -1472,6 +1881,308 @@ gdImageScale(const gdImagePtr src, const unsigned int new_width, const unsigned 
     }
 
     return im_scaled;
+}
+
+static gdImagePtr gdImagePrepareScaleSource(const gdImagePtr src, int *background_color)
+{
+    gdImagePtr prepared = gdImageClone((gdImagePtr)src);
+
+    if (prepared == NULL) {
+        return NULL;
+    }
+
+    if (!gdImageTrueColor(prepared)) {
+        if (*background_color >= 0 && *background_color < gdImageColorsTotal(prepared)) {
+            *background_color = gdTrueColorAlpha(
+                prepared->red[*background_color],
+                prepared->green[*background_color],
+                prepared->blue[*background_color],
+                prepared->alpha[*background_color]);
+        }
+        if (!gdImagePaletteToTrueColor(prepared)) {
+            gdImageDestroy(prepared);
+            return NULL;
+        }
+    }
+
+    for (int y = 0; y < gdImageSY(prepared); y++) {
+        for (int x = 0; x < gdImageSX(prepared); x++) {
+            if (gdTrueColorGetAlpha(prepared->tpixels[y][x]) == gdAlphaTransparent) {
+                prepared->tpixels[y][x] = *background_color;
+            }
+        }
+    }
+
+    prepared->alphaBlendingFlag = gdEffectReplace;
+    prepared->saveAlphaFlag = 1;
+
+    return prepared;
+}
+
+static gdImagePtr gdImageScaleWithMethod(gdImagePtr src, int width, int height, int method)
+{
+    if (method == GD_SCALE_INTERPOLATION_AUTO) {
+        method = gdImageScaleIsDownscaleOrMixed(src, (unsigned int)width, (unsigned int)height)
+            ? GD_LANCZOS3
+            : GD_CATMULLROM;
+    }
+
+    if (!gdImageSetInterpolationMethod(src, (gdInterpolationMethod)method)) {
+        return NULL;
+    }
+
+    return gdImageScale(src, (unsigned int)width, (unsigned int)height);
+}
+
+static gdImagePtr gdImageCreateScaleCanvas(int width, int height, int background_color)
+{
+    gdImagePtr canvas = gdImageCreateTrueColor(width, height);
+
+    if (canvas == NULL) {
+        return NULL;
+    }
+
+    gdImageAlphaBlending(canvas, gdEffectReplace);
+    gdImageSaveAlpha(canvas, 1);
+    gdImageFilledRectangle(canvas, 0, 0, width - 1, height - 1, background_color);
+
+    return canvas;
+}
+
+static int gdScaleAnchorOffset(int available, int axis)
+{
+    switch (axis) {
+        case 0:
+            return 0;
+        case 2:
+            return available;
+        default:
+            return available / 2;
+    }
+}
+
+static int gdScaleGravityAxes(gdScaleGravity gravity, int *x_axis, int *y_axis)
+{
+    switch (gravity) {
+        case GD_SCALE_GRAVITY_NORTHWEST:
+            *x_axis = 0;
+            *y_axis = 0;
+            return GD_TRUE;
+        case GD_SCALE_GRAVITY_NORTH:
+            *x_axis = 1;
+            *y_axis = 0;
+            return GD_TRUE;
+        case GD_SCALE_GRAVITY_NORTHEAST:
+            *x_axis = 2;
+            *y_axis = 0;
+            return GD_TRUE;
+        case GD_SCALE_GRAVITY_WEST:
+            *x_axis = 0;
+            *y_axis = 1;
+            return GD_TRUE;
+        case GD_SCALE_GRAVITY_CENTER:
+            *x_axis = 1;
+            *y_axis = 1;
+            return GD_TRUE;
+        case GD_SCALE_GRAVITY_EAST:
+            *x_axis = 2;
+            *y_axis = 1;
+            return GD_TRUE;
+        case GD_SCALE_GRAVITY_SOUTHWEST:
+            *x_axis = 0;
+            *y_axis = 2;
+            return GD_TRUE;
+        case GD_SCALE_GRAVITY_SOUTH:
+            *x_axis = 1;
+            *y_axis = 2;
+            return GD_TRUE;
+        case GD_SCALE_GRAVITY_SOUTHEAST:
+            *x_axis = 2;
+            *y_axis = 2;
+            return GD_TRUE;
+        default:
+            return GD_FALSE;
+    }
+}
+
+static gdImagePtr gdImageScaleCompose(
+    gdImagePtr prepared,
+    int target_width,
+    int target_height,
+    int background_color,
+    int method,
+    gdScaleFit fit,
+    gdScaleGravity gravity)
+{
+    gdImagePtr scaled, canvas;
+    int scaled_width, scaled_height;
+    int x_axis, y_axis;
+    double ratio;
+
+    switch (fit) {
+        case GD_SCALE_FIT_FILL:
+            return gdImageScaleWithMethod(prepared, target_width, target_height, method);
+
+        case GD_SCALE_FIT_CONTAIN:
+        case GD_SCALE_FIT_INSIDE:
+            ratio = fmin(
+                (double)target_width / (double)gdImageSX(prepared),
+                (double)target_height / (double)gdImageSY(prepared));
+            scaled_width = (int)fmax(1.0, floor((double)gdImageSX(prepared) * ratio));
+            scaled_height = (int)fmax(1.0, floor((double)gdImageSY(prepared) * ratio));
+            break;
+
+        case GD_SCALE_FIT_COVER:
+        case GD_SCALE_FIT_OUTSIDE:
+            ratio = fmax(
+                (double)target_width / (double)gdImageSX(prepared),
+                (double)target_height / (double)gdImageSY(prepared));
+            scaled_width = (int)fmax(1.0, ceil((double)gdImageSX(prepared) * ratio));
+            scaled_height = (int)fmax(1.0, ceil((double)gdImageSY(prepared) * ratio));
+            break;
+
+        default:
+            return NULL;
+    }
+
+    scaled = gdImageScaleWithMethod(prepared, scaled_width, scaled_height, method);
+    if (scaled == NULL) {
+        return NULL;
+    }
+
+    if (fit == GD_SCALE_FIT_INSIDE || fit == GD_SCALE_FIT_OUTSIDE) {
+        return scaled;
+    }
+
+    canvas = gdImageCreateScaleCanvas(target_width, target_height, background_color);
+    if (canvas == NULL) {
+        gdImageDestroy(scaled);
+        return NULL;
+    }
+
+    if (!gdScaleGravityAxes(gravity, &x_axis, &y_axis)) {
+        gdImageDestroy(scaled);
+        gdImageDestroy(canvas);
+        return NULL;
+    }
+
+    if (fit == GD_SCALE_FIT_CONTAIN) {
+        const int dst_x = gdScaleAnchorOffset(target_width - scaled_width, x_axis);
+        const int dst_y = gdScaleAnchorOffset(target_height - scaled_height, y_axis);
+
+        gdImageCopy(canvas, scaled, dst_x, dst_y, 0, 0, scaled_width, scaled_height);
+    } else {
+        const int src_x = gdScaleAnchorOffset(scaled_width - target_width, x_axis);
+        const int src_y = gdScaleAnchorOffset(scaled_height - target_height, y_axis);
+
+        gdImageCopy(canvas, scaled, 0, 0, src_x, src_y, target_width, target_height);
+    }
+
+    gdImageDestroy(scaled);
+
+    return canvas;
+}
+
+static gdImagePtr gdImageScaleInterestingCover(
+    gdImagePtr prepared,
+    int target_width,
+    int target_height,
+    int method,
+    gdScaleStrategy strategy,
+    int *used_interesting)
+{
+    gdInterestingMethod interesting_method;
+    gdRect crop;
+    gdImagePtr cropped, scaled;
+
+    *used_interesting = GD_FALSE;
+
+    switch (strategy) {
+        case GD_SCALE_STRATEGY_ENTROPY:
+            interesting_method = GD_INTERESTING_ENTROPY;
+            break;
+        case GD_SCALE_STRATEGY_ATTENTION:
+            interesting_method = GD_INTERESTING_ATTENTION;
+            break;
+        default:
+            return NULL;
+    }
+
+    if (!gdImageInterestingCropRegion(prepared, target_width, target_height, interesting_method, &crop)) {
+        return NULL;
+    }
+
+    *used_interesting = GD_TRUE;
+    cropped = gdImageCrop(prepared, &crop);
+    if (cropped == NULL) {
+        return NULL;
+    }
+
+    gdImageAlphaBlending(cropped, gdEffectReplace);
+    gdImageSaveAlpha(cropped, 1);
+    scaled = gdImageScaleWithMethod(cropped, target_width, target_height, method);
+    gdImageDestroy(cropped);
+
+    return scaled;
+}
+
+BGD_DECLARE(gdImagePtr)
+gdImageScaleWithOptions(const gdImagePtr src, const unsigned int new_width,
+                        const unsigned int new_height, const gdScaleOptions *options)
+{
+    gdScaleOptions default_options = {
+        GD_SCALE_FIT_COVER,
+        GD_SCALE_GRAVITY_CENTER,
+        GD_SCALE_STRATEGY_NONE,
+        0x7f000000,
+        GD_SCALE_INTERPOLATION_AUTO
+    };
+    const gdScaleOptions *scale_options = options != NULL ? options : &default_options;
+    gdImagePtr prepared, dst;
+    int background_color;
+
+    if (src == NULL || new_width == 0 || new_height == 0) {
+        return NULL;
+    }
+
+    if (scale_options->interpolation != GD_SCALE_INTERPOLATION_AUTO
+            && (scale_options->interpolation < GD_DEFAULT
+                || scale_options->interpolation >= GD_METHOD_COUNT)) {
+        return NULL;
+    }
+
+    if (scale_options->strategy != GD_SCALE_STRATEGY_NONE && scale_options->fit != GD_SCALE_FIT_COVER) {
+        return NULL;
+    }
+
+    if (scale_options->strategy != GD_SCALE_STRATEGY_NONE
+            && scale_options->strategy != GD_SCALE_STRATEGY_ENTROPY
+            && scale_options->strategy != GD_SCALE_STRATEGY_ATTENTION) {
+        return NULL;
+    }
+
+    background_color = scale_options->background_color;
+    prepared = gdImagePrepareScaleSource(src, &background_color);
+    if (prepared == NULL) {
+        return NULL;
+    }
+
+    if (scale_options->strategy != GD_SCALE_STRATEGY_NONE) {
+        int used_interesting = GD_FALSE;
+        dst = gdImageScaleInterestingCover(prepared, (int)new_width, (int)new_height,
+            scale_options->interpolation, scale_options->strategy, &used_interesting);
+        if (!used_interesting) {
+            dst = gdImageScaleCompose(prepared, (int)new_width, (int)new_height,
+                background_color, scale_options->interpolation, scale_options->fit, scale_options->gravity);
+        }
+    } else {
+        dst = gdImageScaleCompose(prepared, (int)new_width, (int)new_height,
+            background_color, scale_options->interpolation, scale_options->fit, scale_options->gravity);
+    }
+
+    gdImageDestroy(prepared);
+
+    return dst;
 }
 
 static int gdRotatedImageSize(gdImagePtr src, const float angle, gdRectPtr bbox)
@@ -1598,26 +2309,6 @@ static gdImagePtr gdImageRotateGeneric(gdImagePtr src, const float degrees, cons
     return dst;
 }
 
-/**
- * Function: gdImageRotateInterpolated
- *
- * Rotate an image
- *
- * Creates a new image, counter-clockwise rotated by the requested angle
- * using the current <gdInterpolationMethod>. Non-square angles will add a
- * border with bgcolor.
- *
- * Parameters:
- *   src     - The source image.
- *   angle   - The angle in degrees.
- *   bgcolor - The color to fill the added background with.
- *
- * Returns:
- *   The rotated image on success, NULL on failure.
- *
- * See also:
- *   - <gdImageCopyRotated>
- */
 BGD_DECLARE(gdImagePtr)
 gdImageRotateInterpolated(const gdImagePtr src, const float angle, int bgcolor)
 {
@@ -1710,22 +2401,6 @@ static void gdImageClipRectangle(gdImagePtr im, gdRectPtr r)
     r->height = CLAMP(y1, c1y, c2y) - r->y + 1;
 }
 
-/**
- * Function: gdTransformAffineGetImage
- *  Applies an affine transformation to a region and return an image
- *  containing the complete transformation.
- *
- * Parameters:
- * 	dst - Pointer to a gdImagePtr to store the created image, NULL when
- *        the creation or the transformation failed
- *  src - Source image
- *  src_area - rectangle defining the source region to transform
- *  dstY - Y position in the destination image
- *  affine - The desired affine transformation
- *
- * Returns:
- *  GD_TRUE if the affine is rectilinear or GD_FALSE
- */
 BGD_DECLARE(int)
 gdTransformAffineGetImage(gdImagePtr *dst, const gdImagePtr src, gdRectPtr src_area,
                           const double affine[6])
@@ -1857,21 +2532,6 @@ static inline int gdAffineSample(const gdAffineSampleContext *ctx, const double 
     return GD_TRUE;
 }
 
-/**
- * Function: gdTransformAffineCopy
- *  Applies an affine transformation to a region and copy the result
- *  in a destination to the given position.
- *
- * Parameters:
- * 	dst - Image to draw the transformed image
- *  src - Source image
- *  dstX - X position in the destination image
- *  dstY - Y position in the destination image
- *  src_area - Rectangular region to rotate in the src image
- *
- * Returns:
- *  GD_TRUE on success or GD_FALSE on failure
- */
 BGD_DECLARE(int)
 gdTransformAffineCopy(gdImagePtr dst, int dst_x, int dst_y, const gdImagePtr src,
                       gdRectPtr src_region, const double affine[6])
@@ -1988,19 +2648,6 @@ gdTransformAffineCopy(gdImagePtr dst, int dst_x, int dst_y, const gdImagePtr src
     return GD_TRUE;
 }
 
-/**
- * Function: gdTransformAffineBoundingBox
- *  Returns the bounding box of an affine transformation applied to a
- *  rectangular area <gdRect>
- *
- * Parameters:
- * 	src - Rectangular source area for the affine transformation
- *  affine - the affine transformation
- *  bbox - the resulting bounding box
- *
- * Returns:
- *  GD_TRUE if the affine is rectilinear or GD_FALSE
- */
 BGD_DECLARE(int)
 gdTransformAffineBoundingBox(gdRectPtr src, const double affine[6], gdRectPtr bbox)
 {
@@ -2065,26 +2712,6 @@ gdTransformAffineBoundingBox(gdRectPtr src, const double affine[6], gdRectPtr bb
     return GD_TRUE;
 }
 
-/**
- * Group: Interpolation Method
- */
-
-/**
- * Function: gdImageSetInterpolationMethod
- *
- * Set the interpolation method for subsequent operations
- *
- * Parameters:
- *   im - The image.
- *   id - The interpolation method.
- *
- * Returns:
- *   Non-zero on success, zero on failure.
- *
- * See also:
- *   - <gdInterpolationMethod>
- *   - <gdImageGetInterpolationMethod>
- */
 BGD_DECLARE(int)
 gdImageSetInterpolationMethod(gdImagePtr im, gdInterpolationMethod id)
 {
@@ -2192,24 +2819,6 @@ gdImageSetInterpolationMethod(gdImagePtr im, gdInterpolationMethod id)
     return 1;
 }
 
-/**
- * Function: gdImageGetInterpolationMethod
- *
- * Get the current interpolation method
- *
- * This is here so that the value can be read via a language or VM with an FFI
- * but no (portable) way to extract the value from the struct.
- *
- * Parameters:
- *   im - The image.
- *
- * Returns:
- *   The current interpolation method.
- *
- * See also:
- *   - <gdInterpolationMethod>
- *   - <gdImageSetInterpolationMethod>
- */
 BGD_DECLARE(gdInterpolationMethod)
 gdImageGetInterpolationMethod(gdImagePtr im) { return im->interpolation_id; }
 

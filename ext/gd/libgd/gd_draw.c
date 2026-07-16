@@ -30,6 +30,28 @@ static inline int premul_to_gdcolor(uint32_t pm)
     return gdCompositePixelToGd(gdCompositePixelFromArgb32(pm));
 }
 
+static int gdContextLoadImage(gdContextPtr ctx, gdImagePtr im)
+{
+    gdSurfacePtr scratch;
+
+    if (!ctx || !im || !im->trueColor) {
+        return 0;
+    }
+    scratch = ctx->surface;
+    if (!scratch || scratch->type != GD_SURFACE_ARGB32 || scratch->width != im->sx ||
+        scratch->height != im->sy) {
+        return 0;
+    }
+
+    for (int y = 0; y < im->sy; y++) {
+        uint32_t *dst = (uint32_t *)(scratch->data + y * scratch->stride);
+        for (int x = 0; x < im->sx; x++) {
+            dst[x] = gdcolor_to_premul(im->tpixels[y][x]);
+        }
+    }
+    return 1;
+}
+
 BGD_DECLARE(void)
 gdContextSetSourceRgba(gdContextPtr context, double r, double g, double b, double a)
 {
@@ -64,6 +86,7 @@ gdContextSetSourceImage(gdContextPtr context, gdImagePtr image, double x, double
     pattern = gdPathPatternCreateForImage(image);
     if (!pattern)
         return;
+    gdPathPatternSetFilter(pattern, context->state->pattern_filter);
     gdPathMatrixInitTranslate(&matrix, x, y);
     gdPathPatternSetMatrix(pattern, &matrix);
     paint = gdPaintCreateFromPattern(pattern);
@@ -92,6 +115,27 @@ gdContextSetOpacity(gdContextPtr context, double opacity)
     if (!context || !isfinite(opacity))
         return;
     context->state->opacity = CLAMP(opacity, 0.0, 1.0);
+}
+
+BGD_DECLARE(void)
+gdContextSetPatternFilter(gdContextPtr context, gdPatternFilter filter)
+{
+    if (!context)
+        return;
+    if (filter != GD_PATTERN_FILTER_FAST && filter != GD_PATTERN_FILTER_GOOD &&
+        filter != GD_PATTERN_FILTER_BEST) {
+        gd_error("gdContextSetPatternFilter: invalid filter %d.\n", (int)filter);
+        return;
+    }
+    context->state->pattern_filter = filter;
+}
+
+BGD_DECLARE(gdPatternFilter)
+gdContextGetPatternFilter(gdContextPtr context)
+{
+    if (!context)
+        return GD_PATTERN_FILTER_GOOD;
+    return context->state->pattern_filter;
 }
 
 BGD_DECLARE(void)
@@ -141,23 +185,19 @@ failState:
 BGD_DECLARE(gdContextPtr)
 gdContextCreateForImage(gdImagePtr im)
 {
+    gdContextPtr ctx;
+    gdSurfacePtr scratch;
+
     if (!im || !im->trueColor) {
         return NULL;
     }
 
-    gdSurfacePtr scratch = gdSurfaceCreate(im->sx, im->sy, GD_SURFACE_ARGB32);
+    scratch = gdSurfaceCreate(im->sx, im->sy, GD_SURFACE_ARGB32);
     if (!scratch) {
         return NULL;
     }
 
-    for (int y = 0; y < im->sy; y++) {
-        uint32_t *dst = (uint32_t *)(scratch->data + y * scratch->stride);
-        for (int x = 0; x < im->sx; x++) {
-            dst[x] = gdcolor_to_premul(im->tpixels[y][x]);
-        }
-    }
-
-    gdContextPtr ctx = gdContextCreate(scratch);
+    ctx = gdContextCreate(scratch);
     if (!ctx) {
         gdSurfaceDestroy(scratch);
         return NULL;
@@ -166,17 +206,26 @@ gdContextCreateForImage(gdImagePtr im)
 
     ctx->image = im;
     ctx->imageOwned = 0;
+    if (!gdContextLoadImage(ctx, im)) {
+        gdContextDestroyNoFlush(ctx);
+        return NULL;
+    }
     return ctx;
 }
 
 BGD_DECLARE(void)
 gdContextFlushImage(gdContextPtr ctx)
 {
-    if (!ctx || !ctx->image) {
+    if (!ctx || !ctx->image || !ctx->image->trueColor) {
         return;
     }
     gdImagePtr im = ctx->image;
     gdSurfacePtr scratch = ctx->surface;
+
+    if (!scratch || scratch->type != GD_SURFACE_ARGB32 || scratch->width != im->sx ||
+        scratch->height != im->sy) {
+        return;
+    }
 
     for (int y = 0; y < im->sy; y++) {
         uint32_t *src = (uint32_t *)(scratch->data + y * scratch->stride);
@@ -184,6 +233,15 @@ gdContextFlushImage(gdContextPtr ctx)
             im->tpixels[y][x] = premul_to_gdcolor(src[x]);
         }
     }
+}
+
+BGD_DECLARE(int)
+gdContextReloadImage(gdContextPtr ctx)
+{
+    if (!ctx || !ctx->image) {
+        return 0;
+    }
+    return gdContextLoadImage(ctx, ctx->image);
 }
 
 BGD_DECLARE(gdImagePtr)
@@ -301,11 +359,13 @@ gdContextSave(gdContextPtr context)
     }
     *saved = *current;
     saved->source = gdPaintAddRef(current->source);
+    saved->font_face = gdFontFaceAddRef(current->font_face);
     saved->clippath = gdSpanRleRetain(current->clippath);
     saved->stroke.dash = gdPathDashClone(current->stroke.dash);
     if (current->stroke.dash != NULL && saved->stroke.dash == NULL) {
         gdSpanRleDestroy(saved->clippath);
         gdPaintDestroy(saved->source);
+        gdFontFaceDestroy(saved->font_face);
         gdFree(saved);
         gd_error("gdContextSave: failed to clone dash state");
         return 0;
@@ -335,14 +395,13 @@ gdContextRestore(gdContextPtr context)
     return 1;
 }
 
-BGD_DECLARE(void)
-gdContextDestroy(gdContextPtr context)
+static void gdContextDestroyEx(gdContextPtr context, int flush)
 {
     if (context == NULL)
         return;
     context->ref--;
     if (context->ref == 0) {
-        if (context->image) {
+        if (flush && context->image) {
             gdContextFlushImage(context);
         }
         gdSurfaceDestroy(context->surface);
@@ -357,6 +416,18 @@ gdContextDestroy(gdContextPtr context)
         gdSpanRleDestroy(context->rle);
         gdFree(context);
     }
+}
+
+BGD_DECLARE(void)
+gdContextDestroy(gdContextPtr context)
+{
+    gdContextDestroyEx(context, 1);
+}
+
+BGD_DECLARE(void)
+gdContextDestroyNoFlush(gdContextPtr context)
+{
+    gdContextDestroyEx(context, 0);
 }
 
 BGD_DECLARE(void)

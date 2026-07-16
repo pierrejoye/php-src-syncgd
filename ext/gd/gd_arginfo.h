@@ -1,5 +1,5 @@
 /* This is a generated file, edit gd.stub.php instead.
- * Stub hash: 2cdc0b485d9b62bb9021973d3c8cce0169b21ac0 */
+ * Stub hash: f8a742ed6a7bab49dc2a9b79ff7a3d1483e5de49 */
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_gd_info, 0, 0, IS_ARRAY, 0)
 ZEND_END_ARG_INFO()
@@ -559,6 +559,47 @@ ZEND_BEGIN_ARG_WITH_RETURN_TYPE_MASK_EX(arginfo_imageresolution, 0, 1, MAY_BE_AR
 	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, resolution_y, IS_LONG, 1, "null")
 ZEND_END_ARG_INFO()
 
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_GdImage_saveTo, 0, 1, IS_VOID, 0)
+	ZEND_ARG_TYPE_INFO(0, path, IS_STRING, 0)
+	ZEND_ARG_OBJ_INFO_WITH_DEFAULT_VALUE(0, format, Gd\\Codec\\Format, 1, "null")
+	ZEND_ARG_OBJ_INFO_WITH_DEFAULT_VALUE(0, options, Gd\\Codec\\WriteOptions, 1, "null")
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_GdImage_saveToStream, 0, 0, IS_VOID, 0)
+	ZEND_ARG_INFO_WITH_DEFAULT_VALUE(0, stream, "null")
+	ZEND_ARG_OBJ_INFO_WITH_DEFAULT_VALUE(0, format, Gd\\Codec\\Format, 1, "null")
+	ZEND_ARG_OBJ_INFO_WITH_DEFAULT_VALUE(0, options, Gd\\Codec\\WriteOptions, 1, "null")
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_GdImage_saveToString, 0, 1, IS_STRING, 0)
+	ZEND_ARG_OBJ_INFO(0, format, Gd\\Codec\\Format, 0)
+	ZEND_ARG_OBJ_INFO_WITH_DEFAULT_VALUE(0, options, Gd\\Codec\\WriteOptions, 1, "null")
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_GdImage_rotate, 0, 1, GdImage, 0)
+	ZEND_ARG_TYPE_INFO(0, angle, IS_DOUBLE, 0)
+	ZEND_ARG_OBJ_INFO_WITH_DEFAULT_VALUE(0, options, Gd\\RotateOptions, 1, "null")
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_GdImage_scale, 0, 0, GdImage, 0)
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, width, IS_LONG, 1, "null")
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, height, IS_LONG, 1, "null")
+	ZEND_ARG_OBJ_INFO_WITH_DEFAULT_VALUE(0, options, Gd\\ScaleOptions, 1, "null")
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_GdImage_autoCrop, 0, 0, GdImage, 0)
+	ZEND_ARG_OBJ_INFO_WITH_DEFAULT_VALUE(0, options, Gd\\AutoCropOptions, 1, "null")
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_GdImage_getContext, 0, 0, Gd\\Context, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_GdImage_perceptualDiff, 0, 2, Gd\\PerceptualDiffResult, 0)
+	ZEND_ARG_OBJ_INFO(0, image, GdImage, 0)
+	ZEND_ARG_TYPE_INFO(0, threshold, IS_DOUBLE, 0)
+	ZEND_ARG_OBJ_INFO_WITH_DEFAULT_VALUE(0, options, Gd\\PerceptualDiffOptions, 0, "new Gd\\PerceptualDiffOptions()")
+ZEND_END_ARG_INFO()
+
 ZEND_FUNCTION(gd_info);
 ZEND_FUNCTION(imageloadfont);
 ZEND_FUNCTION(imagesetstyle);
@@ -687,6 +728,14 @@ ZEND_FUNCTION(imageaffinematrixconcat);
 ZEND_FUNCTION(imagegetinterpolation);
 ZEND_FUNCTION(imagesetinterpolation);
 ZEND_FUNCTION(imageresolution);
+ZEND_METHOD(GdImage, saveTo);
+ZEND_METHOD(GdImage, saveToStream);
+ZEND_METHOD(GdImage, saveToString);
+ZEND_METHOD(GdImage, rotate);
+ZEND_METHOD(GdImage, scale);
+ZEND_METHOD(GdImage, autoCrop);
+ZEND_METHOD(GdImage, getContext);
+ZEND_METHOD(GdImage, perceptualDiff);
 
 static const zend_function_entry ext_functions[] = {
 	ZEND_FE(gd_info, arginfo_gd_info)
@@ -822,6 +871,18 @@ static const zend_function_entry ext_functions[] = {
 	ZEND_FE_END
 };
 
+static const zend_function_entry class_GdImage_methods[] = {
+	ZEND_ME(GdImage, saveTo, arginfo_class_GdImage_saveTo, ZEND_ACC_PUBLIC)
+	ZEND_ME(GdImage, saveToStream, arginfo_class_GdImage_saveToStream, ZEND_ACC_PUBLIC)
+	ZEND_ME(GdImage, saveToString, arginfo_class_GdImage_saveToString, ZEND_ACC_PUBLIC)
+	ZEND_ME(GdImage, rotate, arginfo_class_GdImage_rotate, ZEND_ACC_PUBLIC)
+	ZEND_ME(GdImage, scale, arginfo_class_GdImage_scale, ZEND_ACC_PUBLIC)
+	ZEND_ME(GdImage, autoCrop, arginfo_class_GdImage_autoCrop, ZEND_ACC_PUBLIC)
+	ZEND_ME(GdImage, getContext, arginfo_class_GdImage_getContext, ZEND_ACC_PUBLIC)
+	ZEND_ME(GdImage, perceptualDiff, arginfo_class_GdImage_perceptualDiff, ZEND_ACC_PUBLIC)
+	ZEND_FE_END
+};
+
 static void register_gd_symbols(int module_number)
 {
 	REGISTER_LONG_CONSTANT("IMG_AVIF", PHP_IMG_AVIF, CONST_PERSISTENT);
@@ -937,7 +998,7 @@ static zend_class_entry *register_class_GdImage(void)
 {
 	zend_class_entry ce, *class_entry;
 
-	INIT_CLASS_ENTRY(ce, "GdImage", NULL);
+	INIT_CLASS_ENTRY(ce, "GdImage", class_GdImage_methods);
 	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL|ZEND_ACC_NO_DYNAMIC_PROPERTIES|ZEND_ACC_NOT_SERIALIZABLE);
 
 	return class_entry;

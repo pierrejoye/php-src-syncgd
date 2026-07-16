@@ -56,6 +56,36 @@
 #include "tiff.h"
 #include "tiffio.h"
 
+#define GD_TIFF_COMPILE_ASSERT(name, condition) typedef char gd_tiff_assert_##name[(condition) ? 1 : -1]
+
+GD_TIFF_COMPILE_ASSERT(compression_none, GD_TIFF_COMPRESSION_NONE == COMPRESSION_NONE);
+GD_TIFF_COMPILE_ASSERT(compression_ccitt_rle, GD_TIFF_COMPRESSION_CCITT_RLE == COMPRESSION_CCITTRLE);
+GD_TIFF_COMPILE_ASSERT(compression_ccitt_fax3, GD_TIFF_COMPRESSION_CCITT_FAX3 == COMPRESSION_CCITTFAX3);
+GD_TIFF_COMPILE_ASSERT(compression_ccitt_fax4, GD_TIFF_COMPRESSION_CCITT_FAX4 == COMPRESSION_CCITTFAX4);
+GD_TIFF_COMPILE_ASSERT(compression_lzw, GD_TIFF_COMPRESSION_LZW == COMPRESSION_LZW);
+GD_TIFF_COMPILE_ASSERT(compression_jpeg, GD_TIFF_COMPRESSION_JPEG == COMPRESSION_JPEG);
+GD_TIFF_COMPILE_ASSERT(compression_adobe_deflate,
+                       GD_TIFF_COMPRESSION_ADOBE_DEFLATE == COMPRESSION_ADOBE_DEFLATE);
+GD_TIFF_COMPILE_ASSERT(compression_deflate, GD_TIFF_COMPRESSION_DEFLATE == COMPRESSION_DEFLATE);
+GD_TIFF_COMPILE_ASSERT(compression_packbits, GD_TIFF_COMPRESSION_PACKBITS == COMPRESSION_PACKBITS);
+GD_TIFF_COMPILE_ASSERT(photometric_miniswhite,
+                       GD_TIFF_PHOTOMETRIC_MINISWHITE == PHOTOMETRIC_MINISWHITE);
+GD_TIFF_COMPILE_ASSERT(photometric_minisblack,
+                       GD_TIFF_PHOTOMETRIC_MINISBLACK == PHOTOMETRIC_MINISBLACK);
+GD_TIFF_COMPILE_ASSERT(photometric_rgb, GD_TIFF_PHOTOMETRIC_RGB == PHOTOMETRIC_RGB);
+GD_TIFF_COMPILE_ASSERT(photometric_palette, GD_TIFF_PHOTOMETRIC_PALETTE == PHOTOMETRIC_PALETTE);
+GD_TIFF_COMPILE_ASSERT(photometric_mask,
+                       GD_TIFF_PHOTOMETRIC_TRANSPARENCY_MASK == PHOTOMETRIC_MASK);
+GD_TIFF_COMPILE_ASSERT(photometric_separated,
+                       GD_TIFF_PHOTOMETRIC_SEPARATED == PHOTOMETRIC_SEPARATED);
+GD_TIFF_COMPILE_ASSERT(photometric_ycbcr, GD_TIFF_PHOTOMETRIC_YCBCR == PHOTOMETRIC_YCBCR);
+GD_TIFF_COMPILE_ASSERT(photometric_cielab, GD_TIFF_PHOTOMETRIC_CIELAB == PHOTOMETRIC_CIELAB);
+GD_TIFF_COMPILE_ASSERT(planar_contig, GD_TIFF_PLANARCONFIG_CONTIG == PLANARCONFIG_CONTIG);
+GD_TIFF_COMPILE_ASSERT(planar_separate, GD_TIFF_PLANARCONFIG_SEPARATE == PLANARCONFIG_SEPARATE);
+GD_TIFF_COMPILE_ASSERT(resunit_none, GD_TIFF_RESUNIT_NONE == RESUNIT_NONE);
+GD_TIFF_COMPILE_ASSERT(resunit_inch, GD_TIFF_RESUNIT_INCH == RESUNIT_INCH);
+GD_TIFF_COMPILE_ASSERT(resunit_centimeter, GD_TIFF_RESUNIT_CENTIMETER == RESUNIT_CENTIMETER);
+
 #define GD_SUCCESS 1
 #define GD_FAILURE 0
 
@@ -480,16 +510,6 @@ static void tiffWriter(gdImagePtr image, gdIOCtx *out, int bitDepth)
     }
 }
 
-/*
-        Function: gdImageTiffCtx
-
-        Write the gd image as a tiff file.
-
-        Parameters:
-
-                image - gd image structure;
-                out   - the stream where to write
-*/
 BGD_DECLARE(void) gdImageTiffCtx(gdImagePtr image, gdIOCtx *out)
 {
     int clipx1P, clipy1P, clipx2P, clipy2P;
@@ -864,11 +884,6 @@ static int createFromTiffRgba(TIFF *tif, gdImagePtr im)
     return success;
 }
 
-/*
-        Function: gdImageCreateFromTiffCtx
-
-        Create a gdImage from a TIFF file input from an gdIOCtx.
-*/
 static gdImagePtr TiffDecodeCurrentDirectory(TIFF *tif)
 {
     uint16_t bps, spp, photometric;
@@ -1104,9 +1119,6 @@ BGD_DECLARE(gdImagePtr) gdImageCreateFromTiffCtx(gdIOCtx *infile)
     return gdImageCreateFromTiffCtxEx(infile, tiff_ctx_size(infile));
 }
 
-/*
-        Function: gdImageCreateFromTIFF
-*/
 BGD_DECLARE(gdImagePtr) gdImageCreateFromTiff(FILE *inFile)
 {
     gdImagePtr im;
@@ -1120,9 +1132,6 @@ BGD_DECLARE(gdImagePtr) gdImageCreateFromTiff(FILE *inFile)
     return im;
 }
 
-/*
-        Function: gdImageCreateFromTiffPtr
-*/
 BGD_DECLARE(gdImagePtr) gdImageCreateFromTiffPtr(int size, void *data)
 {
     gdImagePtr im;
@@ -1134,9 +1143,6 @@ BGD_DECLARE(gdImagePtr) gdImageCreateFromTiffPtr(int size, void *data)
     return im;
 }
 
-/*
-        Function: gdImageTiff
-*/
 BGD_DECLARE(void) gdImageTiff(gdImagePtr im, FILE *outFile)
 {
     gdIOCtx *out = gdNewFileCtx(outFile);
@@ -1146,9 +1152,6 @@ BGD_DECLARE(void) gdImageTiff(gdImagePtr im, FILE *outFile)
     out->gd_free(out);
 }
 
-/*
-        Function: gdImageTiffPtr
-*/
 BGD_DECLARE(void *) gdImageTiffPtr(gdImagePtr im, int *size)
 {
     void *rv;
@@ -1171,7 +1174,6 @@ typedef struct gdTiffReadStruct {
     gdIOCtx *memCtx;
     int pageCount;
     int currentPage;
-    gdImagePtr image;
 } gdTiffRead;
 
 static uint8_t *TiffReadCtxData(gdIOCtx *infile, size_t *size)
@@ -1237,7 +1239,7 @@ static void TiffFillInfo(TIFF *tif, gdTiffInfo *info, int pageCount)
     if (TIFFGetField(tif, TIFFTAG_RESOLUTIONUNIT, &resUnit)) {
         info->resolutionUnit = resUnit;
     } else {
-        info->resolutionUnit = 2;
+        info->resolutionUnit = GD_TIFF_RESUNIT_INCH;
     }
 }
 
@@ -1271,7 +1273,7 @@ static void TiffFillPageInfo(TIFF *tif, gdTiffPageInfo *info, int pageIndex)
     if (TIFFGetField(tif, TIFFTAG_PLANARCONFIG, &planar)) {
         info->planar = planar;
     } else {
-        info->planar = PLANARCONFIG_CONTIG;
+        info->planar = GD_TIFF_PLANARCONFIG_CONTIG;
     }
 
     if (!TIFFGetField(tif, TIFFTAG_EXTRASAMPLES, &extra, &extra_types)) {
@@ -1288,7 +1290,7 @@ static void TiffFillPageInfo(TIFF *tif, gdTiffPageInfo *info, int pageIndex)
     if (TIFFGetField(tif, TIFFTAG_RESOLUTIONUNIT, &resUnit)) {
         info->resolutionUnit = resUnit;
     } else {
-        info->resolutionUnit = 2;
+        info->resolutionUnit = GD_TIFF_RESUNIT_INCH;
     }
 }
 
@@ -1345,19 +1347,32 @@ static gdTiffReadPtr TiffReadOpenFromData(uint8_t *data, size_t size)
         return NULL;
     }
     tiff->currentPage = -1;
-    tiff->image = NULL;
 
     return tiff;
 }
 
-BGD_DECLARE(gdTiffReadPtr) gdTiffReadOpen(FILE *fd)
+static int TiffReadValidateOptions(const gdTiffReadOptions *options)
+{
+    ARG_NOT_USED(options);
+    return 1;
+}
+
+BGD_DECLARE(void) gdTiffReadOptionsInit(gdTiffReadOptions *options)
+{
+    if (options == NULL) {
+        return;
+    }
+    memset(options, 0, sizeof(*options));
+}
+
+BGD_DECLARE(gdTiffReadPtr) gdTiffReadOpen(FILE *fd, const gdTiffReadOptions *options)
 {
     gdIOCtx *in;
     gdTiffReadPtr tiff;
     uint8_t *data;
     size_t size;
 
-    if (fd == NULL) {
+    if (fd == NULL || !TiffReadValidateOptions(options)) {
         return NULL;
     }
     in = gdNewFileCtx(fd);
@@ -1376,26 +1391,32 @@ BGD_DECLARE(gdTiffReadPtr) gdTiffReadOpen(FILE *fd)
     return tiff;
 }
 
-BGD_DECLARE(gdTiffReadPtr) gdTiffReadOpenCtx(gdIOCtxPtr in)
+BGD_DECLARE(gdTiffReadPtr) gdTiffReadOpenCtx(gdIOCtxPtr in, const gdTiffReadOptions *options)
 {
     uint8_t *data;
     size_t size;
+    gdTiffReadPtr tiff;
 
-    if (in == NULL) {
+    if (in == NULL || !TiffReadValidateOptions(options)) {
         return NULL;
     }
     data = TiffReadCtxData(in, &size);
     if (data == NULL) {
         return NULL;
     }
-    return TiffReadOpenFromData(data, size);
+    tiff = TiffReadOpenFromData(data, size);
+    if (tiff == NULL) {
+        gdFree(data);
+    }
+    return tiff;
 }
 
-BGD_DECLARE(gdTiffReadPtr) gdTiffReadOpenPtr(int size, void *data)
+BGD_DECLARE(gdTiffReadPtr) gdTiffReadOpenPtr(int size, void *data, const gdTiffReadOptions *options)
 {
     uint8_t *buf;
+    gdTiffReadPtr tiff;
 
-    if (size <= 0 || data == NULL) {
+    if (size <= 0 || data == NULL || !TiffReadValidateOptions(options)) {
         return NULL;
     }
     buf = (uint8_t *)gdMalloc((size_t)size);
@@ -1403,16 +1424,17 @@ BGD_DECLARE(gdTiffReadPtr) gdTiffReadOpenPtr(int size, void *data)
         return NULL;
     }
     memcpy(buf, data, (size_t)size);
-    return TiffReadOpenFromData(buf, (size_t)size);
+    tiff = TiffReadOpenFromData(buf, (size_t)size);
+    if (tiff == NULL) {
+        gdFree(buf);
+    }
+    return tiff;
 }
 
 BGD_DECLARE(void) gdTiffReadClose(gdTiffReadPtr tiff)
 {
     if (tiff == NULL) {
         return;
-    }
-    if (tiff->image != NULL) {
-        gdImageDestroy(tiff->image);
     }
     if (tiff->tif != NULL) {
         TIFFClose(tiff->tif);
@@ -1446,6 +1468,7 @@ BGD_DECLARE(int) gdTiffReadGetInfo(gdTiffReadPtr tiff, gdTiffInfo *info)
 BGD_DECLARE(int)
 gdTiffReadNextImage(gdTiffReadPtr tiff, gdTiffPageInfo *info, gdImagePtr *image)
 {
+    gdImagePtr decoded;
     int ok;
 
     if (image != NULL) {
@@ -1473,44 +1496,19 @@ gdTiffReadNextImage(gdTiffReadPtr tiff, gdTiffPageInfo *info, gdImagePtr *image)
 
     TiffFillPageInfo(tiff->tif, info, tiff->currentPage);
 
-    if (tiff->image != NULL) {
-        gdImageDestroy(tiff->image);
-        tiff->image = NULL;
-    }
-
-    tiff->image = TiffDecodeCurrentDirectory(tiff->tif);
-    if (tiff->image == NULL) {
+    decoded = TiffDecodeCurrentDirectory(tiff->tif);
+    if (decoded == NULL) {
         ok = TIFFSetDirectory(tiff->tif, TIFFCurrentDirectory(tiff->tif));
         (void)ok;
         return -1;
     }
 
     if (image != NULL) {
-        *image = tiff->image;
+        *image = decoded;
+    } else {
+        gdImageDestroy(decoded);
     }
     return 1;
-}
-
-BGD_DECLARE(gdImagePtr) gdTiffReadCloneImage(gdTiffReadPtr tiff)
-{
-    gdImagePtr dst;
-    int x, y;
-
-    if (tiff == NULL || tiff->image == NULL) {
-        return NULL;
-    }
-    dst = gdImageCreateTrueColor(gdImageSX(tiff->image), gdImageSY(tiff->image));
-    if (dst == NULL) {
-        return NULL;
-    }
-    gdImageAlphaBlending(dst, 0);
-    gdImageSaveAlpha(dst, tiff->image->saveAlphaFlag);
-    for (y = 0; y < gdImageSY(tiff->image); y++) {
-        for (x = 0; x < gdImageSX(tiff->image); x++) {
-            dst->tpixels[y][x] = gdImageGetPixel(tiff->image, x, y);
-        }
-    }
-    return dst;
 }
 
 BGD_DECLARE(int) gdTiffIsMultiPage(FILE *fd)
@@ -1691,26 +1689,26 @@ static int TiffWriteValidateOptions(const gdTiffWriteOptions *opts)
         return 0;
     }
     switch (opts->compression) {
-    case COMPRESSION_NONE:
+    case GD_TIFF_COMPRESSION_NONE:
         break;
-    case COMPRESSION_LZW:
-    case COMPRESSION_ADOBE_DEFLATE:
-    case COMPRESSION_DEFLATE:
-    case COMPRESSION_PACKBITS:
+    case GD_TIFF_COMPRESSION_LZW:
+    case GD_TIFF_COMPRESSION_ADOBE_DEFLATE:
+    case GD_TIFF_COMPRESSION_DEFLATE:
+    case GD_TIFF_COMPRESSION_PACKBITS:
         if (opts->bitDepth == 1 && opts->colorspace != GD_TIFF_BILEVEL) {
             gd_error("gd-tiff write: LZW/Deflate/PackBits at 1-bit requires "
                      "BILEVEL");
             return 0;
         }
         break;
-    case COMPRESSION_JPEG:
+    case GD_TIFF_COMPRESSION_JPEG:
         if (opts->bitDepth != 8) {
             gd_error("gd-tiff write: JPEG compression requires 8-bit depth");
             return 0;
         }
         break;
-    case COMPRESSION_CCITTFAX3:
-    case COMPRESSION_CCITTFAX4:
+    case GD_TIFF_COMPRESSION_CCITT_FAX3:
+    case GD_TIFF_COMPRESSION_CCITT_FAX4:
         if (opts->bitDepth != 1) {
             gd_error("gd-tiff write: CCITT compression requires 1-bit depth");
             return 0;
@@ -1738,8 +1736,8 @@ static void TiffWriteSetDefaults(gdTiffWriteOptions *opts)
     if (opts->colorspace == 0)
         opts->colorspace = GD_TIFF_RGBA;
     if (opts->compression == 0)
-        opts->compression = COMPRESSION_ADOBE_DEFLATE;
-    if (opts->jpegQuality == 0 && opts->compression == COMPRESSION_JPEG)
+        opts->compression = GD_TIFF_COMPRESSION_ADOBE_DEFLATE;
+    if (opts->jpegQuality == 0 && opts->compression == GD_TIFF_COMPRESSION_JPEG)
         opts->jpegQuality = 75;
     if (opts->resolutionUnit == 0)
         opts->resolutionUnit = GD_TIFF_RESUNIT_INCH;
@@ -1749,6 +1747,25 @@ static void TiffWriteSetDefaults(gdTiffWriteOptions *opts)
         opts->yResolution = 72.0f;
     if (opts->alphaType == 0)
         opts->alphaType = GD_TIFF_ALPHA_UNASSOCIATED;
+}
+
+BGD_DECLARE(void) gdTiffWriteOptionsInit(gdTiffWriteOptions *options)
+{
+    if (options == NULL) {
+        return;
+    }
+    memset(options, 0, sizeof(*options));
+    TiffWriteSetDefaults(options);
+}
+
+static int TiffWriteCopyOptions(gdTiffWriteOptions *dst, const gdTiffWriteOptions *src)
+{
+    memset(dst, 0, sizeof(*dst));
+    if (src != NULL) {
+        memcpy(dst, src, sizeof(*dst));
+    }
+    TiffWriteSetDefaults(dst);
+    return 1;
 }
 
 static int TiffWriteSamplesPerPixel(const gdTiffWriteOptions *opts)
@@ -1771,13 +1788,13 @@ static int TiffWritePhotometric(const gdTiffWriteOptions *opts)
     switch (opts->colorspace) {
     case GD_TIFF_RGB:
     case GD_TIFF_RGBA:
-        return PHOTOMETRIC_RGB;
+        return GD_TIFF_PHOTOMETRIC_RGB;
     case GD_TIFF_GRAY:
-        return opts->minIsWhite ? PHOTOMETRIC_MINISWHITE : PHOTOMETRIC_MINISBLACK;
+        return opts->minIsWhite ? GD_TIFF_PHOTOMETRIC_MINISWHITE : GD_TIFF_PHOTOMETRIC_MINISBLACK;
     case GD_TIFF_BILEVEL:
-        return opts->minIsWhite ? PHOTOMETRIC_MINISWHITE : PHOTOMETRIC_MINISBLACK;
+        return opts->minIsWhite ? GD_TIFF_PHOTOMETRIC_MINISWHITE : GD_TIFF_PHOTOMETRIC_MINISBLACK;
     default:
-        return PHOTOMETRIC_RGB;
+        return GD_TIFF_PHOTOMETRIC_RGB;
     }
 }
 
@@ -1959,7 +1976,7 @@ static int TiffWriteWritePage(gdTiffWritePtr write, gdImagePtr im)
     TIFFSetField(tif, TIFFTAG_SAMPLESPERPIXEL, nsamples);
     TIFFSetField(tif, TIFFTAG_PHOTOMETRIC, photometric);
     TIFFSetField(tif, TIFFTAG_COMPRESSION, opts->compression);
-    TIFFSetField(tif, TIFFTAG_PLANARCONFIG, PLANARCONFIG_CONTIG);
+    TIFFSetField(tif, TIFFTAG_PLANARCONFIG, GD_TIFF_PLANARCONFIG_CONTIG);
     TIFFSetField(tif, TIFFTAG_ROWSPERSTRIP, TIFFDefaultStripSize(tif, 0));
 
     if (opts->colorspace == GD_TIFF_RGBA) {
@@ -1968,22 +1985,22 @@ static int TiffWriteWritePage(gdTiffWritePtr write, gdImagePtr im)
         TIFFSetField(tif, TIFFTAG_EXTRASAMPLES, 1, &extra);
     }
 
-    if (opts->compression == COMPRESSION_LZW || opts->compression == COMPRESSION_ADOBE_DEFLATE ||
-        opts->compression == COMPRESSION_DEFLATE) {
+    if (opts->compression == GD_TIFF_COMPRESSION_LZW || opts->compression == GD_TIFF_COMPRESSION_ADOBE_DEFLATE ||
+        opts->compression == GD_TIFF_COMPRESSION_DEFLATE) {
         TIFFSetField(tif, TIFFTAG_PREDICTOR, PREDICTOR_HORIZONTAL);
     }
 
-    if (opts->compression == COMPRESSION_JPEG && opts->jpegQuality > 0) {
+    if (opts->compression == GD_TIFF_COMPRESSION_JPEG && opts->jpegQuality > 0) {
         TIFFSetField(tif, TIFFTAG_JPEGQUALITY, opts->jpegQuality);
     }
 
-    if (opts->colorspace == GD_TIFF_BILEVEL && (opts->compression == COMPRESSION_CCITTFAX3 ||
-                                                opts->compression == COMPRESSION_CCITTFAX4)) {
+    if (opts->colorspace == GD_TIFF_BILEVEL && (opts->compression == GD_TIFF_COMPRESSION_CCITT_FAX3 ||
+                                                opts->compression == GD_TIFF_COMPRESSION_CCITT_FAX4)) {
         uint32_t g3opts = 0;
-        if (opts->compression == COMPRESSION_CCITTFAX3) {
+        if (opts->compression == GD_TIFF_COMPRESSION_CCITT_FAX3) {
             TIFFSetField(tif, TIFFTAG_GROUP3OPTIONS, g3opts);
         }
-        if (opts->compression == COMPRESSION_CCITTFAX4) {
+        if (opts->compression == GD_TIFF_COMPRESSION_CCITT_FAX4) {
             TIFFSetField(tif, TIFFTAG_GROUP4OPTIONS, 0);
         }
         TIFFSetField(tif, TIFFTAG_FILLORDER, FILLORDER_MSB2LSB);
@@ -2012,8 +2029,8 @@ static int TiffWriteWritePage(gdTiffWritePtr write, gdImagePtr im)
 
     if (opts->colorspace == GD_TIFF_BILEVEL) {
         size_t scanline_size = (size_t)((width + 7) / 8);
-        if (opts->compression == COMPRESSION_CCITTFAX3 ||
-            opts->compression == COMPRESSION_CCITTFAX4) {
+        if (opts->compression == GD_TIFF_COMPRESSION_CCITT_FAX3 ||
+            opts->compression == GD_TIFF_COMPRESSION_CCITT_FAX4) {
             scanline_size = (size_t)TIFFScanlineSize(tif);
             if (scanline_size == 0)
                 scanline_size = (size_t)((width + 7) / 8);
@@ -2155,12 +2172,10 @@ gdTiffWriteOpenCtx(gdIOCtxPtr out, const gdTiffWriteOptions *options)
     write->out = out;
     write->ownsCtx = 0;
 
-    if (options != NULL) {
-        write->options = *options;
-    } else {
-        memset(&write->options, 0, sizeof(write->options));
+    if (!TiffWriteCopyOptions(&write->options, options)) {
+        gdFree(write);
+        return NULL;
     }
-    TiffWriteSetDefaults(&write->options);
 
     if (!TiffWriteValidateOptions(&write->options)) {
         gdFree(write);
@@ -2296,24 +2311,35 @@ BGD_DECLARE(void *) gdImageTiffPtr(gdImagePtr im, int *size)
     return NULL;
 }
 
-BGD_DECLARE(gdTiffReadPtr) gdTiffReadOpen(FILE *fd)
+BGD_DECLARE(void) gdTiffReadOptionsInit(gdTiffReadOptions *options)
+{
+    if (options == NULL) {
+        return;
+    }
+    memset(options, 0, sizeof(*options));
+}
+
+BGD_DECLARE(gdTiffReadPtr) gdTiffReadOpen(FILE *fd, const gdTiffReadOptions *options)
 {
     ARG_NOT_USED(fd);
+    ARG_NOT_USED(options);
     _noTiffError();
     return NULL;
 }
 
-BGD_DECLARE(gdTiffReadPtr) gdTiffReadOpenCtx(gdIOCtxPtr in)
+BGD_DECLARE(gdTiffReadPtr) gdTiffReadOpenCtx(gdIOCtxPtr in, const gdTiffReadOptions *options)
 {
     ARG_NOT_USED(in);
+    ARG_NOT_USED(options);
     _noTiffError();
     return NULL;
 }
 
-BGD_DECLARE(gdTiffReadPtr) gdTiffReadOpenPtr(int size, void *data)
+BGD_DECLARE(gdTiffReadPtr) gdTiffReadOpenPtr(int size, void *data, const gdTiffReadOptions *options)
 {
     ARG_NOT_USED(size);
     ARG_NOT_USED(data);
+    ARG_NOT_USED(options);
     _noTiffError();
     return NULL;
 }
@@ -2342,13 +2368,6 @@ gdTiffReadNextImage(gdTiffReadPtr tiff, gdTiffPageInfo *info, gdImagePtr *image)
     return -1;
 }
 
-BGD_DECLARE(gdImagePtr) gdTiffReadCloneImage(gdTiffReadPtr tiff)
-{
-    ARG_NOT_USED(tiff);
-    _noTiffError();
-    return NULL;
-}
-
 BGD_DECLARE(int) gdTiffIsMultiPage(FILE *fd)
 {
     ARG_NOT_USED(fd);
@@ -2369,6 +2388,21 @@ BGD_DECLARE(int) gdTiffIsMultiPagePtr(int size, void *data)
     ARG_NOT_USED(data);
     _noTiffError();
     return -1;
+}
+
+BGD_DECLARE(void) gdTiffWriteOptionsInit(gdTiffWriteOptions *options)
+{
+    if (options == NULL) {
+        return;
+    }
+    memset(options, 0, sizeof(*options));
+    options->bitDepth = 8;
+    options->colorspace = GD_TIFF_RGBA;
+    options->compression = GD_TIFF_COMPRESSION_ADOBE_DEFLATE;
+    options->resolutionUnit = GD_TIFF_RESUNIT_INCH;
+    options->xResolution = 72.0f;
+    options->yResolution = 72.0f;
+    options->alphaType = GD_TIFF_ALPHA_UNASSOCIATED;
 }
 
 BGD_DECLARE(gdTiffWritePtr)

@@ -33,6 +33,11 @@ typedef struct Wbmp_ {
 #define WBMP_WHITE 1
 #define WBMP_BLACK 0
 
+// Use to cap the maximum width and height using commonly used cap
+// while common usages are much smaller, the spec allows for 65535x65535, which is too large for practical use and can cause memory issues.
+#define WBMP_MAX_WIDTH 65535
+#define WBMP_MAX_HEIGHT 65535
+
 /* Proto's
  * -------
 */

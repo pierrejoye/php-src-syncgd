@@ -14,10 +14,20 @@ for ($i = 254; $i > 0; $i--) {
     imagefilledellipse($src, 127, 127, $i, $i, $color);
 }
 
-foreach ([0.1, 0.5, 1.0, 10.0] as $threshold) {
+$expectedSizes = [255, 253, 253, 225];
+if (!GD_BUNDLED && version_compare(GD_VERSION, '2.4.0', '<')) {
+    $expectedSizes = [247, 237, 229, 175];
+}
+
+foreach ([0.1, 0.5, 1.0, 10.0] as $i => $threshold) {
     $dst = imagecropauto($src, IMG_CROP_THRESHOLD, $threshold, $white);
     if ($dst !== false) {
-        printf("size: %d*%d\n", imagesx($dst), imagesy($dst));
+        printf(
+            "%s\n",
+            imagesx($dst) === $expectedSizes[$i] && imagesy($dst) === $expectedSizes[$i]
+                ? "size matches"
+                : sprintf("size mismatch: expected %d*%d, got %d*%d", $expectedSizes[$i], $expectedSizes[$i], imagesx($dst), imagesy($dst))
+        );
     } else {
         echo "cropped to zero size\n";
     }
@@ -25,7 +35,7 @@ foreach ([0.1, 0.5, 1.0, 10.0] as $threshold) {
 
 ?>
 --EXPECT--
-size: 255*255
-size: 253*253
-size: 253*253
-size: 225*225
+size matches
+size matches
+size matches
+size matches

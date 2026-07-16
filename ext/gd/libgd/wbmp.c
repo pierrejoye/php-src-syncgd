@@ -115,6 +115,11 @@ Wbmp *createwbmp(int width, int height, int color)
         return NULL;
     }
 
+    if (width > WBMP_MAX_WIDTH || height > WBMP_MAX_HEIGHT) {
+        gdFree(wbmp);
+        return NULL;
+    }
+
     if ((wbmp->bitmap = (int *)gdMalloc(sizeof(int) * width * height)) == NULL) {
         gdFree(wbmp);
         return NULL;
@@ -122,6 +127,8 @@ Wbmp *createwbmp(int width, int height, int color)
 
     wbmp->width = width;
     wbmp->height = height;
+
+
 
     for (i = 0; i < width * height; wbmp->bitmap[i++] = color)
         ;
@@ -171,6 +178,11 @@ int readwbmp(int (*getin)(void *in), void *in, Wbmp **return_wbmp)
 #endif
 
     if (overflow2(sizeof(int), wbmp->width) || overflow2(sizeof(int) * wbmp->width, wbmp->height)) {
+        gdFree(wbmp);
+        return -1;
+    }
+
+    if (wbmp->width > WBMP_MAX_WIDTH || wbmp->height > WBMP_MAX_HEIGHT) {
         gdFree(wbmp);
         return -1;
     }

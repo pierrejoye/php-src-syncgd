@@ -206,33 +206,71 @@ BGD_DECLARE(gdImagePtr) gdImageReadCtx(gdIOCtxPtr ctx)
     if (e != NULL && e->reader != NULL)
         return e->reader(ctx);
 
-    report_unreadable_format(e, "gdIOCtx");
-    return NULL;
+            report_unreadable_format(e, "gdIOCtx");
+        return NULL;
+    }
+
+BGD_DECLARE(gdImagePtr)
+gdImageReadCtxEx(gdIOCtxPtr ctx, int flags, gdImageReadStatus *status, const char **format_name)
+{
+    unsigned char probe[GD_READIMAGE_PROBE_SIZE];
+    size_t probe_len;
+    const struct FormatEntry *e;
+    gdImagePtr im;
+
+    if (status != NULL) {
+        *status = gdImageReadStatusUnrecognized;
+    }
+    if (format_name != NULL) {
+        *format_name = NULL;
+    }
+    if (ctx == NULL) {
+        return NULL;
+    }
+
+    probe_len = (size_t)gdGetBuf(probe, GD_READIMAGE_PROBE_SIZE, ctx);
+    gdSeek(ctx, 0);
+
+    e = find_format(probe, probe_len);
+    if (e == NULL) {
+        return NULL;
+    }
+    if (format_name != NULL) {
+        *format_name = e->name;
+    }
+    if ((flags & GD_IMAGE_READ_RESTRICT_CODEC_API) && (strcmp(e->name, "GD") == 0 || strcmp(e->name, "GD2") == 0)) {
+        if (status != NULL) {
+            *status = gdImageReadStatusUnsupportedFormat;
+        }
+        return NULL;
+    }
+    if (!e->enabled) {
+        if (status != NULL) {
+            *status = gdImageReadStatusCodecUnavailable;
+        }
+        return NULL;
+    }
+    if (e->reader == NULL) {
+        if (status != NULL) {
+            *status = gdImageReadStatusUnsupportedFormat;
+        }
+        return NULL;
+    }
+
+    im = e->reader(ctx);
+    if (im == NULL) {
+        if (status != NULL) {
+            *status = gdImageReadStatusDecodeFailed;
+        }
+        return NULL;
+    }
+
+    if (status != NULL) {
+        *status = gdImageReadStatusOk;
+    }
+    return im;
 }
 
-/*
-  Function: gdImageReadFile
-
-        Read an image file, auto-detecting the format by magic-byte
-        signatures rather than filename extension.
-
-        <gdImageReadFile> opens the file, probes its header bytes to
-        determine the format, and calls the appropriate
-        _gdImageCreateFrom*Ctx_ function. If the format has no Ctx
-        reader (XPM, XBM), it falls back to the filename-based or
-        FILE*-based reader.
-
-        NULL is returned on error or if the format is not recognized.
-
-  Parameters:
-
-        filename    - the input file name
-
-  Returns:
-
-        A pointer to the new image or NULL if an error occurred.
-
-*/
 BGD_DECLARE(gdImagePtr) gdImageReadFile(const char *filename)
 {
     FILE *fh;

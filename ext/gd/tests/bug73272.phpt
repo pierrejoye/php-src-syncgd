@@ -20,7 +20,12 @@ imagesetinterpolation($src, IMG_NEAREST_NEIGHBOUR);
 imagescale($src, 200, 200, IMG_BILINEAR_FIXED);
 $dst = imagerotate($src, 60, 0xFFFFFF);
 
-test_image_equals_file(__DIR__ . DIRECTORY_SEPARATOR . 'bug73272.png', $dst);
+$expected = __DIR__ . DIRECTORY_SEPARATOR . 'bug73272.png';
+if (!GD_BUNDLED && version_compare(GD_VERSION, '2.4.0', '<')) {
+    $expected = __DIR__ . DIRECTORY_SEPARATOR . 'bug73272_external_pre_24.png';
+}
+
+test_image_equals_file($expected, $dst);
 ?>
 --EXPECT--
 The images are equal.

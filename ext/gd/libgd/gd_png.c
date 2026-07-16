@@ -17,6 +17,7 @@
 #include "gdhelpers.h"
 #include "png.h" /* includes zlib.h and setjmp.h */
 #include "zlib.h"
+#include <limits.h>
 
 #define TRUE 1
 #define FALSE 0
@@ -93,6 +94,23 @@ static int gdPngSetTextProfile(gdImageMetadata *metadata, const unsigned char *d
     status = gdImageMetadataSetProfile(metadata, key, data, size);
     gdFree(key);
     return status;
+}
+
+static int gdPngInfoValidBitDepth(int color_type, int bit_depth)
+{
+    switch (color_type) {
+    case PNG_COLOR_TYPE_GRAY:
+        return bit_depth == 1 || bit_depth == 2 || bit_depth == 4 || bit_depth == 8 ||
+               bit_depth == 16;
+    case PNG_COLOR_TYPE_RGB:
+    case PNG_COLOR_TYPE_GRAY_ALPHA:
+    case PNG_COLOR_TYPE_RGB_ALPHA:
+        return bit_depth == 8 || bit_depth == 16;
+    case PNG_COLOR_TYPE_PALETTE:
+        return bit_depth == 1 || bit_depth == 2 || bit_depth == 4 || bit_depth == 8;
+    default:
+        return FALSE;
+    }
 }
 
 static int gdPngReadMetadataFromMemory(const unsigned char *png, size_t png_size,
@@ -317,66 +335,6 @@ static void gdPngWriteData(png_structp png_ptr, png_bytep data, png_size_t lengt
 
 static void gdPngFlushData(png_structp png_ptr) { (void)png_ptr; }
 
-/*
-  Function: gdImageCreateFromPng
-
-        <gdImageCreateFromPng> is called to load images from PNG format
-        files. Invoke <gdImageCreateFromPng> with an already opened
-        pointer to a FILE containing the desired
-        image. <gdImageCreateFromPng> returns a <gdImagePtr> to the new
-        image, or NULL if unable to load the image (most often because the
-        file is corrupt or does not contain a PNG
-        image). <gdImageCreateFromPng> does not close the file. You can
-        inspect the sx and sy members of the image to determine its
-        size. The image must eventually be destroyed using
-        gdImageDestroy().
-
-        If the PNG image being loaded is a truecolor image, the resulting
-        gdImagePtr will refer to a truecolor image. If the PNG image being
-        loaded is a palette or grayscale image, the resulting gdImagePtr
-        will refer to a palette image. gd retains only 8 bits of
-        resolution for each of the red, green and blue channels, and only
-        7 bits of resolution for the alpha channel. The former restriction
-        affects only a handful of very rare 48-bit color and 16-bit
-        grayscale PNG images. The second restriction affects all
-        semitransparent PNG images, but the difference is essentially
-        invisible to the eye. 7 bits of alpha channel resolution is, in
-        practice, quite a lot.
-
-  Variants:
-
-        <gdImageCreateFromPngPtr> creates an image from PNG data (i.e. the
-        contents of a PNG file) already in memory.
-
-        <gdImageCreateFromPngCtx> reads in an image using the functions in
-        a <gdIOCtx> struct.
-
-        <gdImageCreateFromPngSource> is similar to
-        <gdImageCreateFromPngCtx> but uses the old <gdSource> interface.
-        It is *obsolete*.
-
-  Parameters:
-
-        infile - The input FILE pointer.
-
-  Returns:
-
-        A pointer to the new image or NULL if an error occurred.
-
-  Example:
-        (start code)
-
-        gdImagePtr im;
-        ... inside a function ...
-        FILE *in;
-        in = fopen("mypng.png", "rb");
-        im = gdImageCreateFromPng(in);
-        fclose(in);
-        // ... Use the image ...
-        gdImageDestroy(im);
-
-        (end code)
- */
 BGD_DECLARE(gdImagePtr) gdImageCreateFromPng(FILE *inFile)
 {
     gdImagePtr im;
@@ -388,11 +346,6 @@ BGD_DECLARE(gdImagePtr) gdImageCreateFromPng(FILE *inFile)
     return im;
 }
 
-/*
-  Function: gdImageCreateFromPngPtr
-
-  See <gdImageCreateFromPng>.
-*/
 BGD_DECLARE(gdImagePtr) gdImageCreateFromPngPtr(int size, void *data)
 {
     gdImagePtr im;
@@ -444,12 +397,6 @@ gdImageCreateFromPngCtxWithMetadata(gdIOCtx *infile, gdImageMetadata *metadata)
 
 /* This routine is based in part on the Chapter 13 demo code in
  * "PNG: The Definitive Guide" (http://www.libpng.org/pub/png/book/).
- */
-
-/*
-  Function: gdImageCreateFromPngCtx
-
-  See <gdImageCreateFromPng>.
 */
 BGD_DECLARE(gdImagePtr) gdImageCreateFromPngCtx(gdIOCtx *infile)
 {
@@ -807,63 +754,6 @@ error:
     goto done;
 }
 
-/*
-  Function: gdImagePngEx
-
-        <gdImagePngEx> outputs the specified image to the specified file in
-        PNG format. The file must be open for writing. Under MSDOS and all
-        versions of Windows, it is important to use "wb" as opposed to
-        simply "w" as the mode when opening the file, and under Unix there
-        is no penalty for doing so. <gdImagePngEx> does not close the file;
-        your code must do so.
-
-        In addition, <gdImagePngEx> allows the level of compression to be
-        specified. A compression level of 0 means "no compression." A
-        compression level of 1 means "compressed, but as quickly as
-        possible." A compression level of 9 means "compressed as much as
-        possible to produce the smallest possible file." A compression level
-        of -1 will use the default compression level at the time zlib was
-        compiled on your system.
-
-  Variants:
-
-        <gdImagePng> is equivalent to calling <gdImagePngEx> with
-        compression of -1.
-
-        <gdImagePngCtx> and <gdImagePngCtxEx> write via a <gdIOCtx>
-        instead of a file handle.
-
-        <gdImagePngPtr> and <gdImagePngPtrEx> store the image file to
-        memory.
-
-  Parameters:
-
-        im      - the image to write
-        outFile - the output FILE* object.
-        level   - compression level: 0 -> none, 1-9 -> level, -1 -> default
-
-  Returns:
-
-        Nothing.
-
-  Example:
-        (start code)
-
-        gdImagePtr im;
-        int black, white;
-        FILE *out;
-
-        im = gdImageCreate(100, 100);              // Create the image
-        white = gdImageColorAllocate(im, 255, 255, 255); // Alloc background
-        black = gdImageColorAllocate(im, 0, 0, 0); // Allocate drawing color
-        gdImageRectangle(im, 0, 0, 99, 99, black); // Draw rectangle
-        out = fopen("rect.png", "wb");             // Open output file (binary)
-        gdImagePngEx(im, out, 9);                  // Write PNG, max compression
-        fclose(out);                               // Close file
-        gdImageDestroy(im);                        // Destroy image
-
-        (end code)
-*/
 BGD_DECLARE(void) gdImagePngEx(gdImagePtr im, FILE *outFile, int level)
 {
     gdIOCtx *out = gdNewFileCtx(outFile);
@@ -873,20 +763,6 @@ BGD_DECLARE(void) gdImagePngEx(gdImagePtr im, FILE *outFile, int level)
     out->gd_free(out);
 }
 
-/*
-  Function: gdImagePng
-
-        Equivalent to calling <gdImagePngEx> with compression of -1.
-
-  Parameters:
-
-        im      - the image to save.
-        outFile - the output FILE*.
-
-  Returns:
-
-        Nothing.
-*/
 BGD_DECLARE(void) gdImagePng(gdImagePtr im, FILE *outFile) { gdImagePngEx(im, outFile, -1); }
 
 static int _gdImagePngCtxWithOptions(gdImagePtr im, gdIOCtx *outfile,
@@ -897,18 +773,187 @@ BGD_DECLARE(void) gdPngWriteOptionsInit(gdPngWriteOptions *options)
     if (options == NULL)
         return;
     memset(options, 0, sizeof(*options));
-    options->struct_size = sizeof(*options);
     options->compression_level = -1;
     options->filters = GD_PNG_FILTER_AUTO;
     options->compression_strategy = GD_PNG_COMPRESSION_STRATEGY_DEFAULT;
 }
 
+BGD_DECLARE(void) gdPngInfoInit(gdPngInfo *info)
+{
+    gdImageMetadata *metadata;
+
+    if (info == NULL)
+        return;
+    metadata = info->metadata;
+    memset(info, 0, sizeof(*info));
+    info->palette_entries = -1;
+    info->x_pixels_per_unit = -1;
+    info->y_pixels_per_unit = -1;
+    info->physical_unit = -1;
+    info->metadata = metadata;
+    info->resolution_x = -1;
+    info->resolution_y = -1;
+}
+
+BGD_DECLARE(int) gdPngGetInfoPtr(int size, const void *data, gdPngInfo *info)
+{
+    const unsigned char *png = (const unsigned char *)data;
+    size_t png_size;
+    size_t pos;
+    gdImageMetadata *metadata;
+    int seen_ihdr = FALSE;
+    int seen_iend = FALSE;
+
+    if (info == NULL || data == NULL || size < 0) {
+        return 1;
+    }
+
+    metadata = info->metadata;
+    memset(info, 0, sizeof(*info));
+    info->palette_entries = -1;
+    info->x_pixels_per_unit = -1;
+    info->y_pixels_per_unit = -1;
+    info->physical_unit = -1;
+    info->metadata = metadata;
+    info->resolution_x = -1;
+    info->resolution_y = -1;
+
+    png_size = (size_t)size;
+    if (png_size < 8 || memcmp(png, gdPngSignature, 8) != 0) {
+        return 1;
+    }
+
+    pos = 8;
+    while (pos + 12 <= png_size) {
+        unsigned int chunk_size = gdPngGetUint32(png + pos);
+        const unsigned char *type = png + pos + 4;
+        const unsigned char *chunk_data = png + pos + 8;
+        size_t chunk_total;
+
+        if ((size_t)chunk_size > png_size - pos - 12) {
+            return 1;
+        }
+        chunk_total = (size_t)chunk_size + 12;
+
+        if (!seen_ihdr) {
+            png_uint_32 width, height;
+
+            if (!gdPngChunkIs(type, "IHDR") || chunk_size != 13) {
+                return 1;
+            }
+            width = gdPngGetUint32(chunk_data);
+            height = gdPngGetUint32(chunk_data + 4);
+            if (width == 0 || height == 0 || width > INT_MAX || height > INT_MAX) {
+                return 1;
+            }
+            info->width = (int)width;
+            info->height = (int)height;
+            info->bit_depth = chunk_data[8];
+            info->color_type = chunk_data[9];
+            info->interlace_method = chunk_data[12];
+            if (!gdPngInfoValidBitDepth(info->color_type, info->bit_depth) ||
+                chunk_data[10] != PNG_COMPRESSION_TYPE_BASE ||
+                chunk_data[11] != PNG_FILTER_TYPE_BASE) {
+                return 1;
+            }
+            switch (info->color_type) {
+            case PNG_COLOR_TYPE_RGB:
+            case PNG_COLOR_TYPE_RGB_ALPHA:
+            case PNG_COLOR_TYPE_GRAY_ALPHA:
+                info->decoded_truecolor = TRUE;
+                break;
+            case PNG_COLOR_TYPE_PALETTE:
+            case PNG_COLOR_TYPE_GRAY:
+                info->decoded_truecolor = FALSE;
+                break;
+            default:
+                return 1;
+            }
+            info->has_alpha = (info->color_type == PNG_COLOR_TYPE_RGB_ALPHA ||
+                               info->color_type == PNG_COLOR_TYPE_GRAY_ALPHA);
+            if (info->interlace_method != PNG_INTERLACE_NONE &&
+                info->interlace_method != PNG_INTERLACE_ADAM7) {
+                return 1;
+            }
+            seen_ihdr = TRUE;
+        } else if (gdPngChunkIs(type, "PLTE")) {
+            if (chunk_size % 3 != 0 || chunk_size / 3 > 256) {
+                return 1;
+            }
+            info->palette_entries = (int)(chunk_size / 3);
+        } else if (gdPngChunkIs(type, "tRNS")) {
+            info->has_transparency = TRUE;
+        } else if (gdPngChunkIs(type, "pHYs")) {
+            unsigned int x_pixels_per_unit;
+            unsigned int y_pixels_per_unit;
+
+            if (chunk_size != 9) {
+                return 1;
+            }
+            x_pixels_per_unit = gdPngGetUint32(chunk_data);
+            y_pixels_per_unit = gdPngGetUint32(chunk_data + 4);
+            if (x_pixels_per_unit > INT_MAX || y_pixels_per_unit > INT_MAX) {
+                return 1;
+            }
+            info->x_pixels_per_unit = (int)x_pixels_per_unit;
+            info->y_pixels_per_unit = (int)y_pixels_per_unit;
+            info->physical_unit = chunk_data[8];
+            if (info->physical_unit == PNG_RESOLUTION_METER) {
+                info->resolution_x = (int)DPM2DPI(x_pixels_per_unit);
+                info->resolution_y = (int)DPM2DPI(y_pixels_per_unit);
+            }
+        } else if (gdPngChunkIs(type, "tEXt")) {
+            if (metadata != NULL && gdPngSetTextProfile(metadata, chunk_data, chunk_size) != GD_META_OK) {
+                return 1;
+            }
+        } else if (gdPngChunkIs(type, "IEND")) {
+            if (chunk_size != 0) {
+                return 1;
+            }
+            seen_iend = TRUE;
+            break;
+        }
+
+        pos += chunk_total;
+    }
+
+    return seen_ihdr && seen_iend ? 0 : 1;
+}
+
+BGD_DECLARE(int) gdPngGetInfoCtx(gdIOCtx *infile, gdPngInfo *info)
+{
+    void *data;
+    int size;
+    int status;
+
+    data = gdPngReadCtxToMemory(infile, &size);
+    if (data == NULL) {
+        return 1;
+    }
+    status = gdPngGetInfoPtr(size, data, info);
+    gdFree(data);
+    return status;
+}
+
+BGD_DECLARE(int) gdPngGetInfo(FILE *inFile, gdPngInfo *info)
+{
+    gdIOCtx *in;
+    int status;
+
+    if (inFile == NULL) {
+        return 1;
+    }
+    in = gdNewFileCtx(inFile);
+    if (in == NULL) {
+        return 1;
+    }
+    status = gdPngGetInfoCtx(in, info);
+    in->gd_free(in);
+    return status;
+}
+
 static int gdPngWriteOptionsValid(const gdPngWriteOptions *options)
 {
-    if (options->struct_size < sizeof(*options)) {
-        gd_error("gd-png error: invalid options structure size\n");
-        return FALSE;
-    }
     if (options->compression_level < -1 || options->compression_level > 9) {
         gd_error("gd-png error: compression level must be -1 through 9\n");
         return FALSE;
@@ -923,6 +968,24 @@ static int gdPngWriteOptionsValid(const gdPngWriteOptions *options)
         return FALSE;
     }
     return TRUE;
+}
+
+static unsigned int gdPngWriteOptionResolutionX(gdImagePtr im,
+                                                const gdPngWriteOptions *options)
+{
+    if (options->resolution_x != 0) {
+        return options->resolution_x;
+    }
+    return im->res_x;
+}
+
+static unsigned int gdPngWriteOptionResolutionY(gdImagePtr im,
+                                                const gdPngWriteOptions *options)
+{
+    if (options->resolution_y != 0) {
+        return options->resolution_y;
+    }
+    return im->res_y;
 }
 
 BGD_DECLARE(int)
@@ -940,52 +1003,11 @@ gdImagePngWithOptions(gdImagePtr im, FILE *outFile, const gdPngWriteOptions *opt
     return status;
 }
 
-/*
-  Function: gdImagePngPtr
-
-        Equivalent to calling <gdImagePngPtrEx> with compression of -1.
-
-        See <gdImagePngEx> for more information.
-
-  Parameters:
-
-        im      - the image to save.
-        size    - Output: size in bytes of the result.
-
-  Returns:
-
-        A pointer to memory containing the image data or NULL on error.
-
-*/
 BGD_DECLARE(void *) gdImagePngPtr(gdImagePtr im, int *size)
 {
     return gdImagePngPtrEx(im, size, -1);
 }
 
-/*
-  Function: gdImagePngPtrEx
-
-        Identical to <gdImagePngEx> except that it returns a pointer to a
-        memory area with the PNG data. This memory must be freed by the
-        caller when it is no longer needed. **The caller must invoke
-        gdFree(), not free()**
-
-        The 'size' parameter receives the total size of the block of
-        memory.
-
-        See <gdImagePngEx> for more information.
-
-  Parameters:
-
-        im      - the image to save.
-        size    - Output: size in bytes of the result.
-        level   - compression level: 0 -> none, 1-9 -> level, -1 -> default
-
-  Returns:
-
-        A pointer to memory containing the image data or NULL on error.
-
-*/
 BGD_DECLARE(void *) gdImagePngPtrEx(gdImagePtr im, int *size, int level)
 {
     void *rv;
@@ -1192,22 +1214,6 @@ gdImageMetadataInjectPng(void **data, int *size, const gdImageMetadata *metadata
     return GD_META_ERR_PARSE;
 }
 
-/*
-  Function: gdImagePngCtx
-
-        Equivalent to calling <gdImagePngCtxEx> with compression of -1.
-        See <gdImagePngEx> for more information.
-
-  Parameters:
-
-        im      - the image to save.
-        outfile - the <gdIOCtx> to write to.
-
-  Returns:
-
-        Nothing.
-
-*/
 BGD_DECLARE(void) gdImagePngCtx(gdImagePtr im, gdIOCtx *outfile)
 {
     /* 2.0.13: 'return' here was an error, thanks to Kevin Smith */
@@ -1220,23 +1226,6 @@ gdImagePngCtxWithMetadata(gdImagePtr im, gdIOCtx *outfile, const gdImageMetadata
     gdImagePngCtxExWithMetadata(im, outfile, -1, metadata);
 }
 
-/*
-  Function: gdImagePngCtxEx
-
-        Outputs the given image as PNG data, but using a <gdIOCtx> instead
-        of a file.  See <gdImagePngEx>.
-
-  Parameters:
-
-        im      - the image to save.
-        outfile - the <gdIOCtx> to write to.
-        level   - compression level: 0 -> none, 1-9 -> level, -1 -> default
-
-  Returns:
-
-        Nothing.
-
-*/
 BGD_DECLARE(void) gdImagePngCtxEx(gdImagePtr im, gdIOCtx *outfile, int level)
 {
     gdPngWriteOptions options;
@@ -1398,7 +1387,8 @@ static int _gdImagePngCtxWithOptions(gdImagePtr im, gdIOCtx *outfile,
 
 #ifdef PNG_pHYs_SUPPORTED
     /* 2.1.0: specify the resolution */
-    png_set_pHYs(png_ptr, info_ptr, DPI2DPM(im->res_x), DPI2DPM(im->res_y), PNG_RESOLUTION_METER);
+    png_set_pHYs(png_ptr, info_ptr, DPI2DPM(gdPngWriteOptionResolutionX(im, options)),
+                 DPI2DPM(gdPngWriteOptionResolutionY(im, options)), PNG_RESOLUTION_METER);
 #endif
 
     /* can set this to a smaller value without compromising compression if all
@@ -1654,8 +1644,49 @@ BGD_DECLARE(void) gdPngWriteOptionsInit(gdPngWriteOptions *options)
     if (options == NULL)
         return;
     memset(options, 0, sizeof(*options));
-    options->struct_size = sizeof(*options);
     options->compression_level = -1;
+}
+
+BGD_DECLARE(void) gdPngInfoInit(gdPngInfo *info)
+{
+    gdImageMetadata *metadata;
+
+    if (info == NULL)
+        return;
+    metadata = info->metadata;
+    memset(info, 0, sizeof(*info));
+    info->palette_entries = -1;
+    info->x_pixels_per_unit = -1;
+    info->y_pixels_per_unit = -1;
+    info->physical_unit = -1;
+    info->metadata = metadata;
+    info->resolution_x = -1;
+    info->resolution_y = -1;
+}
+
+BGD_DECLARE(int) gdPngGetInfo(FILE *inFile, gdPngInfo *info)
+{
+    ARG_NOT_USED(inFile);
+    ARG_NOT_USED(info);
+    _noPngError();
+    return 1;
+}
+
+BGD_DECLARE(int) gdPngGetInfoCtx(gdIOCtx *infile, gdPngInfo *info)
+{
+    ARG_NOT_USED(infile);
+    ARG_NOT_USED(info);
+    _noPngError();
+    return 1;
+}
+
+BGD_DECLARE(int) gdPngGetInfoPtr(int size, const void *data, gdPngInfo *info)
+{
+    ARG_NOT_USED(size);
+    ARG_NOT_USED(data);
+    ARG_NOT_USED(info);
+    _noPngError();
+    return 1;
 }
 
 BGD_DECLARE(int)

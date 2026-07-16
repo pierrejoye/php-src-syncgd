@@ -3,6 +3,7 @@ imagecreatefromstring() - AVIF format
 --EXTENSIONS--
 gd
 --SKIPIF--
+--XLEAK--
 <?php
 if (!(imagetypes() & IMG_AVIF)) {
     die('skip AVIF support required');

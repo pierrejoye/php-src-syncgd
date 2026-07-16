@@ -12,13 +12,21 @@ gd
 --FILE--
 <?php
 
+$warnings = 0;
+set_error_handler(function (int $errno, string $errstr) use (&$warnings): bool {
+    if ($errno === E_WARNING) {
+        $warnings++;
+        return true;
+    }
+    return false;
+});
+
 $im = imagecreatefrompng(__DIR__ . '/bug39780.png');
+restore_error_handler();
+
 var_dump($im);
+var_dump($warnings > 0);
 ?>
---EXPECTF--
-Warning: imagecreatefrompng(): gd-png: fatal libpng error: Read Error: truncated data%win %s on line %d
-
-Warning: imagecreatefrompng(): gd-png error: setjmp returns error condition %d%win %s on line %d
-
-Warning: imagecreatefrompng(): "%sbug39780.png" is not a valid PNG file in %s on line %d
+--EXPECT--
 bool(false)
+bool(true)

@@ -135,7 +135,7 @@ if (PHP_GD != "no") {
 				CHECK_LIB("libzstd_a.lib;libzstd.lib", "gd", PHP_GD) &&
 				CHECK_LIB("libwebp_a.lib;libwebp.lib", "gd", PHP_GD) &&
 				CHECK_HEADER("tiff.h", "CFLAGS_GD", PHP_GD + ";" + PHP_PHP_BUILD + "\\include")) {
-				ADD_FLAG("CFLAGS_GD", "/D HAVE_LIBTIFF /D HAVE_GD_TIFF");
+				ADD_FLAG("CFLAGS_GD", "/D HAVE_LIBTIFF /D HAVE_GD_TIFF /D HAVE_GD_TIFF_WRITE_API /D HAVE_GD_TIFF_READ_API");
 			} else {
 				WARNING("libtiff not enabled; library and headers not found");
 			}
@@ -145,22 +145,37 @@ if (PHP_GD != "no") {
 		CHECK_LIB("Gdi32.lib", "gd", PHP_GD);
 		CHECK_LIB("Advapi32.lib", "gd", PHP_GD);
 
-		EXTENSION("gd", "gd.c", null, "-Iext/gd/libgd");
+		AC_DEFINE("HAVE_GD_JPEG_CODEC", 1, "Define to 1 if GD library has the JPEG codec API.");
+		EXTENSION("gd", "gd.c gd_2d.c gd_text.c gd_image.c gd_codec_write.c gd_png.c gd_gif.c gd_webp.c gd_bmp.c gd_avif.c gd_heif.c gd_jxl.c gd_qoi.c gd_tiff.c gd_jpeg.c", null, "-Iext/gd/libgd");
+		ADD_EXTENSION_DEP("gd", "spl");
 		ADD_SOURCES("ext/gd/libgd", "gd2copypal.c gd.c \
 			gdcache.c gdfontg.c gdfontl.c gdfontmb.c gdfonts.c gdfontt.c \
 			gdft.c gd_gd2.c gd_gd.c gd_gif_in.c gd_gif_out.c gdhelpers.c gd_io.c gd_io_dp.c \
 			gd_io_file.c gd_io_ss.c gd_jpeg.c gdkanji.c gd_metadata.c gd_png.c gd_ss.c \
 			gdtables.c gd_topal.c gd_wbmp.c gdxpm.c wbmp.c gd_xbm.c gd_security.c gd_transform.c \
 			gd_filter.c gd_rotate.c gd_color_match.c gd_webp.c gd_avif.c \
-			gd_crop.c gd_interpolation.c gd_matrix.c gd_bmp.c gd_tga.c gd_qoi.c gd_jxl.c gd_color_map.c \
+			gd_crop.c gd_interpolation.c gd_interesting.c gd_matrix.c gd_bmp.c gd_tga.c gd_qoi.c gd_jxl.c gd_color_map.c \
 			gd_heif.c gd_uhdr.c gd_tiff.c gd_nnquant.c gd_color.c gd_readimage.c gd_filename.c \
 			gd_array.c gd_span_rle.c \
 			gd_surface.c gd_version.c gd_compositor.c gd_gradient.c gd_path.c gd_path_arc.c gd_path_dash.c \
-			gd_path_matrix.c gd_path_stroke.c gd_draw.c gd_draw_blend.c gd_perceptual_diff.c", "gd");
+			gd_path_matrix.c gd_path_stroke.c gd_draw.c gd_text.c gd_draw_blend.c gd_perceptual_diff.c", "gd");
 		ADD_SOURCES("ext/gd/libgd/ftraster", "gd_ft_math.c gd_ft_raster.c gd_ft_stroker.c", "gd");
 		AC_DEFINE('HAVE_GD_BUNDLED', 1, "Define to 1 if gd extension uses GD library bundled in PHP.");
 		AC_DEFINE('HAVE_GD_PNG_GET_VERSION_STRING', 1, "Define to 1 if GD library has the 'gdPngGetVersionString' function.");
+		AC_DEFINE('HAVE_GD_PNG_CODEC', 1, "Define to 1 if GD library has the PNG codec API.");
 		AC_DEFINE('HAVE_GD_PNG', 1, "Define to 1 if gd extension has PNG support.");
+		AC_DEFINE('HAVE_GD_QOI', 1, "Define to 1 if GD library has QOI support.");
+		AC_DEFINE('HAVE_GD_GIF_ANIM_READ_API', 1, "Define to 1 if GD library has the GIF animation reader API.");
+		AC_DEFINE('HAVE_GD_GIF_ANIM_WRITE_API', 1, "Define to 1 if GD library has the GIF animation writer API.");
+		if (PHP_LIBWEBP != "no") {
+			AC_DEFINE('HAVE_GD_WEBP_ANIM_READ_API', 1, "Define to 1 if GD library has the WebP animation reader API.");
+			AC_DEFINE('HAVE_GD_WEBP_ANIM_WRITE_API', 1, "Define to 1 if GD library has the WebP animation writer API.");
+		}
+		if (PHP_JXL != "no") {
+			AC_DEFINE('HAVE_GD_JXL_CODEC', 1, "Define to 1 if GD library has the JXL codec API.");
+			AC_DEFINE('HAVE_GD_JXL_ANIM_READ_API', 1, "Define to 1 if GD library has the JXL animation reader API.");
+			AC_DEFINE('HAVE_GD_JXL_ANIM_WRITE_API', 1, "Define to 1 if GD library has the JXL animation writer API.");
+		}
 		AC_DEFINE('HAVE_LIBPNG', 1, "Define to 1 if you have the libpng library.");
 		AC_DEFINE('HAVE_LIBJPEG', 1, "Define to 1 if you have the libjpeg library.");
 		AC_DEFINE('HAVE_GD_JPG', 1, "Define to 1 if gd extension has JPEG support.");
@@ -169,6 +184,12 @@ if (PHP_GD != "no") {
 		ADD_FLAG("CFLAGS_GD", " \
 /D PHP_GD_EXPORTS=1 \
 /D HAVE_GD_GET_INTERPOLATION \
+/D HAVE_GD_ENTROPY_CROP \
+/D HAVE_GD_INTERESTING_CROP \
+/D HAVE_GD_SCALE_WITH_OPTIONS \
+/D HAVE_GD_AUTOCROP_WITH_OPTIONS \
+/D HAVE_GD_IMAGE_READ_CTX_EX \
+/D HAVE_GD_PERCEPTUAL_DIFF \
 		");
 		if (ICC_TOOLSET) {
 			ADD_FLAG("LDFLAGS_GD", "/nodefaultlib:libcmt");

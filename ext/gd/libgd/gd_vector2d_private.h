@@ -55,6 +55,7 @@ typedef gdColor *gdColorPtr;
 struct gdPathPatternStruct {
     int ref;
     gdExtendMode extend;
+    gdPatternFilter filter;
     gdSurfacePtr surface;
     gdPathMatrix matrix;
     double opacity;
@@ -86,11 +87,14 @@ typedef gdStroke *gdStrokePtr;
 typedef struct gdStateStruct {
     gdSpanRlePtr clippath;
     gdPaintPtr source;
+    gdFontFacePtr font_face;
     gdPathMatrix matrix;
     gdFillRule winding;
     gdStroke stroke;
     gdCompositeOperator op;
+    gdPatternFilter pattern_filter;
     double opacity;
+    double font_size;
     struct gdStateStruct *next;
 } gdState;
 typedef gdState *gdStatePtr;

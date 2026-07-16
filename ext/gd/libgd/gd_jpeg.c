@@ -59,6 +59,8 @@ typedef struct _jmpbuf_wrapper {
     int ignore_warning;
 } jmpbuf_wrapper;
 
+static void jpeg_gdIOCtx_src(j_decompress_ptr cinfo, gdIOCtx *infile);
+
 static void jpeg_emit_message(j_common_ptr jpeg_info, int level)
 {
     char message[JMSG_LENGTH_MAX];
@@ -147,83 +149,181 @@ BGD_DECLARE(const char *) gdJpegGetVersionString()
     }
 }
 
+BGD_DECLARE(void) gdJpegInfoInit(gdJpegInfo *info)
+{
+    if (info == NULL) {
+        return;
+    }
+    memset(info, 0, sizeof(*info));
+    info->width = 0;
+    info->height = 0;
+    info->bits_per_sample = 0;
+    info->components = 0;
+    info->color_space = GD_JPEG_COLOR_SPACE_UNKNOWN;
+    info->progressive = 0;
+    info->density_unit = GD_JPEG_DENSITY_UNIT_NONE;
+    info->x_density = -1;
+    info->y_density = -1;
+}
+
+BGD_DECLARE(void) gdJpegReadOptionsInit(gdJpegReadOptions *options)
+{
+    if (options == NULL) {
+        return;
+    }
+    memset(options, 0, sizeof(*options));
+    options->ignore_warning = 1;
+    options->scale_num = 1;
+    options->scale_denom = 1;
+    options->dct_method = GD_JPEG_DCT_DEFAULT;
+}
+
+static int gdJpegMapColorSpace(J_COLOR_SPACE color_space)
+{
+    switch (color_space) {
+    case JCS_GRAYSCALE:
+        return GD_JPEG_COLOR_SPACE_GRAYSCALE;
+    case JCS_RGB:
+        return GD_JPEG_COLOR_SPACE_RGB;
+    case JCS_YCbCr:
+        return GD_JPEG_COLOR_SPACE_YCBCR;
+    case JCS_CMYK:
+        return GD_JPEG_COLOR_SPACE_CMYK;
+    case JCS_YCCK:
+        return GD_JPEG_COLOR_SPACE_YCCK;
+    case JCS_UNKNOWN:
+    default:
+        return GD_JPEG_COLOR_SPACE_UNKNOWN;
+    }
+}
+
+static int gdJpegMarkerStartsWith(jpeg_saved_marker_ptr marker, const unsigned char *prefix,
+                                  size_t prefix_size);
+
+static int gdJpegInfoCollectMarkers(j_decompress_ptr cinfo, gdJpegInfo *info)
+{
+    static const unsigned char exif_signature[] = {'E', 'x', 'i', 'f', '\0', '\0'};
+    static const unsigned char xmp_signature[] = "http://ns.adobe.com/xap/1.0/";
+    static const unsigned char iptc_signature[] = "Photoshop 3.0";
+    static const unsigned char icc_signature[] = "ICC_PROFILE";
+    jpeg_saved_marker_ptr marker;
+
+    for (marker = cinfo->marker_list; marker != NULL; marker = marker->next) {
+        if (marker->marker == JPEG_APP0 + 1 &&
+            gdJpegMarkerStartsWith(marker, exif_signature, sizeof(exif_signature))) {
+            info->has_exif = 1;
+        } else if (marker->marker == JPEG_APP0 + 1 &&
+                   gdJpegMarkerStartsWith(marker, xmp_signature, sizeof(xmp_signature))) {
+            info->has_xmp = 1;
+        } else if (marker->marker == JPEG_APP0 + 2 &&
+                   gdJpegMarkerStartsWith(marker, icc_signature, sizeof(icc_signature) - 1)) {
+            info->has_icc = 1;
+        } else if (marker->marker == JPEG_APP0 + 13 &&
+                   gdJpegMarkerStartsWith(marker, iptc_signature, sizeof(iptc_signature))) {
+            info->has_iptc = 1;
+        }
+    }
+
+    return 0;
+}
+
+BGD_DECLARE(int) gdJpegGetInfoCtx(gdIOCtxPtr infile, gdJpegInfo *info)
+{
+    struct jpeg_decompress_struct cinfo;
+    struct jpeg_error_mgr jerr;
+    jmpbuf_wrapper jmpbufw;
+    int retval;
+
+    if (infile == NULL || info == NULL) {
+        return 1;
+    }
+
+    gdJpegInfoInit(info);
+
+    memset(&cinfo, 0, sizeof(cinfo));
+    memset(&jerr, 0, sizeof(jerr));
+    memset(&jmpbufw, 0, sizeof(jmpbufw));
+    jmpbufw.ignore_warning = 1;
+
+    cinfo.err = jpeg_std_error(&jerr);
+    cinfo.client_data = &jmpbufw;
+    cinfo.err->emit_message = jpeg_emit_message;
+
+    if (setjmp(jmpbufw.jmpbuf) != 0) {
+        jpeg_destroy_decompress(&cinfo);
+        return 1;
+    }
+
+    cinfo.err->error_exit = fatal_jpeg_error;
+
+    jpeg_create_decompress(&cinfo);
+    jpeg_gdIOCtx_src(&cinfo, infile);
+
+    jpeg_save_markers(&cinfo, JPEG_APP0 + 1, 0xFFFF);
+    jpeg_save_markers(&cinfo, JPEG_APP0 + 2, 0xFFFF);
+    jpeg_save_markers(&cinfo, JPEG_APP0 + 13, 0xFFFF);
+
+    retval = jpeg_read_header(&cinfo, TRUE);
+    if (retval != JPEG_HEADER_OK) {
+        jpeg_destroy_decompress(&cinfo);
+        return 1;
+    }
+
+    if (cinfo.image_width > INT_MAX || cinfo.image_height > INT_MAX ||
+        cinfo.data_precision > INT_MAX || cinfo.num_components > INT_MAX) {
+        jpeg_destroy_decompress(&cinfo);
+        return 1;
+    }
+
+    info->width = (int)cinfo.image_width;
+    info->height = (int)cinfo.image_height;
+    info->bits_per_sample = (int)cinfo.data_precision;
+    info->components = cinfo.num_components;
+    info->color_space = gdJpegMapColorSpace(cinfo.jpeg_color_space);
+    info->progressive = cinfo.progressive_mode != 0;
+    info->density_unit = cinfo.density_unit;
+    info->x_density = (int)cinfo.X_density;
+    info->y_density = (int)cinfo.Y_density;
+    gdJpegInfoCollectMarkers(&cinfo, info);
+
+    jpeg_destroy_decompress(&cinfo);
+    return 0;
+}
+
+BGD_DECLARE(int) gdJpegGetInfo(FILE *infile, gdJpegInfo *info)
+{
+    gdIOCtx *in;
+    int result;
+
+    in = gdNewFileCtx(infile);
+    if (in == NULL) {
+        return 1;
+    }
+    result = gdJpegGetInfoCtx(in, info);
+    in->gd_free(in);
+    return result;
+}
+
+BGD_DECLARE(int) gdJpegGetInfoPtr(int size, const void *data, gdJpegInfo *info)
+{
+    gdIOCtx *in;
+    int result;
+
+    if (size <= 0 || data == NULL) {
+        return 1;
+    }
+    in = gdNewDynamicCtxEx(size, (void *)data, 0);
+    if (in == NULL) {
+        return 1;
+    }
+    result = gdJpegGetInfoCtx(in, info);
+    in->gd_free(in);
+    return result;
+}
+
 static int _gdImageJpegCtx(gdImagePtr im, gdIOCtx *outfile, int quality,
-                           const gdImageMetadata *metadata, int force_no_subsampling);
-
-/*
- * Write IM to OUTFILE as a JFIF-formatted JPEG image, using quality
- * QUALITY.  If QUALITY is in the range 0-100, increasing values
- * represent higher quality but also larger image size.  If QUALITY is
- * negative, the IJG JPEG library's default quality is used (which
- * should be near optimal for many applications).  See the IJG JPEG
- * library documentation for more details.
- */
-
-/*
-  Function: gdImageJpeg
-
-        <gdImageJpeg> outputs the specified image to the specified file in
-        JPEG format. The file must be open for writing. Under MSDOS and
-        all versions of Windows, it is important to use "wb" as opposed to
-        simply "w" as the mode when opening the file, and under Unix there
-        is no penalty for doing so. <gdImageJpeg> does not close the file;
-        your code must do so.
-
-        If _quality_ is negative, the default IJG JPEG quality value (which
-        should yield a good general quality / size tradeoff for most
-        situations) is used. Otherwise, for practical purposes, _quality_
-        should be a value in the range 0-95, higher quality values usually
-        implying both higher quality and larger image sizes.
-
-        If you have set image interlacing using <gdImageInterlace>, this
-        function will interpret that to mean you wish to output a
-        progressive JPEG. Some programs (e.g., Web browsers) can display
-        progressive JPEGs incrementally; this can be useful when browsing
-        over a relatively slow communications link, for
-        example. Progressive JPEGs can also be slightly smaller than
-        sequential (non-progressive) JPEGs.
-
-  Variants:
-
-        <gdImageJpegCtx> stores the image using a <gdIOCtx> struct.
-
-        <gdImageJpegPtr> stores the image to RAM.
-
-  Parameters:
-
-        im      - The image to save
-        outFile - The FILE pointer to write to.
-        quality - Compression quality (0-95, 0 means use the default).
-
-  Returns:
-
-        Nothing.
-
-  Example:
-        (start code)
-
-        gdImagePtr im;
-        int black, white;
-        FILE *out;
-        // Create the image
-        im = gdImageCreate(100, 100);
-        // Allocate background
-        white = gdImageColorAllocate(im, 255, 255, 255);
-        // Allocate drawing color
-        black = gdImageColorAllocate(im, 0, 0, 0);
-        // Draw rectangle
-        gdImageRectangle(im, 0, 0, 99, 99, black);
-        // Open output file in binary mode
-        out = fopen("rect.jpg", "wb");
-        // Write JPEG using default quality
-        gdImageJpeg(im, out, -1);
-        // Close file
-        fclose(out);
-        // Destroy image
-        gdImageDestroy(im);
-
-        (end code)
-*/
+                           const gdImageMetadata *metadata, int force_no_subsampling,
+                           int progressive);
 
 BGD_DECLARE(void) gdImageJpeg(gdImagePtr im, FILE *outFile, int quality)
 {
@@ -234,38 +334,13 @@ BGD_DECLARE(void) gdImageJpeg(gdImagePtr im, FILE *outFile, int quality)
     out->gd_free(out);
 }
 
-/*
-  Function: gdImageJpegPtr
-
-        Identical to <gdImageJpeg> except that it returns a pointer to a
-        memory area with the JPEG data. This memory must be freed by the
-        caller when it is no longer needed.
-
-        The caller *must* invoke <gdFree>, not free().  This is because it
-        is not guaranteed that libgd will use the same implementation of
-        malloc, free, etc. as your proggram.
-
-        The 'size' parameter receives the total size of the block of
-        memory.
-
-  Parameters:
-
-        im      - The image to write
-        size    - Output: the size of the resulting image.
-        quality - Compression quality.
-
-  Returns:
-
-        A pointer to the JPEG data or NULL if an error occurred.
-
-*/
 BGD_DECLARE(void *) gdImageJpegPtr(gdImagePtr im, int *size, int quality)
 {
     void *rv;
     gdIOCtx *out = gdNewDynamicCtx(2048, NULL);
     if (out == NULL)
         return NULL;
-    if (!_gdImageJpegCtx(im, out, quality, NULL, 0)) {
+    if (!_gdImageJpegCtx(im, out, quality, NULL, 0, -1)) {
         rv = gdDPExtractData(out, size);
     } else {
         rv = NULL;
@@ -281,7 +356,7 @@ gdImageJpegPtrWithMetadata(gdImagePtr im, int *size, int quality, const gdImageM
     gdIOCtx *out = gdNewDynamicCtx(2048, NULL);
     if (out == NULL)
         return NULL;
-    if (!_gdImageJpegCtx(im, out, quality, metadata, 0)) {
+    if (!_gdImageJpegCtx(im, out, quality, metadata, 0, -1)) {
         rv = gdDPExtractData(out, size);
     } else {
         rv = NULL;
@@ -297,7 +372,65 @@ void *gdImageJpegPtrWithMetadataNoSubsampling(gdImagePtr im, int *size, int qual
     gdIOCtx *out = gdNewDynamicCtx(2048, NULL);
     if (out == NULL)
         return NULL;
-    if (!_gdImageJpegCtx(im, out, quality, metadata, 1)) {
+    if (!_gdImageJpegCtx(im, out, quality, metadata, 1, -1)) {
+        rv = gdDPExtractData(out, size);
+    } else {
+        rv = NULL;
+    }
+    out->gd_free(out);
+    return rv;
+}
+
+BGD_DECLARE(void) gdJpegWriteOptionsInit(gdJpegWriteOptions *options)
+{
+    if (options == NULL) {
+        return;
+    }
+    memset(options, 0, sizeof(*options));
+    options->quality = -1;
+    options->progressive = 0;
+    options->force_no_subsampling = 0;
+    options->metadata = NULL;
+}
+
+BGD_DECLARE(int)
+gdImageJpegWithOptions(gdImagePtr im, FILE *outFile, const gdJpegWriteOptions *options)
+{
+    gdIOCtx *out;
+    int result;
+
+    out = gdNewFileCtx(outFile);
+    if (out == NULL) {
+        return 1;
+    }
+    result = gdImageJpegCtxWithOptions(im, out, options);
+    out->gd_free(out);
+    return result;
+}
+
+BGD_DECLARE(int)
+gdImageJpegCtxWithOptions(gdImagePtr im, gdIOCtx *outfile, const gdJpegWriteOptions *options)
+{
+    gdJpegWriteOptions default_options;
+
+    if (options == NULL) {
+        gdJpegWriteOptionsInit(&default_options);
+        options = &default_options;
+    }
+
+    return _gdImageJpegCtx(im, outfile, options->quality, options->metadata,
+                           options->force_no_subsampling, options->progressive);
+}
+
+BGD_DECLARE(void *)
+gdImageJpegPtrWithOptions(gdImagePtr im, int *size, const gdJpegWriteOptions *options)
+{
+    void *rv;
+    gdIOCtx *out = gdNewDynamicCtx(2048, NULL);
+    if (out == NULL) {
+        return NULL;
+    }
+    if (!gdImageJpegCtxWithOptions(im, out, options)) {
         rv = gdDPExtractData(out, size);
     } else {
         rv = NULL;
@@ -308,29 +441,16 @@ void *gdImageJpegPtrWithMetadataNoSubsampling(gdImagePtr im, int *size, int qual
 
 static void jpeg_gdIOCtx_dest(j_compress_ptr cinfo, gdIOCtx *outfile);
 
-/*
-  Function: gdImageJpegCtx
-
-        Write the image as JPEG data via a <gdIOCtx>. See <gdImageJpeg>
-        for more details.
-
-  Parameters:
-
-        im      - The image to write.
-        outfile - The output sink.
-        quality - Image quality.
-
-*/
 BGD_DECLARE(void) gdImageJpegCtx(gdImagePtr im, gdIOCtx *outfile, int quality)
 {
-    _gdImageJpegCtx(im, outfile, quality, NULL, 0);
+    _gdImageJpegCtx(im, outfile, quality, NULL, 0, -1);
 }
 
 BGD_DECLARE(void)
 gdImageJpegCtxWithMetadata(gdImagePtr im, gdIOCtx *outfile, int quality,
                            const gdImageMetadata *metadata)
 {
-    _gdImageJpegCtx(im, outfile, quality, metadata, 0);
+    _gdImageJpegCtx(im, outfile, quality, metadata, 0, -1);
 }
 
 /* returns 0 on success, 1 on failure */
@@ -419,7 +539,8 @@ static int gdJpegWriteMetadata(j_compress_ptr cinfo, const gdImageMetadata *meta
 }
 
 static int _gdImageJpegCtx(gdImagePtr im, gdIOCtx *outfile, int quality,
-                           const gdImageMetadata *metadata, int force_no_subsampling)
+                           const gdImageMetadata *metadata, int force_no_subsampling,
+                           int progressive)
 {
     struct jpeg_compress_struct cinfo;
     struct jpeg_error_mgr jerr;
@@ -486,7 +607,7 @@ static int _gdImageJpegCtx(gdImagePtr im, gdIOCtx *outfile, int quality,
     }
 
     /* If user requests interlace, translate that to progressive JPEG */
-    if (gdImageGetInterlaced(im)) {
+    if ((progressive >= 0 && progressive) || (progressive < 0 && gdImageGetInterlaced(im))) {
 #ifdef JPEG_DEBUG
         gd_error_ex(GD_DEBUG, "gd-jpeg: interlace set, outputting progressive JPEG image\n");
 #endif
@@ -594,118 +715,56 @@ error:
     return 1;
 }
 
-/*
-  Function: gdImageCreateFromJpeg
-
-  See <gdImageCreateFromJpegEx>.
-*/
 BGD_DECLARE(gdImagePtr) gdImageCreateFromJpeg(FILE *inFile)
 {
     return gdImageCreateFromJpegEx(inFile, 1);
 }
 
-/*
-  Function: gdImageCreateFromJpegEx
-
-        <gdImageCreateFromJpegEx> is called to load truecolor images from
-        JPEG format files. Invoke <gdImageCreateFromJpegEx> with an
-        already opened pointer to a file containing the desired
-        image. <gdImageCreateFromJpegEx> returns a <gdImagePtr> to the new
-        truecolor image, or NULL if unable to load the image (most often
-        because the file is corrupt or does not contain a JPEG
-        image). <gdImageCreateFromJpegEx> does not close the file.
-
-        You can inspect the sx and sy members of the image to determine
-        its size. The image must eventually be destroyed using
-        <gdImageDestroy>.
-
-        *The returned image is always a truecolor image.*
-
-  Variants:
-
-        <gdImageCreateFromJpegPtrEx> creates an image from JPEG data
-        already in memory.
-
-        <gdImageCreateFromJpegCtxEx> reads its data via the function
-        pointers in a <gdIOCtx> structure.
-
-        <gdImageCreateFromJpeg>, <gdImageCreateFromJpegPtr> and
-        <gdImageCreateFromJpegCtx> are equivalent to calling their
-        _Ex_-named counterparts with an ignore_warning set to 1
-        (i.e. TRUE).
-
-  Parameters:
-
-        infile          - The input FILE pointer.
-        ignore_warning  - Flag.  If true, ignores recoverable warnings.
-
-  Returns:
-
-        A pointer to the new *truecolor* image.  This will need to be
-        destroyed with <gdImageDestroy> once it is no longer needed.
-
-        On error, returns NULL.
-
-  Example:
-        (start code)
-
-        gdImagePtr im;
-        FILE *in;
-        in = fopen("myjpeg.jpg", "rb");
-        im = gdImageCreateFromJpegEx(in, GD_TRUE);
-        fclose(in);
-        // ... Use the image ...
-        gdImageDestroy(im);
-
-        (end code)
-*/
 BGD_DECLARE(gdImagePtr)
 gdImageCreateFromJpegEx(FILE *inFile, int ignore_warning)
 {
     gdImagePtr im;
+    gdJpegReadOptions options;
     gdIOCtx *in = gdNewFileCtx(inFile);
     if (in == NULL)
         return NULL;
-    im = gdImageCreateFromJpegCtxEx(in, ignore_warning);
+    gdJpegReadOptionsInit(&options);
+    options.ignore_warning = ignore_warning;
+    im = gdImageCreateFromJpegCtxWithOptions(in, &options);
     in->gd_free(in);
     return im;
 }
 
-/*
-  Function: gdImageCreateFromJpegPtr
-
-  Parameters:
-
-        size    - size of JPEG data in bytes.
-        data    - pointer to JPEG data.
-
-  See <gdImageCreateFromJpegEx>.
-*/
 BGD_DECLARE(gdImagePtr) gdImageCreateFromJpegPtr(int size, void *data)
 {
     return gdImageCreateFromJpegPtrEx(size, data, 1);
 }
 
-/*
-  Function: gdImageCreateFromJpegPtrEx
-
-  Parameters:
-
-        size            - size of JPEG data in bytes.
-        data            - pointer to JPEG data.
-        ignore_warning  - if true, ignore recoverable warnings
-
-  See <gdImageCreateFromJpegEx>.
-*/
 BGD_DECLARE(gdImagePtr)
 gdImageCreateFromJpegPtrEx(int size, void *data, int ignore_warning)
+{
+    gdImagePtr im;
+    gdJpegReadOptions options;
+    gdIOCtx *in = gdNewDynamicCtxEx(size, data, 0);
+    if (!in) {
+        return 0;
+    }
+    gdJpegReadOptionsInit(&options);
+    options.ignore_warning = ignore_warning;
+    im = gdImageCreateFromJpegCtxWithOptions(in, &options);
+    in->gd_free(in);
+    return im;
+}
+
+BGD_DECLARE(gdImagePtr)
+gdImageCreateFromJpegPtrWithOptions(int size, void *data, const gdJpegReadOptions *options)
 {
     gdImagePtr im;
     gdIOCtx *in = gdNewDynamicCtxEx(size, data, 0);
     if (!in) {
         return 0;
     }
-    im = gdImageCreateFromJpegCtxEx(in, ignore_warning);
+    im = gdImageCreateFromJpegCtxWithOptions(in, options);
     in->gd_free(in);
     return im;
 }
@@ -733,6 +792,83 @@ gdImageCreateFromJpegPtrExWithMetadata(int size, void *data, int ignore_warning,
 static void jpeg_gdIOCtx_src(j_decompress_ptr cinfo, gdIOCtx *infile);
 
 static int CMYKToRGB(int c, int m, int y, int k, int inverted);
+
+static gdImagePtr gdImageCreateFromJpegCtxWithOptionsAndMetadata(
+    gdIOCtx *infile, const gdJpegReadOptions *options, gdImageMetadata *metadata);
+
+static unsigned int gdJpegGcd(unsigned int a, unsigned int b)
+{
+    while (b != 0) {
+        unsigned int t = b;
+        b = a % b;
+        a = t;
+    }
+    return a == 0 ? 1 : a;
+}
+
+static int gdJpegNormalizeReadOptions(const gdJpegReadOptions *options,
+                                      gdJpegReadOptions *normalized)
+{
+    unsigned int divisor;
+
+    gdJpegReadOptionsInit(normalized);
+    if (options != NULL) {
+        normalized->ignore_warning = options->ignore_warning;
+        normalized->scale_num = options->scale_num;
+        normalized->scale_denom = options->scale_denom;
+        normalized->dct_method = options->dct_method;
+    }
+
+    if (normalized->scale_num == 0 || normalized->scale_denom == 0) {
+        return 0;
+    }
+
+    divisor = gdJpegGcd(normalized->scale_num, normalized->scale_denom);
+    normalized->scale_num /= divisor;
+    normalized->scale_denom /= divisor;
+
+    switch (normalized->dct_method) {
+    case GD_JPEG_DCT_DEFAULT:
+    case GD_JPEG_DCT_SLOW:
+    case GD_JPEG_DCT_FAST:
+    case GD_JPEG_DCT_FLOAT:
+        break;
+    default:
+        return 0;
+    }
+
+    return 1;
+}
+
+static J_DCT_METHOD gdJpegMapDctMethod(int dct_method)
+{
+    switch (dct_method) {
+    case GD_JPEG_DCT_SLOW:
+        return JDCT_ISLOW;
+    case GD_JPEG_DCT_FAST:
+        return JDCT_IFAST;
+    case GD_JPEG_DCT_FLOAT:
+        return JDCT_FLOAT;
+    case GD_JPEG_DCT_DEFAULT:
+    default:
+        return JDCT_DEFAULT;
+    }
+}
+
+static int gdJpegScaledDimension(JDIMENSION source, unsigned int numerator,
+                                 unsigned int denominator, int *target)
+{
+    unsigned long long scaled;
+
+    scaled = ((unsigned long long)source * (unsigned long long)numerator) /
+             (unsigned long long)denominator;
+    if (scaled == 0 || scaled > INT_MAX) {
+        return 0;
+    }
+
+    *target = (int)scaled;
+    return 1;
+}
 
 static int gdJpegMarkerStartsWith(jpeg_saved_marker_ptr marker, const unsigned char *prefix,
                                   size_t prefix_size)
@@ -853,11 +989,6 @@ static int gdJpegCollectMetadata(j_decompress_ptr cinfo, gdImageMetadata *metada
     return gdJpegCollectIccProfile(cinfo, metadata);
 }
 
-/*
-  Function: gdImageCreateFromJpegCtx
-
-  See <gdImageCreateFromJpeg>.
-*/
 BGD_DECLARE(gdImagePtr) gdImageCreateFromJpegCtx(gdIOCtx *infile)
 {
     return gdImageCreateFromJpegCtxEx(infile, 1);
@@ -869,11 +1000,6 @@ gdImageCreateFromJpegCtxWithMetadata(gdIOCtx *infile, gdImageMetadata *metadata)
     return gdImageCreateFromJpegCtxExWithMetadata(infile, 1, metadata);
 }
 
-/*
-  Function: gdImageCreateFromJpegCtxEx
-
-  See <gdImageCreateFromJpeg>.
-*/
 BGD_DECLARE(gdImagePtr)
 gdImageCreateFromJpegCtxEx(gdIOCtx *infile, int ignore_warning)
 {
@@ -884,9 +1010,26 @@ BGD_DECLARE(gdImagePtr)
 gdImageCreateFromJpegCtxExWithMetadata(gdIOCtx *infile, int ignore_warning,
                                        gdImageMetadata *metadata)
 {
+    gdJpegReadOptions options;
+
+    gdJpegReadOptionsInit(&options);
+    options.ignore_warning = ignore_warning;
+    return gdImageCreateFromJpegCtxWithOptionsAndMetadata(infile, &options, metadata);
+}
+
+BGD_DECLARE(gdImagePtr)
+gdImageCreateFromJpegCtxWithOptions(gdIOCtx *infile, const gdJpegReadOptions *options)
+{
+    return gdImageCreateFromJpegCtxWithOptionsAndMetadata(infile, options, NULL);
+}
+
+static gdImagePtr gdImageCreateFromJpegCtxWithOptionsAndMetadata(
+    gdIOCtx *infile, const gdJpegReadOptions *options, gdImageMetadata *metadata)
+{
     struct jpeg_decompress_struct cinfo;
     struct jpeg_error_mgr jerr;
     jmpbuf_wrapper jmpbufw;
+    gdJpegReadOptions read_options;
     /* volatile so we can gdFree them after longjmp */
     volatile JSAMPROW row = 0;
     volatile gdImagePtr im = 0;
@@ -896,6 +1039,8 @@ gdImageCreateFromJpegCtxExWithMetadata(gdIOCtx *infile, int ignore_warning,
     JDIMENSION nrows;
     int channels = 3;
     int inverted = 0;
+    int target_width = 0;
+    int target_height = 0;
 
 #ifdef JPEG_DEBUG
     gd_error_ex(GD_DEBUG, "gd-jpeg: gd JPEG version %s\n", GD_JPEG_VERSION);
@@ -907,7 +1052,12 @@ gdImageCreateFromJpegCtxExWithMetadata(gdIOCtx *infile, int ignore_warning,
     memset(&cinfo, 0, sizeof(cinfo));
     memset(&jerr, 0, sizeof(jerr));
 
-    jmpbufw.ignore_warning = ignore_warning;
+    if (!gdJpegNormalizeReadOptions(options, &read_options)) {
+        gd_error("gd-jpeg: error: invalid JPEG read options\n");
+        return 0;
+    }
+
+    jmpbufw.ignore_warning = read_options.ignore_warning;
 
     cinfo.err = jpeg_std_error(&jerr);
     cinfo.client_data = &jmpbufw;
@@ -968,7 +1118,39 @@ gdImageCreateFromJpegCtxExWithMetadata(gdIOCtx *infile, int ignore_warning,
                  cinfo.image_width, INT_MAX);
     }
 
-    im = gdImageCreateTrueColor((int)cinfo.image_width, (int)cinfo.image_height);
+    if (!gdJpegScaledDimension(cinfo.image_width, read_options.scale_num,
+                               read_options.scale_denom, &target_width) ||
+        !gdJpegScaledDimension(cinfo.image_height, read_options.scale_num,
+                               read_options.scale_denom, &target_height)) {
+        gd_error("gd-jpeg: error: requested JPEG scale produces invalid dimensions\n");
+        goto error;
+    }
+
+    /* 2.0.22: very basic support for reading CMYK colorspace files. Nice for
+     * thumbnails but there's no support for fussy adjustment of the
+     * assumed properties of inks and paper.
+     */
+    if ((cinfo.jpeg_color_space == JCS_CMYK) || (cinfo.jpeg_color_space == JCS_YCCK)) {
+        cinfo.out_color_space = JCS_CMYK;
+    } else {
+        cinfo.out_color_space = JCS_RGB;
+    }
+
+    cinfo.scale_num = read_options.scale_num;
+    cinfo.scale_denom = read_options.scale_denom;
+    cinfo.dct_method = gdJpegMapDctMethod(read_options.dct_method);
+
+    if (jpeg_start_decompress(&cinfo) != TRUE) {
+        gd_error("gd-jpeg: warning: jpeg_start_decompress"
+                 " reports suspended data source\n");
+    }
+
+    if (cinfo.output_width > INT_MAX || cinfo.output_height > INT_MAX) {
+        gd_error("gd-jpeg: error: JPEG output dimensions are greater than INT_MAX\n");
+        goto error;
+    }
+
+    im = gdImageCreateTrueColor((int)cinfo.output_width, (int)cinfo.output_height);
     if (im == 0) {
         gd_error("gd-jpeg error: cannot allocate gdImage struct\n");
         goto error;
@@ -984,21 +1166,6 @@ gdImageCreateFromJpegCtxExWithMetadata(gdIOCtx *infile, int ignore_warning,
         im->res_x = DPCM2DPI(cinfo.X_density);
         im->res_y = DPCM2DPI(cinfo.Y_density);
         break;
-    }
-
-    /* 2.0.22: very basic support for reading CMYK colorspace files. Nice for
-     * thumbnails but there's no support for fussy adjustment of the
-     * assumed properties of inks and paper.
-     */
-    if ((cinfo.jpeg_color_space == JCS_CMYK) || (cinfo.jpeg_color_space == JCS_YCCK)) {
-        cinfo.out_color_space = JCS_CMYK;
-    } else {
-        cinfo.out_color_space = JCS_RGB;
-    }
-
-    if (jpeg_start_decompress(&cinfo) != TRUE) {
-        gd_error("gd-jpeg: warning: jpeg_start_decompress"
-                 " reports suspended data source\n");
     }
 
 #ifdef JPEG_DEBUG
@@ -1154,6 +1321,17 @@ gdImageCreateFromJpegCtxExWithMetadata(gdIOCtx *infile, int ignore_warning,
 
     jpeg_destroy_decompress(&cinfo);
     gdFree(row);
+
+    if (im->sx != target_width || im->sy != target_height) {
+        gdImagePtr scaled = gdImageScale(im, target_width, target_height);
+        gdImageDestroy(im);
+        im = scaled;
+        if (im == NULL) {
+            gd_error("gd-jpeg: error: unable to resize decoded JPEG image\n");
+            return 0;
+        }
+    }
+
     return im;
 
 error:
@@ -1533,6 +1711,57 @@ static void jpeg_gdIOCtx_dest(j_compress_ptr cinfo, gdIOCtx *outfile)
 
 static void _noJpegError(void) { gd_error("JPEG image support has been disabled\n"); }
 
+BGD_DECLARE(void) gdJpegInfoInit(gdJpegInfo *info)
+{
+    if (info != NULL) {
+        memset(info, 0, sizeof(*info));
+    }
+}
+
+BGD_DECLARE(void) gdJpegReadOptionsInit(gdJpegReadOptions *options)
+{
+    if (options != NULL) {
+        memset(options, 0, sizeof(*options));
+        options->ignore_warning = 1;
+        options->scale_num = 1;
+        options->scale_denom = 1;
+        options->dct_method = GD_JPEG_DCT_DEFAULT;
+    }
+}
+
+BGD_DECLARE(void) gdJpegWriteOptionsInit(gdJpegWriteOptions *options)
+{
+    if (options != NULL) {
+        memset(options, 0, sizeof(*options));
+        options->quality = -1;
+    }
+}
+
+BGD_DECLARE(int) gdJpegGetInfo(FILE *infile, gdJpegInfo *info)
+{
+    ARG_NOT_USED(infile);
+    ARG_NOT_USED(info);
+    _noJpegError();
+    return 1;
+}
+
+BGD_DECLARE(int) gdJpegGetInfoCtx(gdIOCtxPtr infile, gdJpegInfo *info)
+{
+    ARG_NOT_USED(infile);
+    ARG_NOT_USED(info);
+    _noJpegError();
+    return 1;
+}
+
+BGD_DECLARE(int) gdJpegGetInfoPtr(int size, const void *data, gdJpegInfo *info)
+{
+    ARG_NOT_USED(size);
+    ARG_NOT_USED(data);
+    ARG_NOT_USED(info);
+    _noJpegError();
+    return 1;
+}
+
 BGD_DECLARE(void) gdImageJpeg(gdImagePtr im, FILE *outFile, int quality)
 {
     ARG_NOT_USED(im);
@@ -1591,6 +1820,36 @@ gdImageJpegCtxWithMetadata(gdImagePtr im, gdIOCtx *outfile, int quality,
     _noJpegError();
 }
 
+BGD_DECLARE(int)
+gdImageJpegWithOptions(gdImagePtr im, FILE *outFile, const gdJpegWriteOptions *options)
+{
+    ARG_NOT_USED(im);
+    ARG_NOT_USED(outFile);
+    ARG_NOT_USED(options);
+    _noJpegError();
+    return 1;
+}
+
+BGD_DECLARE(int)
+gdImageJpegCtxWithOptions(gdImagePtr im, gdIOCtx *outfile, const gdJpegWriteOptions *options)
+{
+    ARG_NOT_USED(im);
+    ARG_NOT_USED(outfile);
+    ARG_NOT_USED(options);
+    _noJpegError();
+    return 1;
+}
+
+BGD_DECLARE(void *)
+gdImageJpegPtrWithOptions(gdImagePtr im, int *size, const gdJpegWriteOptions *options)
+{
+    ARG_NOT_USED(im);
+    ARG_NOT_USED(size);
+    ARG_NOT_USED(options);
+    _noJpegError();
+    return NULL;
+}
+
 BGD_DECLARE(gdImagePtr) gdImageCreateFromJpeg(FILE *inFile)
 {
     ARG_NOT_USED(inFile);
@@ -1621,6 +1880,16 @@ gdImageCreateFromJpegPtrEx(int size, void *data, int ignore_warning)
     ARG_NOT_USED(size);
     ARG_NOT_USED(data);
     ARG_NOT_USED(ignore_warning);
+    _noJpegError();
+    return NULL;
+}
+
+BGD_DECLARE(gdImagePtr)
+gdImageCreateFromJpegPtrWithOptions(int size, void *data, const gdJpegReadOptions *options)
+{
+    ARG_NOT_USED(size);
+    ARG_NOT_USED(data);
+    ARG_NOT_USED(options);
     _noJpegError();
     return NULL;
 }
@@ -1659,6 +1928,15 @@ gdImageCreateFromJpegCtxEx(gdIOCtx *infile, int ignore_warning)
 {
     ARG_NOT_USED(infile);
     ARG_NOT_USED(ignore_warning);
+    _noJpegError();
+    return NULL;
+}
+
+BGD_DECLARE(gdImagePtr)
+gdImageCreateFromJpegCtxWithOptions(gdIOCtx *infile, const gdJpegReadOptions *options)
+{
+    ARG_NOT_USED(infile);
+    ARG_NOT_USED(options);
     _noJpegError();
     return NULL;
 }
