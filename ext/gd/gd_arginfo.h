@@ -1,5 +1,5 @@
 /* This is a generated file, edit gd.stub.php instead.
- * Stub hash: 2a326457050f5961b402a8f150e059d350c0616c */
+ * Stub hash: 7ae7456b5809dada2c5161552670f83240132afa */
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_gd_info, 0, 0, IS_ARRAY, 0)
 ZEND_END_ARG_INFO()
@@ -596,6 +596,16 @@ ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_GdImage_transform, 0, 1, Gd
 	ZEND_ARG_OBJ_INFO(0, matrix, Gd\\Matrix, 0)
 	ZEND_ARG_OBJ_INFO_WITH_DEFAULT_VALUE(0, options, Gd\\TransformOptions, 1, "null")
 ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_GdImage_composeFrom, 0, 1, GdImage, 0)
+	ZEND_ARG_OBJ_INFO(0, source, GdImage, 0)
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, x, IS_LONG, 0, "0")
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, y, IS_LONG, 0, "0")
+	ZEND_ARG_OBJ_INFO_WITH_DEFAULT_VALUE(0, operator, Gd\\CompositeOperator, 0, "Gd\\CompositeOperator::Over")
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, opacity, IS_DOUBLE, 0, "1.0")
+	ZEND_ARG_OBJ_INFO_WITH_DEFAULT_VALUE(0, sourceRegion, Gd\\Rect, 1, "null")
+	ZEND_ARG_OBJ_INFO_WITH_DEFAULT_VALUE(0, clip, Gd\\Rect, 1, "null")
+ZEND_END_ARG_INFO()
 #endif
 
 ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_GdImage_getContext, 0, 0, Gd\\Context, 0)
@@ -743,6 +753,7 @@ ZEND_METHOD(GdImage, scale);
 ZEND_METHOD(GdImage, autoCrop);
 #if defined(HAVE_GD_BUNDLED)
 ZEND_METHOD(GdImage, transform);
+ZEND_METHOD(GdImage, composeFrom);
 #endif
 ZEND_METHOD(GdImage, getContext);
 ZEND_METHOD(GdImage, perceptualDiff);
@@ -890,6 +901,7 @@ static const zend_function_entry class_GdImage_methods[] = {
 	ZEND_ME(GdImage, autoCrop, arginfo_class_GdImage_autoCrop, ZEND_ACC_PUBLIC)
 #if defined(HAVE_GD_BUNDLED)
 	ZEND_ME(GdImage, transform, arginfo_class_GdImage_transform, ZEND_ACC_PUBLIC)
+	ZEND_ME(GdImage, composeFrom, arginfo_class_GdImage_composeFrom, ZEND_ACC_PUBLIC)
 #endif
 	ZEND_ME(GdImage, getContext, arginfo_class_GdImage_getContext, ZEND_ACC_PUBLIC)
 	ZEND_ME(GdImage, perceptualDiff, arginfo_class_GdImage_perceptualDiff, ZEND_ACC_PUBLIC)

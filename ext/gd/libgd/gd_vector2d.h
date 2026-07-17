@@ -562,6 +562,30 @@ BGD_DECLARE(void) gdContextSetSource(gdContextPtr context, gdPaintPtr source);
 BGD_DECLARE(void) gdContextSetOperator(gdContextPtr context, gdCompositeOperator op);
 
 /**
+ * @brief Composite one image into another using a 2D composite operator.
+ *
+ * The destination image must be truecolor. The source may be truecolor or
+ * palette-based. Source and clip rectangles are clipped silently to the source
+ * and destination bounds.
+ *
+ * @param dst        Destination image to mutate.
+ * @param src        Source image.
+ * @param dst_x      Destination x coordinate where the source region starts.
+ * @param dst_y      Destination y coordinate where the source region starts.
+ * @param op         Composite operator.
+ * @param opacity    Source opacity multiplier, from 0.0 to 1.0.
+ * @param src_region Optional source rectangle, or NULL for the full source.
+ * @param clip       Optional destination clip rectangle, or NULL for the full destination.
+ *
+ * @return GD_TRUE on success, GD_FALSE on invalid arguments.
+ *
+ * @see gdCompositeOperator gdContextSetOperator
+ */
+BGD_DECLARE(int) gdImageComposite(gdImagePtr dst, const gdImagePtr src, int dst_x, int dst_y,
+                                  gdCompositeOperator op, double opacity,
+                                  gdRectPtr src_region, gdRectPtr clip);
+
+/**
  * @brief Set a global opacity multiplier for subsequent drawing.
  *
  * @param context The drawing context.

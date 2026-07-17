@@ -1,5 +1,8 @@
 /* This is a generated file, edit gd_2d.stub.php instead.
- * Stub hash: a01276aa0896f2fbd94385d05d3c5de0295adffd */
+ * Stub hash: 185af65fa97920efd3fc72b5f7a3df6d47060253 */
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Gd_CompositeOperator_isUnbounded, 0, 0, _IS_BOOL, 0)
+ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Gd_Paint___construct, 0, 0, 0)
 ZEND_END_ARG_INFO()
@@ -374,6 +377,7 @@ ZEND_END_ARG_INFO()
 
 #define arginfo_class_Gd_Context_paint arginfo_class_Gd_Context_save
 
+ZEND_METHOD(Gd_CompositeOperator, isUnbounded);
 ZEND_METHOD(Gd_Paint, __construct);
 ZEND_METHOD(Gd_Gradient, __construct);
 ZEND_METHOD(Gd_Gradient, addColorStopRgb);
@@ -463,6 +467,11 @@ ZEND_METHOD(Gd_Context, fillPreserve);
 ZEND_METHOD(Gd_Context, stroke);
 ZEND_METHOD(Gd_Context, strokePreserve);
 ZEND_METHOD(Gd_Context, paint);
+
+static const zend_function_entry class_Gd_CompositeOperator_methods[] = {
+	ZEND_ME(Gd_CompositeOperator, isUnbounded, arginfo_class_Gd_CompositeOperator_isUnbounded, ZEND_ACC_PUBLIC)
+	ZEND_FE_END
+};
 
 static const zend_function_entry class_Gd_Paint_methods[] = {
 	ZEND_ME(Gd_Paint, __construct, arginfo_class_Gd_Paint___construct, ZEND_ACC_PRIVATE)
@@ -643,7 +652,7 @@ static zend_class_entry *register_class_Gd_FillRule(void)
 
 static zend_class_entry *register_class_Gd_CompositeOperator(void)
 {
-	zend_class_entry *class_entry = zend_register_internal_enum("Gd\\CompositeOperator", IS_UNDEF, NULL);
+	zend_class_entry *class_entry = zend_register_internal_enum("Gd\\CompositeOperator", IS_UNDEF, class_Gd_CompositeOperator_methods);
 
 	zend_enum_add_case_cstr(class_entry, "Clear", NULL);
 

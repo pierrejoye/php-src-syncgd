@@ -64,6 +64,8 @@ namespace Gd {
         case HslSaturation;
         case HslColor;
         case HslLuminosity;
+
+        public function isUnbounded(): bool {}
     }
 
     /**

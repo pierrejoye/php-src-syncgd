@@ -219,7 +219,7 @@ static gdFillRule php_gd_fill_rule_from_zval(zval *zv)
 	return gdFillRuleNonZero;
 }
 
-static gdCompositeOperator php_gd_composite_operator_from_zval(zval *zv)
+gdCompositeOperator php_gd_composite_operator_from_zval(zval *zv)
 {
 	zend_string *name = Z_STR_P(zend_enum_fetch_case_name(Z_OBJ_P(zv)));
 
@@ -313,6 +313,16 @@ static gdCompositeOperator php_gd_composite_operator_from_zval(zval *zv)
 
 	ZEND_UNREACHABLE();
 	return GD_OP_OVER;
+}
+
+PHP_METHOD(Gd_CompositeOperator, isUnbounded)
+{
+	gdCompositeOperator op;
+
+	ZEND_PARSE_PARAMETERS_NONE();
+
+	op = php_gd_composite_operator_from_zval(ZEND_THIS);
+	RETURN_BOOL(op == GD_OP_IN || op == GD_OP_OUT || op == GD_OP_DEST_IN || op == GD_OP_DEST_ATOP);
 }
 
 static void php_gd_context_release(php_gd_context_object *intern, bool flush)
@@ -2298,6 +2308,11 @@ zend_class_entry *php_gd_get_matrix_ce(void)
 zend_class_entry *php_gd_get_rect_ce(void)
 {
 	return php_gd_rect_ce;
+}
+
+zend_class_entry *php_gd_get_composite_operator_ce(void)
+{
+	return php_gd_composite_operator_ce;
 }
 
 void php_gd_2d_minit(void)

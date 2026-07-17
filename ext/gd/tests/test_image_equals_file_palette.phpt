@@ -37,6 +37,7 @@ imagefilledrectangle($im, 3,3, 7,7, $red);
 
 imagepalettetotruecolor($im);
 test_image_equals_file($filename, $im);
+unlink($filename = __DIR__ . DIRECTORY_SEPARATOR . 'test_image_equals_file_palette.out.png');
 ?>
 --EXPECT--
 The images differ in 25 pixels.

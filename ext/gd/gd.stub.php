@@ -519,6 +519,16 @@ final class GdImage
         \Gd\Matrix $matrix,
         ?\Gd\TransformOptions $options = null,
     ): GdImage {}
+
+    public function composeFrom(
+        GdImage $source,
+        int $x = 0,
+        int $y = 0,
+        \Gd\CompositeOperator $operator = \Gd\CompositeOperator::Over,
+        float $opacity = 1.0,
+        ?\Gd\Rect $sourceRegion = null,
+        ?\Gd\Rect $clip = null,
+    ): GdImage {}
 #endif
 
     public function getContext(): \Gd\Context {}

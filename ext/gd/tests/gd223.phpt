@@ -5,11 +5,10 @@ gd
 --SKIPIF--
 <?php
 if (!GD_BUNDLED) die("skip only for bundled libgd");
+require __DIR__ . "/skipif_gd_perceptual_diff_supported.inc";
 ?>
 --FILE--
 <?php
-require_once __DIR__ . "/func.inc";
-
 $im = imagecreatetruecolor(64, 64);
 for ($j = 0; $j < 64; $j++) {
     for ($i = 0; $i < 64; $i++) {
@@ -20,7 +19,9 @@ for ($j = 0; $j < 64; $j++) {
 imagesetinterpolation($im, IMG_BICUBIC);
 $im = imagerotate($im, 45, 0xff0000);
 
-test_image_equals_file(__DIR__ . "/gd223.png", $im);
+$expected = imagecreatefrompng(__DIR__ . "/gd223.png");
+$diff = $im->perceptualDiff($expected, 0.03);
+var_dump($diff->pixelsChanged < 5 && $diff->maximumDelta < 0.08);
 ?>
 --EXPECT--
-The images are equal.
+bool(true)

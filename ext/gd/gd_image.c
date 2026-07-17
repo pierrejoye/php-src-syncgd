@@ -1292,6 +1292,76 @@ PHP_METHOD(GdImage, transform)
 
 	php_gd_assign_libgdimageptr_as_extgdimage(return_value, dst);
 }
+
+PHP_METHOD(GdImage, composeFrom)
+{
+	zval *source_zv, *operator_zv = NULL, *source_region_zv = NULL, *clip_zv = NULL;
+	zend_long x = 0, y = 0;
+	double opacity = 1.0;
+	gdImagePtr dst, src;
+	gdRect source_region, clip;
+	gdRectPtr source_region_ptr = NULL, clip_ptr = NULL;
+	gdCompositeOperator op = GD_OP_OVER;
+
+	ZEND_PARSE_PARAMETERS_START(1, 7)
+		Z_PARAM_OBJECT_OF_CLASS(source_zv, gd_image_ce)
+		Z_PARAM_OPTIONAL
+		Z_PARAM_LONG(x)
+		Z_PARAM_LONG(y)
+		Z_PARAM_OBJECT_OF_CLASS(operator_zv, php_gd_get_composite_operator_ce())
+		Z_PARAM_DOUBLE(opacity)
+		Z_PARAM_OBJECT_OF_CLASS_OR_NULL(source_region_zv, php_gd_get_rect_ce())
+		Z_PARAM_OBJECT_OF_CLASS_OR_NULL(clip_zv, php_gd_get_rect_ce())
+	ZEND_PARSE_PARAMETERS_END();
+
+	if (x < INT_MIN || x > INT_MAX) {
+		zend_argument_value_error(2, "must be between %d and %d", INT_MIN, INT_MAX);
+		RETURN_THROWS();
+	}
+	if (y < INT_MIN || y > INT_MAX) {
+		zend_argument_value_error(3, "must be between %d and %d", INT_MIN, INT_MAX);
+		RETURN_THROWS();
+	}
+	if (!isfinite(opacity)) {
+		zend_argument_value_error(5, "must be finite");
+		RETURN_THROWS();
+	}
+	if (opacity < 0.0 || opacity > 1.0) {
+		zend_argument_value_error(5, "must be between 0.0 and 1.0");
+		RETURN_THROWS();
+	}
+
+	if (operator_zv != NULL) {
+		op = php_gd_composite_operator_from_zval(operator_zv);
+	}
+
+	if (source_region_zv != NULL && Z_TYPE_P(source_region_zv) != IS_NULL) {
+		if (!php_gd_rect_to_gd_rect(source_region_zv, &source_region)) {
+			RETURN_THROWS();
+		}
+		source_region_ptr = &source_region;
+	}
+	if (clip_zv != NULL && Z_TYPE_P(clip_zv) != IS_NULL) {
+		if (!php_gd_rect_to_gd_rect(clip_zv, &clip)) {
+			RETURN_THROWS();
+		}
+		clip_ptr = &clip;
+	}
+
+	dst = php_gd_libgdimageptr_from_zval_p(ZEND_THIS);
+	if (!gdImageTrueColor(dst)) {
+		zend_value_error("GdImage::composeFrom(): receiver image must be truecolor");
+		RETURN_THROWS();
+	}
+
+	src = php_gd_libgdimageptr_from_zval_p(source_zv);
+	if (gdImageComposite(dst, src, (int) x, (int) y, op, opacity, source_region_ptr, clip_ptr) != GD_TRUE) {
+		zend_throw_error(NULL, "Failed to compose GdImage");
+		RETURN_THROWS();
+	}
+
+	RETURN_OBJ_COPY(Z_OBJ_P(ZEND_THIS));
+}
 #endif
 
 PHP_METHOD(GdImage, perceptualDiff)

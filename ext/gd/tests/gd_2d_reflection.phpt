@@ -80,6 +80,14 @@ assert_same(
     array_map(fn($case) => $case->name, Gd\CompositeOperator::cases()),
     'CompositeOperator cases changed'
 );
+assert_same(
+    ['In', 'Out', 'DestIn', 'DestAtop'],
+    array_map(
+        fn($case) => $case->name,
+        array_values(array_filter(Gd\CompositeOperator::cases(), fn($case) => $case->isUnbounded())),
+    ),
+    'CompositeOperator::isUnbounded() changed'
+);
 
 $paint = new ReflectionClass(Gd\Paint::class);
 $gradient = new ReflectionClass(Gd\Gradient::class);
