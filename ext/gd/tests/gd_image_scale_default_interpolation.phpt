@@ -36,26 +36,26 @@ $downSource = source_image(80, 50);
 $downDefault = $downSource->scale(20, 10, new Gd\ScaleOptions(fit: Gd\ScaleFit::Fill));
 $downLanczos3 = $downSource->scale(20, 10, new Gd\ScaleOptions(
 	fit: Gd\ScaleFit::Fill,
-	interpolation: Gd\ScaleInterpolation::Lanczos3,
+	interpolation: Gd\InterpolationMethod::Lanczos3,
 ));
 $downCubicSpline = $downSource->scale(20, 10, new Gd\ScaleOptions(
 	fit: Gd\ScaleFit::Fill,
-	interpolation: Gd\ScaleInterpolation::CubicSpline,
+	interpolation: Gd\InterpolationMethod::CubicSpline,
 ));
 
 $upSource = source_image(10, 8);
 $upDefault = $upSource->scale(40, 32, new Gd\ScaleOptions(fit: Gd\ScaleFit::Fill));
 $upCubicSpline = $upSource->scale(40, 32, new Gd\ScaleOptions(
 	fit: Gd\ScaleFit::Fill,
-	interpolation: Gd\ScaleInterpolation::CubicSpline,
+	interpolation: Gd\InterpolationMethod::CubicSpline,
 ));
 $upCatmullRom = $upSource->scale(40, 32, new Gd\ScaleOptions(
     fit: Gd\ScaleFit::Fill,
-    interpolation: Gd\ScaleInterpolation::CatmullRom,
+    interpolation: Gd\InterpolationMethod::CatmullRom,
 ));
 $explicitDefault = $upSource->scale(40, 32, new Gd\ScaleOptions(
 	fit: Gd\ScaleFit::Fill,
-	interpolation: Gd\ScaleInterpolation::Default,
+	interpolation: Gd\InterpolationMethod::Default,
 ));
 
 assert_same_image('down default vs lanczos3', $downDefault, $downLanczos3);

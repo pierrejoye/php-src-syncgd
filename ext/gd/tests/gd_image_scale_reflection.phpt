@@ -26,7 +26,7 @@ var_dump($class->isReadOnly());
 var_dump(array_map(fn($case) => $case->name, Gd\ScaleFit::cases()));
 var_dump(array_map(fn($case) => $case->name, Gd\ScaleGravity::cases()));
 var_dump(array_map(fn($case) => $case->name, Gd\ScaleStrategy::cases()));
-var_dump(array_map(fn($case) => $case->name, Gd\ScaleInterpolation::cases()));
+var_dump(array_map(fn($case) => $case->name, Gd\InterpolationMethod::cases()));
 
 $method = new ReflectionMethod(GdImage::class, 'scale');
 var_dump($method->getReturnType()->getName());

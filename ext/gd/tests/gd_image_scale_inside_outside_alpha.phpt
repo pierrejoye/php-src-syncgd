@@ -50,7 +50,7 @@ $background = imagecolorallocatealpha($source, 255, 255, 0, 0);
 $inside = $source->scale(4, 6, new Gd\ScaleOptions(
     fit: Gd\ScaleFit::Inside,
     backgroundColor: $background,
-    interpolation: Gd\ScaleInterpolation::NearestNeighbour,
+    interpolation: Gd\InterpolationMethod::NearestNeighbour,
 ));
 printf("inside %dx%d\n", imagesx($inside), imagesy($inside));
 assert_similar('inside', $inside, imagescale($source, 4, 4, IMG_NEAREST_NEIGHBOUR));
@@ -60,7 +60,7 @@ assert_color('inside green alpha', $inside, 2, 0, $green);
 $outside = $source->scale(4, 6, new Gd\ScaleOptions(
     fit: Gd\ScaleFit::Outside,
     backgroundColor: $background,
-    interpolation: Gd\ScaleInterpolation::NearestNeighbour,
+    interpolation: Gd\InterpolationMethod::NearestNeighbour,
 ));
 printf("outside %dx%d\n", imagesx($outside), imagesy($outside));
 assert_similar('outside', $outside, imagescale($source, 6, 6, IMG_NEAREST_NEIGHBOUR));

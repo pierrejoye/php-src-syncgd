@@ -63,7 +63,7 @@ $greenAlpha31 = imagecolorat($source, 1, 0);
 $blueAlpha95 = imagecolorat($source, 0, 1);
 $background = imagecolorallocatealpha($source, 0, 255, 0, 50);
 
-$fill = $source->scale(4, 4, new Gd\ScaleOptions(fit: Gd\ScaleFit::Fill, interpolation: Gd\ScaleInterpolation::NearestNeighbour));
+$fill = $source->scale(4, 4, new Gd\ScaleOptions(fit: Gd\ScaleFit::Fill, interpolation: Gd\InterpolationMethod::NearestNeighbour));
 assert_similar('fill', $fill, imagescale($source, 4, 4, IMG_NEAREST_NEIGHBOUR));
 assert_color('fill keeps semi-transparent red', $fill, 0, 0, $redAlpha63);
 assert_color('fill keeps semi-transparent blue', $fill, 0, 2, $blueAlpha95);
@@ -71,7 +71,7 @@ assert_color('fill keeps semi-transparent blue', $fill, 0, 2, $blueAlpha95);
 $contain = $source->scale(4, 6, new Gd\ScaleOptions(
     fit: Gd\ScaleFit::Contain,
     backgroundColor: $background,
-    interpolation: Gd\ScaleInterpolation::NearestNeighbour,
+    interpolation: Gd\InterpolationMethod::NearestNeighbour,
 ));
 assert_similar('contain', $contain, expected_contain($source, $background));
 assert_color('contain keeps background alpha', $contain, 0, 0, $background);
@@ -82,7 +82,7 @@ $cover = $source->scale(6, 4, new Gd\ScaleOptions(
     fit: Gd\ScaleFit::Cover,
     gravity: Gd\ScaleGravity::North,
     backgroundColor: $background,
-    interpolation: Gd\ScaleInterpolation::NearestNeighbour,
+    interpolation: Gd\InterpolationMethod::NearestNeighbour,
 ));
 assert_similar('cover', $cover, expected_cover($source, $background));
 assert_color('cover copy keeps semi-transparent red', $cover, 0, 0, $redAlpha63);

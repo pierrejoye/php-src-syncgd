@@ -54,11 +54,11 @@ for ($y = 0; $y < 16; $y++) {
 
 $entropy = $image->scale(16, 16, new Gd\ScaleOptions(
     strategy: Gd\ScaleStrategy::Entropy,
-    interpolation: Gd\ScaleInterpolation::NearestNeighbour,
+    interpolation: Gd\InterpolationMethod::NearestNeighbour,
 ));
 $center = $image->scale(16, 16, new Gd\ScaleOptions(
     gravity: Gd\ScaleGravity::Center,
-    interpolation: Gd\ScaleInterpolation::NearestNeighbour,
+    interpolation: Gd\InterpolationMethod::NearestNeighbour,
 ));
 
 $entropyDetail = count_color($entropy, $black) + count_color($entropy, $white);

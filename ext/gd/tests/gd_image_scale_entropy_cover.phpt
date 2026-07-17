@@ -57,11 +57,11 @@ $white = imagecolorallocatealpha($source, 255, 255, 255, 0);
 
 $entropy = $source->scale(4, 4, new Gd\ScaleOptions(
     strategy: Gd\ScaleStrategy::Entropy,
-    interpolation: Gd\ScaleInterpolation::NearestNeighbour,
+    interpolation: Gd\InterpolationMethod::NearestNeighbour,
 ));
 $center = $source->scale(4, 4, new Gd\ScaleOptions(
     gravity: Gd\ScaleGravity::Center,
-    interpolation: Gd\ScaleInterpolation::NearestNeighbour,
+    interpolation: Gd\InterpolationMethod::NearestNeighbour,
 ));
 
 printf("entropy black=%d white=%d\n", count_color($entropy, $black), count_color($entropy, $white));

@@ -23,6 +23,7 @@
 #include <math.h>
 #ifdef HAVE_GD_BUNDLED
 # include "libgd/gd.h"
+# include "gd_2d.h"
 #else
 # include <gd.h>
 #endif
@@ -57,8 +58,11 @@ static zend_class_entry *php_gd_auto_crop_options_ce;
 static zend_class_entry *php_gd_scale_fit_ce;
 static zend_class_entry *php_gd_scale_gravity_ce;
 static zend_class_entry *php_gd_scale_strategy_ce;
-static zend_class_entry *php_gd_scale_interpolation_ce;
+static zend_class_entry *php_gd_interpolation_method_ce;
 static zend_class_entry *php_gd_scale_options_ce;
+#ifdef HAVE_GD_BUNDLED
+static zend_class_entry *php_gd_transform_options_ce;
+#endif
 static zend_class_entry *php_gd_perceptual_diff_mode_ce;
 static zend_class_entry *php_gd_perceptual_diff_options_ce;
 static zend_class_entry *php_gd_perceptual_diff_result_ce;
@@ -257,72 +261,72 @@ static gdScaleStrategy php_gd_scale_strategy_from_zval(zval *strategy_zv)
 	}
 }
 
-static int php_gd_scale_interpolation_from_zval(zval *interpolation_zv)
+static int php_gd_interpolation_method_from_zval(zval *interpolation_zv, int null_value)
 {
 	if (Z_TYPE_P(interpolation_zv) == IS_NULL) {
-		return GD_SCALE_INTERPOLATION_AUTO;
+		return null_value;
 	}
 
 	switch (zend_enum_fetch_case_id(Z_OBJ_P(interpolation_zv))) {
-		case ZEND_ENUM_Gd_ScaleInterpolation_Default:
+		case ZEND_ENUM_Gd_InterpolationMethod_Default:
 			return GD_DEFAULT;
-		case ZEND_ENUM_Gd_ScaleInterpolation_Bell:
+		case ZEND_ENUM_Gd_InterpolationMethod_Bell:
 			return GD_BELL;
-		case ZEND_ENUM_Gd_ScaleInterpolation_Bessel:
+		case ZEND_ENUM_Gd_InterpolationMethod_Bessel:
 			return GD_BESSEL;
-		case ZEND_ENUM_Gd_ScaleInterpolation_Linear:
+		case ZEND_ENUM_Gd_InterpolationMethod_Linear:
 			return GD_LINEAR;
-		case ZEND_ENUM_Gd_ScaleInterpolation_CubicSpline:
+		case ZEND_ENUM_Gd_InterpolationMethod_CubicSpline:
 			return GD_CUBIC_SPLINE;
-		case ZEND_ENUM_Gd_ScaleInterpolation_Blackman:
+		case ZEND_ENUM_Gd_InterpolationMethod_Blackman:
 			return GD_BLACKMAN;
-		case ZEND_ENUM_Gd_ScaleInterpolation_Box:
+		case ZEND_ENUM_Gd_InterpolationMethod_Box:
 			return GD_BOX;
-		case ZEND_ENUM_Gd_ScaleInterpolation_BSpline:
+		case ZEND_ENUM_Gd_InterpolationMethod_BSpline:
 			return GD_BSPLINE;
-		case ZEND_ENUM_Gd_ScaleInterpolation_CatmullRom:
+		case ZEND_ENUM_Gd_InterpolationMethod_CatmullRom:
 			return GD_CATMULLROM;
-		case ZEND_ENUM_Gd_ScaleInterpolation_Gaussian:
+		case ZEND_ENUM_Gd_InterpolationMethod_Gaussian:
 			return GD_GAUSSIAN;
-		case ZEND_ENUM_Gd_ScaleInterpolation_GeneralizedCubic:
+		case ZEND_ENUM_Gd_InterpolationMethod_GeneralizedCubic:
 			return GD_GENERALIZED_CUBIC;
-		case ZEND_ENUM_Gd_ScaleInterpolation_Hermite:
+		case ZEND_ENUM_Gd_InterpolationMethod_Hermite:
 			return GD_HERMITE;
-		case ZEND_ENUM_Gd_ScaleInterpolation_Hamming:
+		case ZEND_ENUM_Gd_InterpolationMethod_Hamming:
 			return GD_HAMMING;
-		case ZEND_ENUM_Gd_ScaleInterpolation_Hanning:
+		case ZEND_ENUM_Gd_InterpolationMethod_Hanning:
 			return GD_HANNING;
-		case ZEND_ENUM_Gd_ScaleInterpolation_Mitchell:
+		case ZEND_ENUM_Gd_InterpolationMethod_Mitchell:
 			return GD_MITCHELL;
-		case ZEND_ENUM_Gd_ScaleInterpolation_NearestNeighbour:
+		case ZEND_ENUM_Gd_InterpolationMethod_NearestNeighbour:
 			return GD_NEAREST_NEIGHBOUR;
-		case ZEND_ENUM_Gd_ScaleInterpolation_Power:
+		case ZEND_ENUM_Gd_InterpolationMethod_Power:
 			return GD_POWER;
-		case ZEND_ENUM_Gd_ScaleInterpolation_Quadratic:
+		case ZEND_ENUM_Gd_InterpolationMethod_Quadratic:
 			return GD_QUADRATIC;
-		case ZEND_ENUM_Gd_ScaleInterpolation_Sinc:
+		case ZEND_ENUM_Gd_InterpolationMethod_Sinc:
 			return GD_SINC;
-		case ZEND_ENUM_Gd_ScaleInterpolation_Triangle:
+		case ZEND_ENUM_Gd_InterpolationMethod_Triangle:
 			return GD_TRIANGLE;
-		case ZEND_ENUM_Gd_ScaleInterpolation_Weighted4:
+		case ZEND_ENUM_Gd_InterpolationMethod_Weighted4:
 			return GD_WEIGHTED4;
-		case ZEND_ENUM_Gd_ScaleInterpolation_Lanczos3:
+		case ZEND_ENUM_Gd_InterpolationMethod_Lanczos3:
 			return GD_LANCZOS3;
-		case ZEND_ENUM_Gd_ScaleInterpolation_Lanczos8:
+		case ZEND_ENUM_Gd_InterpolationMethod_Lanczos8:
 			return GD_LANCZOS8;
-		case ZEND_ENUM_Gd_ScaleInterpolation_BlackmanBessel:
+		case ZEND_ENUM_Gd_InterpolationMethod_BlackmanBessel:
 			return GD_BLACKMAN_BESSEL;
-		case ZEND_ENUM_Gd_ScaleInterpolation_BlackmanSinc:
+		case ZEND_ENUM_Gd_InterpolationMethod_BlackmanSinc:
 			return GD_BLACKMAN_SINC;
-		case ZEND_ENUM_Gd_ScaleInterpolation_QuadraticBSpline:
+		case ZEND_ENUM_Gd_InterpolationMethod_QuadraticBSpline:
 			return GD_QUADRATIC_BSPLINE;
-		case ZEND_ENUM_Gd_ScaleInterpolation_Cosine:
+		case ZEND_ENUM_Gd_InterpolationMethod_Cosine:
 			return GD_COSINE;
-		case ZEND_ENUM_Gd_ScaleInterpolation_Welsh:
+		case ZEND_ENUM_Gd_InterpolationMethod_Welsh:
 			return GD_WELSH;
 		default:
-			zend_throw_error(NULL, "Unsupported Gd\\ScaleInterpolation");
-			return GD_SCALE_INTERPOLATION_AUTO;
+			zend_throw_error(NULL, "Unsupported Gd\\InterpolationMethod");
+			return null_value;
 	}
 }
 
@@ -396,6 +400,27 @@ static int php_gd_auto_crop_mode_from_zval(zval *mode_zv)
 			zend_throw_error(NULL, "Unsupported Gd\\AutoCropMode");
 			return GD_CROP_DEFAULT;
 	}
+}
+#endif
+
+#ifdef HAVE_GD_BUNDLED
+static bool php_gd_validate_affine_matrix(const double affine[6])
+{
+	double inverse[6];
+
+	for (uint32_t i = 0; i < 6; i++) {
+		if (!isfinite(affine[i])) {
+			zend_argument_value_error(1, "must contain only finite values");
+			return false;
+		}
+	}
+
+	if (gdAffineInvert(inverse, affine) != GD_TRUE) {
+		zend_argument_value_error(1, "must be invertible");
+		return false;
+	}
+
+	return true;
 }
 #endif
 
@@ -677,7 +702,7 @@ PHP_METHOD(Gd_ScaleOptions, __construct)
 		Z_PARAM_OBJECT_OF_CLASS(gravity_zv, php_gd_scale_gravity_ce)
 		Z_PARAM_OBJECT_OF_CLASS_OR_NULL(strategy_zv, php_gd_scale_strategy_ce)
 		Z_PARAM_LONG(background_color)
-		Z_PARAM_OBJECT_OF_CLASS_OR_NULL(interpolation_zv, php_gd_scale_interpolation_ce)
+		Z_PARAM_OBJECT_OF_CLASS_OR_NULL(interpolation_zv, php_gd_interpolation_method_ce)
 	ZEND_PARSE_PARAMETERS_END();
 
 	if (!width_is_null && !php_gd_validate_scale_dimension(width, 1)) {
@@ -723,6 +748,37 @@ PHP_METHOD(Gd_ScaleOptions, __construct)
 		zend_update_property(php_gd_scale_options_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("interpolation"), interpolation_zv);
 	}
 }
+
+#ifdef HAVE_GD_BUNDLED
+PHP_METHOD(Gd_TransformOptions, __construct)
+{
+	zval *clip_zv = NULL, *interpolation_zv = NULL;
+	zend_long background_color = 0x7f000000;
+
+	ZEND_PARSE_PARAMETERS_START(0, 3)
+		Z_PARAM_OPTIONAL
+		Z_PARAM_OBJECT_OF_CLASS_OR_NULL(clip_zv, php_gd_get_rect_ce())
+		Z_PARAM_LONG(background_color)
+		Z_PARAM_OBJECT_OF_CLASS_OR_NULL(interpolation_zv, php_gd_interpolation_method_ce)
+	ZEND_PARSE_PARAMETERS_END();
+
+	if (!php_gd_validate_truecolor_alpha(background_color, 2)) {
+		RETURN_THROWS();
+	}
+
+	if (clip_zv == NULL) {
+		zend_update_property_null(php_gd_transform_options_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("clip"));
+	} else {
+		zend_update_property(php_gd_transform_options_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("clip"), clip_zv);
+	}
+	zend_update_property_long(php_gd_transform_options_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("backgroundColor"), background_color);
+	if (interpolation_zv == NULL) {
+		zend_update_property_null(php_gd_transform_options_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("interpolation"));
+	} else {
+		zend_update_property(php_gd_transform_options_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("interpolation"), interpolation_zv);
+	}
+}
+#endif
 
 PHP_METHOD(Gd_AutoCropOptions, __construct)
 {
@@ -1036,7 +1092,7 @@ PHP_METHOD(GdImage, scale)
 		if (EG(exception)) {
 			RETURN_THROWS();
 		}
-		interpolation = php_gd_scale_interpolation_from_zval(interpolation_zv);
+		interpolation = php_gd_interpolation_method_from_zval(interpolation_zv, GD_SCALE_INTERPOLATION_AUTO);
 		if (EG(exception)) {
 			RETURN_THROWS();
 		}
@@ -1118,6 +1174,126 @@ PHP_METHOD(GdImage, autoCrop)
 #endif
 }
 
+#ifdef HAVE_GD_BUNDLED
+PHP_METHOD(GdImage, transform)
+{
+	zval *matrix_zv;
+	zval *options_zv = NULL;
+	zval rv_clip, rv_background_color, rv_interpolation;
+	zval *clip_zv = NULL, *background_color_zv = NULL, *interpolation_zv = NULL;
+	gdImagePtr src, transform_src, dst;
+	gdRect clip, area_full, bbox;
+	gdRectPtr clip_ptr = NULL;
+	double affine[6], translated_affine[6], translate[6];
+	zend_long background_color = 0x7f000000;
+	int interpolation = GD_SCALE_INTERPOLATION_AUTO;
+	bool cloned_source = false;
+
+	ZEND_PARSE_PARAMETERS_START(1, 2)
+		Z_PARAM_OBJECT_OF_CLASS(matrix_zv, php_gd_get_matrix_ce())
+		Z_PARAM_OPTIONAL
+		Z_PARAM_OBJECT_OF_CLASS_OR_NULL(options_zv, php_gd_transform_options_ce)
+	ZEND_PARSE_PARAMETERS_END();
+
+	php_gd_matrix_to_affine(matrix_zv, affine);
+	if (!php_gd_validate_affine_matrix(affine)) {
+		RETURN_THROWS();
+	}
+
+	if (options_zv != NULL) {
+		clip_zv = zend_read_property(php_gd_transform_options_ce, Z_OBJ_P(options_zv), ZEND_STRL("clip"), true, &rv_clip);
+		background_color_zv = zend_read_property(php_gd_transform_options_ce, Z_OBJ_P(options_zv), ZEND_STRL("backgroundColor"), true, &rv_background_color);
+		background_color = Z_LVAL_P(background_color_zv);
+		interpolation_zv = zend_read_property(php_gd_transform_options_ce, Z_OBJ_P(options_zv), ZEND_STRL("interpolation"), true, &rv_interpolation);
+		interpolation = php_gd_interpolation_method_from_zval(interpolation_zv, GD_SCALE_INTERPOLATION_AUTO);
+		if (EG(exception)) {
+			RETURN_THROWS();
+		}
+	}
+
+	if (clip_zv != NULL && Z_TYPE_P(clip_zv) != IS_NULL) {
+		if (!php_gd_rect_to_gd_rect(clip_zv, &clip)) {
+			RETURN_THROWS();
+		}
+		clip_ptr = &clip;
+	}
+
+	src = php_gd_libgdimageptr_from_zval_p(ZEND_THIS);
+	if (clip_ptr == NULL) {
+		area_full.x = 0;
+		area_full.y = 0;
+		area_full.width = gdImageSX(src);
+		area_full.height = gdImageSY(src);
+		clip_ptr = &area_full;
+	}
+
+	if (!gdImageTrueColor(src) || interpolation != GD_SCALE_INTERPOLATION_AUTO) {
+		transform_src = gdImageClone(src);
+		if (transform_src == NULL) {
+			zend_throw_error(NULL, "Failed to transform GdImage");
+			RETURN_THROWS();
+		}
+		cloned_source = true;
+		if (!gdImageTrueColor(transform_src)) {
+			gdImagePaletteToTrueColor(transform_src);
+		}
+	} else {
+		transform_src = src;
+	}
+
+	if (interpolation != GD_SCALE_INTERPOLATION_AUTO
+			&& !gdImageSetInterpolationMethod(transform_src, (gdInterpolationMethod) interpolation)) {
+		if (cloned_source) {
+			gdImageDestroy(transform_src);
+		}
+		zend_throw_error(NULL, "Failed to transform GdImage");
+		RETURN_THROWS();
+	}
+
+	if (gdTransformAffineBoundingBox(clip_ptr, affine, &bbox) != GD_TRUE) {
+		if (cloned_source) {
+			gdImageDestroy(transform_src);
+		}
+		zend_throw_error(NULL, "Failed to transform GdImage");
+		RETURN_THROWS();
+	}
+
+	dst = gdImageCreateTrueColor(bbox.width, bbox.height);
+	if (dst == NULL) {
+		if (cloned_source) {
+			gdImageDestroy(transform_src);
+		}
+		zend_throw_error(NULL, "Failed to transform GdImage");
+		RETURN_THROWS();
+	}
+	dst->saveAlphaFlag = 1;
+	gdImageAlphaBlending(dst, 0);
+	if ((background_color >> 24) >= gdAlphaTransparent) {
+		gdImageFilledRectangle(dst, 0, 0, bbox.width - 1, bbox.height - 1, gdTrueColorAlpha(0, 0, 0, gdAlphaTransparent));
+	} else {
+		gdImageFilledRectangle(dst, 0, 0, bbox.width - 1, bbox.height - 1, (int) background_color);
+		gdImageAlphaBlending(dst, 1);
+	}
+
+	gdAffineTranslate(translate, -bbox.x, -bbox.y);
+	gdAffineConcat(translated_affine, affine, translate);
+	if (gdTransformAffineCopy(dst, 0, 0, transform_src, clip_ptr, translated_affine) != GD_TRUE) {
+		if (cloned_source) {
+			gdImageDestroy(transform_src);
+		}
+		gdImageDestroy(dst);
+		zend_throw_error(NULL, "Failed to transform GdImage");
+		RETURN_THROWS();
+	}
+
+	if (cloned_source) {
+		gdImageDestroy(transform_src);
+	}
+
+	php_gd_assign_libgdimageptr_as_extgdimage(return_value, dst);
+}
+#endif
+
 PHP_METHOD(GdImage, perceptualDiff)
 {
 #ifdef PHP_GD_HAVE_PERCEPTUAL_DIFF
@@ -1196,8 +1372,11 @@ void php_gd_image_minit(void)
 	php_gd_scale_fit_ce = register_class_Gd_ScaleFit();
 	php_gd_scale_gravity_ce = register_class_Gd_ScaleGravity();
 	php_gd_scale_strategy_ce = register_class_Gd_ScaleStrategy();
-	php_gd_scale_interpolation_ce = register_class_Gd_ScaleInterpolation();
+	php_gd_interpolation_method_ce = register_class_Gd_InterpolationMethod();
 	php_gd_scale_options_ce = register_class_Gd_ScaleOptions();
+#ifdef HAVE_GD_BUNDLED
+	php_gd_transform_options_ce = register_class_Gd_TransformOptions();
+#endif
 	php_gd_perceptual_diff_mode_ce = register_class_Gd_PerceptualDiffMode();
 	php_gd_perceptual_diff_options_ce = register_class_Gd_PerceptualDiffOptions();
 	php_gd_perceptual_diff_result_ce = register_class_Gd_PerceptualDiffResult();

@@ -1,5 +1,5 @@
 /* This is a generated file, edit gd_image.stub.php instead.
- * Stub hash: d449884d79b2e73e5a5adb2e69fd15a8f79022da
+ * Stub hash: fac7cbd9060d32dd2e9cf0b8accabe3fb83dc49e
  * Has decl header: yes */
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Gd_PerceptualDiffOptions___construct, 0, 0, 0)
@@ -24,8 +24,16 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Gd_ScaleOptions___construct, 0, 0, 0)
 	ZEND_ARG_OBJ_INFO_WITH_DEFAULT_VALUE(0, gravity, Gd\\ScaleGravity, 0, "Gd\\ScaleGravity::Center")
 	ZEND_ARG_OBJ_INFO_WITH_DEFAULT_VALUE(0, strategy, Gd\\ScaleStrategy, 1, "null")
 	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, backgroundColor, IS_LONG, 0, "0x7f000000")
-	ZEND_ARG_OBJ_INFO_WITH_DEFAULT_VALUE(0, interpolation, Gd\\ScaleInterpolation, 1, "null")
+	ZEND_ARG_OBJ_INFO_WITH_DEFAULT_VALUE(0, interpolation, Gd\\InterpolationMethod, 1, "null")
 ZEND_END_ARG_INFO()
+
+#if defined(HAVE_GD_BUNDLED)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Gd_TransformOptions___construct, 0, 0, 0)
+	ZEND_ARG_OBJ_INFO_WITH_DEFAULT_VALUE(0, clip, Gd\\Rect, 1, "null")
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, backgroundColor, IS_LONG, 0, "0x7f000000")
+	ZEND_ARG_OBJ_INFO_WITH_DEFAULT_VALUE(0, interpolation, Gd\\InterpolationMethod, 1, "null")
+ZEND_END_ARG_INFO()
+#endif
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Gd_AutoCropOptions___construct, 0, 0, 0)
 	ZEND_ARG_OBJ_INFO_WITH_DEFAULT_VALUE(0, mode, Gd\\AutoCropMode, 0, "Gd\\AutoCropMode::Default")
@@ -58,6 +66,9 @@ ZEND_METHOD(Gd_PerceptualDiffOptions, __construct);
 ZEND_METHOD(Gd_PerceptualDiffResult, __construct);
 ZEND_METHOD(Gd_RotateOptions, __construct);
 ZEND_METHOD(Gd_ScaleOptions, __construct);
+#if defined(HAVE_GD_BUNDLED)
+ZEND_METHOD(Gd_TransformOptions, __construct);
+#endif
 ZEND_METHOD(Gd_AutoCropOptions, __construct);
 ZEND_METHOD(Gd_Image, __construct);
 ZEND_METHOD(Gd_Image, create);
@@ -84,6 +95,13 @@ static const zend_function_entry class_Gd_ScaleOptions_methods[] = {
 	ZEND_ME(Gd_ScaleOptions, __construct, arginfo_class_Gd_ScaleOptions___construct, ZEND_ACC_PUBLIC)
 	ZEND_FE_END
 };
+
+#if defined(HAVE_GD_BUNDLED)
+static const zend_function_entry class_Gd_TransformOptions_methods[] = {
+	ZEND_ME(Gd_TransformOptions, __construct, arginfo_class_Gd_TransformOptions___construct, ZEND_ACC_PUBLIC)
+	ZEND_FE_END
+};
+#endif
 
 static const zend_function_entry class_Gd_AutoCropOptions_methods[] = {
 	ZEND_ME(Gd_AutoCropOptions, __construct, arginfo_class_Gd_AutoCropOptions___construct, ZEND_ACC_PUBLIC)
@@ -213,9 +231,9 @@ static zend_class_entry *register_class_Gd_ScaleStrategy(void)
 	return class_entry;
 }
 
-static zend_class_entry *register_class_Gd_ScaleInterpolation(void)
+static zend_class_entry *register_class_Gd_InterpolationMethod(void)
 {
-	zend_class_entry *class_entry = zend_register_internal_enum("Gd\\ScaleInterpolation", IS_UNDEF, NULL);
+	zend_class_entry *class_entry = zend_register_internal_enum("Gd\\InterpolationMethod", IS_UNDEF, NULL);
 
 	zend_enum_add_case_cstr(class_entry, "Default", NULL);
 
@@ -412,12 +430,44 @@ static zend_class_entry *register_class_Gd_ScaleOptions(void)
 	zval property_interpolation_default_value;
 	ZVAL_UNDEF(&property_interpolation_default_value);
 	zend_string *property_interpolation_name = zend_string_init("interpolation", sizeof("interpolation") - 1, true);
-	zend_string *property_interpolation_class_Gd_ScaleInterpolation = zend_string_init("Gd\\ScaleInterpolation", sizeof("Gd\\ScaleInterpolation")-1, 1);
-	zend_declare_typed_property(class_entry, property_interpolation_name, &property_interpolation_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_interpolation_class_Gd_ScaleInterpolation, 0, MAY_BE_NULL));
+	zend_string *property_interpolation_class_Gd_InterpolationMethod = zend_string_init("Gd\\InterpolationMethod", sizeof("Gd\\InterpolationMethod")-1, 1);
+	zend_declare_typed_property(class_entry, property_interpolation_name, &property_interpolation_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_interpolation_class_Gd_InterpolationMethod, 0, MAY_BE_NULL));
 	zend_string_release_ex(property_interpolation_name, true);
 
 	return class_entry;
 }
+
+#if defined(HAVE_GD_BUNDLED)
+static zend_class_entry *register_class_Gd_TransformOptions(void)
+{
+	zend_class_entry ce, *class_entry;
+
+	INIT_NS_CLASS_ENTRY(ce, "Gd", "TransformOptions", class_Gd_TransformOptions_methods);
+	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL|ZEND_ACC_NO_DYNAMIC_PROPERTIES|ZEND_ACC_READONLY_CLASS);
+
+	zval property_clip_default_value;
+	ZVAL_UNDEF(&property_clip_default_value);
+	zend_string *property_clip_name = zend_string_init("clip", sizeof("clip") - 1, true);
+	zend_string *property_clip_class_Gd_Rect = zend_string_init("Gd\\Rect", sizeof("Gd\\Rect")-1, 1);
+	zend_declare_typed_property(class_entry, property_clip_name, &property_clip_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_clip_class_Gd_Rect, 0, MAY_BE_NULL));
+	zend_string_release_ex(property_clip_name, true);
+
+	zval property_backgroundColor_default_value;
+	ZVAL_UNDEF(&property_backgroundColor_default_value);
+	zend_string *property_backgroundColor_name = zend_string_init("backgroundColor", sizeof("backgroundColor") - 1, true);
+	zend_declare_typed_property(class_entry, property_backgroundColor_name, &property_backgroundColor_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_LONG));
+	zend_string_release_ex(property_backgroundColor_name, true);
+
+	zval property_interpolation_default_value;
+	ZVAL_UNDEF(&property_interpolation_default_value);
+	zend_string *property_interpolation_name = zend_string_init("interpolation", sizeof("interpolation") - 1, true);
+	zend_string *property_interpolation_class_Gd_InterpolationMethod = zend_string_init("Gd\\InterpolationMethod", sizeof("Gd\\InterpolationMethod")-1, 1);
+	zend_declare_typed_property(class_entry, property_interpolation_name, &property_interpolation_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_interpolation_class_Gd_InterpolationMethod, 0, MAY_BE_NULL));
+	zend_string_release_ex(property_interpolation_name, true);
+
+	return class_entry;
+}
+#endif
 
 static zend_class_entry *register_class_Gd_AutoCropOptions(void)
 {

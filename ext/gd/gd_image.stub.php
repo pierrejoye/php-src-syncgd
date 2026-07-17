@@ -67,7 +67,7 @@ namespace Gd {
         case Attention;
     }
 
-    enum ScaleInterpolation
+    enum InterpolationMethod
     {
         case Default;
         case Bell;
@@ -154,7 +154,7 @@ namespace Gd {
         public ScaleGravity $gravity;
         public ?ScaleStrategy $strategy;
         public int $backgroundColor;
-        public ?ScaleInterpolation $interpolation;
+        public ?InterpolationMethod $interpolation;
 
         public function __construct(
             ?int $width = null,
@@ -163,9 +163,25 @@ namespace Gd {
             ScaleGravity $gravity = ScaleGravity::Center,
             ?ScaleStrategy $strategy = null,
             int $backgroundColor = 0x7f000000,
-            ?ScaleInterpolation $interpolation = null,
+            ?InterpolationMethod $interpolation = null,
         ) {}
     }
+
+#ifdef HAVE_GD_BUNDLED
+    /** @strict-properties */
+    final readonly class TransformOptions
+    {
+        public ?Rect $clip;
+        public int $backgroundColor;
+        public ?InterpolationMethod $interpolation;
+
+        public function __construct(
+            ?Rect $clip = null,
+            int $backgroundColor = 0x7f000000,
+            ?InterpolationMethod $interpolation = null,
+        ) {}
+    }
+#endif
 
     /** @strict-properties */
     final readonly class AutoCropOptions

@@ -40,15 +40,15 @@ function assert_similar(string $label, GdImage $actual, GdImage $expected): void
 
 $source = make_source();
 
-$widthOnly = $source->scale(4, null, new Gd\ScaleOptions(fit: Gd\ScaleFit::Fill, interpolation: Gd\ScaleInterpolation::NearestNeighbour));
+$widthOnly = $source->scale(4, null, new Gd\ScaleOptions(fit: Gd\ScaleFit::Fill, interpolation: Gd\InterpolationMethod::NearestNeighbour));
 printf("width-only %dx%d\n", imagesx($widthOnly), imagesy($widthOnly));
 assert_similar('width-only', $widthOnly, imagescale($source, 4, 2, IMG_NEAREST_NEIGHBOUR));
 
-$heightOnly = $source->scale(null, 2, new Gd\ScaleOptions(fit: Gd\ScaleFit::Fill, interpolation: Gd\ScaleInterpolation::NearestNeighbour));
+$heightOnly = $source->scale(null, 2, new Gd\ScaleOptions(fit: Gd\ScaleFit::Fill, interpolation: Gd\InterpolationMethod::NearestNeighbour));
 printf("height-only %dx%d\n", imagesx($heightOnly), imagesy($heightOnly));
 assert_similar('height-only', $heightOnly, imagescale($source, 4, 2, IMG_NEAREST_NEIGHBOUR));
 
-$fill = $source->scale(4, 4, new Gd\ScaleOptions(fit: Gd\ScaleFit::Fill, interpolation: Gd\ScaleInterpolation::Linear));
+$fill = $source->scale(4, 4, new Gd\ScaleOptions(fit: Gd\ScaleFit::Fill, interpolation: Gd\InterpolationMethod::Linear));
 printf("fill %dx%d\n", imagesx($fill), imagesy($fill));
 assert_similar('fill', $fill, imagescale($source, 4, 4, IMG_BILINEAR_FIXED));
 

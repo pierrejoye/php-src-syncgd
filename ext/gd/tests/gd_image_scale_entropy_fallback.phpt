@@ -29,10 +29,10 @@ imagefill($image, 0, 0, $color);
 
 $entropy = $image->scale(4, 4, new Gd\ScaleOptions(
     strategy: Gd\ScaleStrategy::Entropy,
-    interpolation: Gd\ScaleInterpolation::NearestNeighbour,
+    interpolation: Gd\InterpolationMethod::NearestNeighbour,
 ));
 $gravity = $image->scale(4, 4, new Gd\ScaleOptions(
-    interpolation: Gd\ScaleInterpolation::NearestNeighbour,
+    interpolation: Gd\InterpolationMethod::NearestNeighbour,
 ));
 
 $diff = $entropy->perceptualDiff($gravity, 0.0);

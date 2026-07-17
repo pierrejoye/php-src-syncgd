@@ -1762,7 +1762,7 @@ static int TiffWriteCopyOptions(gdTiffWriteOptions *dst, const gdTiffWriteOption
 {
     memset(dst, 0, sizeof(*dst));
     if (src != NULL) {
-        memcpy(dst, src, sizeof(*dst));
+        *dst = *src;
     }
     TiffWriteSetDefaults(dst);
     return 1;

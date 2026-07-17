@@ -19,6 +19,7 @@
 #include "php.h"
 #include "php_gd.h"
 #include "zend_enum.h"
+#include <limits.h>
 #include <math.h>
 #ifdef HAVE_GD_BUNDLED
 # include "libgd/gd.h"
@@ -465,6 +466,64 @@ static double php_gd_rect_read_double(zval *rect_zv, const char *name, size_t na
 	zval *prop = zend_read_property(php_gd_rect_ce, Z_OBJ_P(rect_zv), name, name_len, false, &rv);
 
 	return zval_get_double(prop);
+}
+
+static bool php_gd_rect_round_to_int(double value, const char *property, int *result)
+{
+	double rounded;
+
+	if (!isfinite(value)) {
+		zend_value_error("Gd\\Rect::$%s must be finite", property);
+		return false;
+	}
+
+	rounded = round(value);
+	if (rounded < INT_MIN || rounded > INT_MAX) {
+		zend_value_error("Gd\\Rect::$%s must round to a value between %d and %d", property, INT_MIN, INT_MAX);
+		return false;
+	}
+
+	*result = (int) rounded;
+	return true;
+}
+
+void php_gd_matrix_to_affine(zval *matrix_zv, double affine[6])
+{
+	php_gd_matrix_object *matrix = php_gd_matrix_from_zval(matrix_zv);
+
+	affine[0] = matrix->matrix.m00;
+	affine[1] = matrix->matrix.m10;
+	affine[2] = matrix->matrix.m01;
+	affine[3] = matrix->matrix.m11;
+	affine[4] = matrix->matrix.m02;
+	affine[5] = matrix->matrix.m12;
+}
+
+bool php_gd_rect_to_gd_rect(zval *rect_zv, gdRect *rect)
+{
+	int x, y, width, height;
+
+	if (!php_gd_rect_round_to_int(php_gd_rect_read_double(rect_zv, ZEND_STRL("x")), "x", &x) ||
+			!php_gd_rect_round_to_int(php_gd_rect_read_double(rect_zv, ZEND_STRL("y")), "y", &y) ||
+			!php_gd_rect_round_to_int(php_gd_rect_read_double(rect_zv, ZEND_STRL("width")), "width", &width) ||
+			!php_gd_rect_round_to_int(php_gd_rect_read_double(rect_zv, ZEND_STRL("height")), "height", &height)) {
+		return false;
+	}
+
+	if (width <= 0) {
+		zend_value_error("Gd\\Rect::$width must round to a value greater than 0");
+		return false;
+	}
+	if (height <= 0) {
+		zend_value_error("Gd\\Rect::$height must round to a value greater than 0");
+		return false;
+	}
+
+	rect->x = x;
+	rect->y = y;
+	rect->width = width;
+	rect->height = height;
+	return true;
 }
 
 static gdImagePtr php_gd_context_get_image(php_gd_context_object *intern)
@@ -2229,6 +2288,16 @@ PHP_METHOD(GdImage, getContext)
 zend_class_entry *php_gd_get_context_ce(void)
 {
 	return php_gd_context_ce;
+}
+
+zend_class_entry *php_gd_get_matrix_ce(void)
+{
+	return php_gd_matrix_ce;
+}
+
+zend_class_entry *php_gd_get_rect_ce(void)
+{
+	return php_gd_rect_ce;
 }
 
 void php_gd_2d_minit(void)

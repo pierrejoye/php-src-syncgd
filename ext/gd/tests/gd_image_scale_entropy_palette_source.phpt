@@ -50,7 +50,7 @@ var_dump(imageistruecolor($truecolor), imageistruecolor($palette));
 
 $options = new Gd\ScaleOptions(
     strategy: Gd\ScaleStrategy::Entropy,
-    interpolation: Gd\ScaleInterpolation::NearestNeighbour,
+    interpolation: Gd\InterpolationMethod::NearestNeighbour,
 );
 
 $fromTruecolor = $truecolor->scale(8, 8, $options);

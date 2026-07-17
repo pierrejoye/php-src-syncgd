@@ -52,15 +52,15 @@ foreach ([[0, 16], [32, 48]] as [$x1, $x2]) {
 
 $entropy = $image->scale(16, 16, new Gd\ScaleOptions(
     strategy: Gd\ScaleStrategy::Entropy,
-    interpolation: Gd\ScaleInterpolation::NearestNeighbour,
+    interpolation: Gd\InterpolationMethod::NearestNeighbour,
 ));
 $west = $image->scale(16, 16, new Gd\ScaleOptions(
     gravity: Gd\ScaleGravity::West,
-    interpolation: Gd\ScaleInterpolation::NearestNeighbour,
+    interpolation: Gd\InterpolationMethod::NearestNeighbour,
 ));
 $east = $image->scale(16, 16, new Gd\ScaleOptions(
     gravity: Gd\ScaleGravity::East,
-    interpolation: Gd\ScaleInterpolation::NearestNeighbour,
+    interpolation: Gd\InterpolationMethod::NearestNeighbour,
 ));
 
 $westDetail = count_color($west, $black) + count_color($west, $white);

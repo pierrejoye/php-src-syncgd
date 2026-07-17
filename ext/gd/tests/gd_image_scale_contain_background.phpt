@@ -58,7 +58,7 @@ function assert_similar(string $label, GdImage $actual, GdImage $expected): void
 
 $source = make_source();
 
-$default = $source->scale(8, 8, new Gd\ScaleOptions(fit: Gd\ScaleFit::Contain, interpolation: Gd\ScaleInterpolation::NearestNeighbour));
+$default = $source->scale(8, 8, new Gd\ScaleOptions(fit: Gd\ScaleFit::Contain, interpolation: Gd\InterpolationMethod::NearestNeighbour));
 assert_similar('default', $default, contain_reference($source, 8, 8, 0x7f000000));
 printf("default-corner %08X\n", imagecolorat($default, 0, 0));
 
@@ -66,7 +66,7 @@ $background = imagecolorallocatealpha($source, 0, 255, 0, 50);
 $custom = $source->scale(8, 8, new Gd\ScaleOptions(
     fit: Gd\ScaleFit::Contain,
     backgroundColor: $background,
-    interpolation: Gd\ScaleInterpolation::NearestNeighbour,
+    interpolation: Gd\InterpolationMethod::NearestNeighbour,
 ));
 assert_similar('custom', $custom, contain_reference($source, 8, 8, $background));
 printf("custom-corner %08X\n", imagecolorat($custom, 0, 0));

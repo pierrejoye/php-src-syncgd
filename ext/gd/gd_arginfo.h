@@ -1,5 +1,5 @@
 /* This is a generated file, edit gd.stub.php instead.
- * Stub hash: f8a742ed6a7bab49dc2a9b79ff7a3d1483e5de49 */
+ * Stub hash: 2a326457050f5961b402a8f150e059d350c0616c */
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_gd_info, 0, 0, IS_ARRAY, 0)
 ZEND_END_ARG_INFO()
@@ -591,6 +591,13 @@ ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_GdImage_autoCrop, 0, 0, GdI
 	ZEND_ARG_OBJ_INFO_WITH_DEFAULT_VALUE(0, options, Gd\\AutoCropOptions, 1, "null")
 ZEND_END_ARG_INFO()
 
+#if defined(HAVE_GD_BUNDLED)
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_GdImage_transform, 0, 1, GdImage, 0)
+	ZEND_ARG_OBJ_INFO(0, matrix, Gd\\Matrix, 0)
+	ZEND_ARG_OBJ_INFO_WITH_DEFAULT_VALUE(0, options, Gd\\TransformOptions, 1, "null")
+ZEND_END_ARG_INFO()
+#endif
+
 ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_GdImage_getContext, 0, 0, Gd\\Context, 0)
 ZEND_END_ARG_INFO()
 
@@ -734,6 +741,9 @@ ZEND_METHOD(GdImage, saveToString);
 ZEND_METHOD(GdImage, rotate);
 ZEND_METHOD(GdImage, scale);
 ZEND_METHOD(GdImage, autoCrop);
+#if defined(HAVE_GD_BUNDLED)
+ZEND_METHOD(GdImage, transform);
+#endif
 ZEND_METHOD(GdImage, getContext);
 ZEND_METHOD(GdImage, perceptualDiff);
 
@@ -878,6 +888,9 @@ static const zend_function_entry class_GdImage_methods[] = {
 	ZEND_ME(GdImage, rotate, arginfo_class_GdImage_rotate, ZEND_ACC_PUBLIC)
 	ZEND_ME(GdImage, scale, arginfo_class_GdImage_scale, ZEND_ACC_PUBLIC)
 	ZEND_ME(GdImage, autoCrop, arginfo_class_GdImage_autoCrop, ZEND_ACC_PUBLIC)
+#if defined(HAVE_GD_BUNDLED)
+	ZEND_ME(GdImage, transform, arginfo_class_GdImage_transform, ZEND_ACC_PUBLIC)
+#endif
 	ZEND_ME(GdImage, getContext, arginfo_class_GdImage_getContext, ZEND_ACC_PUBLIC)
 	ZEND_ME(GdImage, perceptualDiff, arginfo_class_GdImage_perceptualDiff, ZEND_ACC_PUBLIC)
 	ZEND_FE_END

@@ -37,7 +37,7 @@ for ($y = 0; $y < 8; $y++) {
 
 $scaled = $image->scale(4, 4, new Gd\ScaleOptions(
     strategy: Gd\ScaleStrategy::Entropy,
-    interpolation: Gd\ScaleInterpolation::NearestNeighbour,
+    interpolation: Gd\InterpolationMethod::NearestNeighbour,
 ));
 
 var_dump(imagecolorat($scaled, 2, 0) === $redAlpha63 || imagecolorat($scaled, 2, 0) === $greenAlpha31);

@@ -19,8 +19,12 @@ typedef struct _php_gd_context_object {
 
 void php_gd_2d_minit(void);
 zend_class_entry *php_gd_get_context_ce(void);
+zend_class_entry *php_gd_get_matrix_ce(void);
+zend_class_entry *php_gd_get_rect_ce(void);
 php_gd_context_object *php_gd_context_object_from_zend_object(zend_object *zobj);
 php_gd_context_object *php_gd_context_from_zval(zval *zv);
+void php_gd_matrix_to_affine(zval *matrix_zv, double affine[6]);
+bool php_gd_rect_to_gd_rect(zval *rect_zv, gdRect *rect);
 bool php_gd_2d_validate_finite_arg(double value, uint32_t arg_num);
 
 #endif

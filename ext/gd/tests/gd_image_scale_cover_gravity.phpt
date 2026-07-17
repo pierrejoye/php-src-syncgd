@@ -44,7 +44,7 @@ function column_source(): GdImage {
 }
 
 function show_vertical(Gd\ScaleGravity $gravity): void {
-    $scaled = row_source()->scale(4, 2, new Gd\ScaleOptions(gravity: $gravity, interpolation: Gd\ScaleInterpolation::NearestNeighbour));
+    $scaled = row_source()->scale(4, 2, new Gd\ScaleOptions(gravity: $gravity, interpolation: Gd\InterpolationMethod::NearestNeighbour));
     printf(
         "%s rows %08X %08X\n",
         $gravity->name,
@@ -54,7 +54,7 @@ function show_vertical(Gd\ScaleGravity $gravity): void {
 }
 
 function show_horizontal(Gd\ScaleGravity $gravity): void {
-    $scaled = column_source()->scale(2, 4, new Gd\ScaleOptions(gravity: $gravity, interpolation: Gd\ScaleInterpolation::NearestNeighbour));
+    $scaled = column_source()->scale(2, 4, new Gd\ScaleOptions(gravity: $gravity, interpolation: Gd\InterpolationMethod::NearestNeighbour));
     printf(
         "%s columns %08X %08X\n",
         $gravity->name,

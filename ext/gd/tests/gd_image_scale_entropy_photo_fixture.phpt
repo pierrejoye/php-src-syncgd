@@ -34,7 +34,7 @@ if (!$image) {
 $entropy = $image->scale(120, 180, new Gd\ScaleOptions(
     fit: Gd\ScaleFit::Cover,
     strategy: Gd\ScaleStrategy::Entropy,
-    interpolation: Gd\ScaleInterpolation::Linear,
+    interpolation: Gd\InterpolationMethod::Linear,
 ));
 
 $expected = imagecreatefromjpeg(__DIR__ . "/gd_image_scale_entropy_portrait_right_side_expected.jpg");

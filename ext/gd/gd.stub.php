@@ -507,6 +507,20 @@ final class GdImage
         ?\Gd\AutoCropOptions $options = null,
     ): GdImage {}
 
+#ifdef HAVE_GD_BUNDLED
+    /**
+     * Applies an arbitrary affine transform to the image, returning a new
+     * image. If options include a clip rectangle, its float values are rounded
+     * to the nearest integer source rectangle before transforming.
+     *
+     * @refcount 1
+     */
+    public function transform(
+        \Gd\Matrix $matrix,
+        ?\Gd\TransformOptions $options = null,
+    ): GdImage {}
+#endif
+
     public function getContext(): \Gd\Context {}
 
     public function perceptualDiff(
