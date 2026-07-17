@@ -94,7 +94,7 @@ foreach ($formats as [$format, $codec]) {
         $options = $format === Gd\Codec\Format::Tiff
             ? new Gd\Tiff\WriteOptions(Gd\Tiff\Compression::None)
             : null;
-        $bytes = $im->saveToString($format, $options);
+        $bytes = $im->toString($format, $options);
         return same_size(Gd\Image::loadFromString($bytes));
     });
 }

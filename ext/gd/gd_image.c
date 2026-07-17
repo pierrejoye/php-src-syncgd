@@ -804,7 +804,7 @@ PHP_METHOD(Gd_AutoCropOptions, __construct)
 	zend_update_property_long(php_gd_auto_crop_options_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("color"), color);
 }
 
-PHP_METHOD(GdImage, saveTo)
+PHP_METHOD(GdImage, toFile)
 {
 	zend_string *path;
 	zval *format_zv = NULL;
@@ -856,53 +856,37 @@ PHP_METHOD(GdImage, saveTo)
 	}
 }
 
-PHP_METHOD(GdImage, saveToStream)
+PHP_METHOD(GdImage, toStream)
 {
 	zval *stream_zv = NULL;
 	zval *format_zv = NULL;
 	zval *options_zv = NULL;
-	zval output_stream_zv;
 	zval default_options;
 	php_gd_codec_write_entry *entry;
 	zend_class_entry *options_ce;
-	php_stream *output_stream = NULL;
 
-	ZEND_PARSE_PARAMETERS_START(0, 3)
+	ZEND_PARSE_PARAMETERS_START(1, 3)
+		Z_PARAM_ZVAL(stream_zv)
 		Z_PARAM_OPTIONAL
-		Z_PARAM_ZVAL_OR_NULL(stream_zv)
 		Z_PARAM_OBJECT_OF_CLASS_OR_NULL(format_zv, php_gd_codec_format_ce)
 		Z_PARAM_OBJECT_OF_CLASS_OR_NULL(options_zv, php_gd_codec_write_options_ce)
 	ZEND_PARSE_PARAMETERS_END();
+
+	if (Z_TYPE_P(stream_zv) != IS_RESOURCE) {
+		zend_argument_type_error(1, "must be a valid stream resource");
+		RETURN_THROWS();
+	}
 
 	if (format_zv == NULL) {
 		zend_argument_value_error(2, "must be provided");
 		RETURN_THROWS();
 	}
 
-	if (stream_zv == NULL || Z_TYPE_P(stream_zv) == IS_NULL) {
-		output_stream = php_stream_open_wrapper("php://output", "wb", REPORT_ERRORS, NULL);
-		if (output_stream == NULL) {
-			zend_throw_exception_ex(php_gd_codec_exception_ce, 0, "Failed to open output stream");
-			RETURN_THROWS();
-		}
-		php_stream_to_zval(output_stream, &output_stream_zv);
-		stream_zv = &output_stream_zv;
-	} else if (Z_TYPE_P(stream_zv) != IS_RESOURCE) {
-		zend_argument_type_error(1, "must be a valid stream resource");
-		RETURN_THROWS();
-	}
-
 	options_ce = php_gd_write_options_ce_from_format_zval(format_zv);
 	if (options_ce == NULL) {
-		if (output_stream != NULL) {
-			zval_ptr_dtor(&output_stream_zv);
-		}
 		RETURN_THROWS();
 	}
 	if (!php_gd_prepare_write_options(options_zv, &default_options, options_ce)) {
-		if (output_stream != NULL) {
-			zval_ptr_dtor(&output_stream_zv);
-		}
 		RETURN_THROWS();
 	}
 	if (options_zv == NULL) {
@@ -915,9 +899,6 @@ PHP_METHOD(GdImage, saveToStream)
 		if (!Z_ISUNDEF(default_options)) {
 			zval_ptr_dtor(&default_options);
 		}
-		if (output_stream != NULL) {
-			zval_ptr_dtor(&output_stream_zv);
-		}
 		RETURN_THROWS();
 	}
 
@@ -925,12 +906,9 @@ PHP_METHOD(GdImage, saveToStream)
 	if (!Z_ISUNDEF(default_options)) {
 		zval_ptr_dtor(&default_options);
 	}
-	if (output_stream != NULL) {
-		zval_ptr_dtor(&output_stream_zv);
-	}
 }
 
-PHP_METHOD(GdImage, saveToString)
+PHP_METHOD(GdImage, toString)
 {
 	zval *format_zv;
 	zval *options_zv = NULL;

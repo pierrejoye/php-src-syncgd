@@ -1,5 +1,5 @@
 --TEST--
-GdImage generic saveTo* behavior
+GdImage generic to* behavior
 --EXTENSIONS--
 gd
 --SKIPIF--
@@ -30,41 +30,45 @@ $im = save_to_image();
 
 record_failure($failures, 'png extension inference', function () use ($im) {
     $file = tempnam(sys_get_temp_dir(), 'gd-save-to-') . '.png';
-    $im->saveTo($file);
+    $im->toFile($file);
     $bytes = file_get_contents($file);
     unlink($file);
     return str_starts_with($bytes, "\x89PNG");
 });
 
 record_failure($failures, 'png explicit string', function () use ($im) {
-    return str_starts_with($im->saveToString(Gd\Codec\Format::Png), "\x89PNG");
+    return str_starts_with($im->toString(Gd\Codec\Format::Png), "\x89PNG");
 });
 
 record_failure($failures, 'png stream', function () use ($im) {
     $stream = fopen('php://temp', 'w+b');
-    $im->saveToStream($stream, Gd\Codec\Format::Png);
+    $im->toStream($stream, Gd\Codec\Format::Png);
     rewind($stream);
     $bytes = stream_get_contents($stream);
     fclose($stream);
     return str_starts_with($bytes, "\x89PNG");
 });
 
-record_failure($failures, 'png output stream null', function () use ($im) {
-    ob_start();
-    $im->saveToStream(null, Gd\Codec\Format::Png);
-    $bytes = ob_get_clean();
-    return str_starts_with($bytes, "\x89PNG");
+record_failure($failures, 'png output stream omitted', function () use ($im) {
+    try {
+        $im->toStream();
+        return false;
+    } catch (ArgumentCountError) {
+        return true;
+    }
 });
 
-record_failure($failures, 'png output stream named format', function () use ($im) {
-    ob_start();
-    $im->saveToStream(format: Gd\Codec\Format::Png);
-    $bytes = ob_get_clean();
-    return str_starts_with($bytes, "\x89PNG");
+record_failure($failures, 'png output stream null', function () use ($im) {
+    try {
+        $im->toStream(null, Gd\Codec\Format::Png);
+        return false;
+    } catch (TypeError) {
+        return true;
+    }
 });
 
 try {
-    $im->saveTo(sys_get_temp_dir() . '/gd-save-to.unknown-extension');
+    $im->toFile(sys_get_temp_dir() . '/gd-save-to.unknown-extension');
     $failures[] = 'unknown extension did not throw';
 } catch (Gd\Codec\CodecException) {
 }
@@ -72,7 +76,7 @@ try {
 if (class_exists(Gd\Jpeg\Codec::class)) {
     record_failure($failures, 'explicit jpeg ignores png extension', function () use ($im) {
         $file = tempnam(sys_get_temp_dir(), 'gd-save-to-') . '.png';
-        $im->saveTo($file, Gd\Codec\Format::Jpeg, new Gd\Jpeg\WriteOptions());
+        $im->toFile($file, Gd\Codec\Format::Jpeg, new Gd\Jpeg\WriteOptions());
         $bytes = file_get_contents($file);
         unlink($file);
         return str_starts_with($bytes, "\xff\xd8");
@@ -80,7 +84,7 @@ if (class_exists(Gd\Jpeg\Codec::class)) {
 
     record_failure($failures, 'format options mismatch throws', function () use ($im) {
         try {
-            $im->saveToString(Gd\Codec\Format::Png, new Gd\Jpeg\WriteOptions());
+            $im->toString(Gd\Codec\Format::Png, new Gd\Jpeg\WriteOptions());
             return false;
         } catch (Gd\Codec\CodecException) {
             return true;
@@ -90,7 +94,7 @@ if (class_exists(Gd\Jpeg\Codec::class)) {
 
 if (class_exists(Gd\Gif\Codec::class)) {
     record_failure($failures, 'gif empty options', function () use ($im) {
-        return str_starts_with($im->saveToString(Gd\Codec\Format::Gif, new Gd\Gif\WriteOptions()), 'GIF');
+        return str_starts_with($im->toString(Gd\Codec\Format::Gif, new Gd\Gif\WriteOptions()), 'GIF');
     });
 }
 
@@ -99,7 +103,7 @@ if (class_exists(Gd\Qoi\Codec::class)) {
         return (new Gd\Qoi\WriteOptions())->colorspace === Gd\Qoi\Colorspace::SRGB;
     });
     record_failure($failures, 'qoi linear options', function () use ($im) {
-        $bytes = $im->saveToString(Gd\Codec\Format::Qoi, new Gd\Qoi\WriteOptions(Gd\Qoi\Colorspace::Linear));
+        $bytes = $im->toString(Gd\Codec\Format::Qoi, new Gd\Qoi\WriteOptions(Gd\Qoi\Colorspace::Linear));
         return substr($bytes, 0, 4) === 'qoif' && ord($bytes[13]) === 1;
     });
 }

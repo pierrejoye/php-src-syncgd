@@ -468,18 +468,18 @@ final class GdImage
     /**
      * @throws \Gd\Codec\CodecException
      */
-    public function saveTo(
+    public function toFile(
         string $path,
         ?\Gd\Codec\Format $format = null,
         ?\Gd\Codec\WriteOptions $options = null,
     ): void {}
 
     /**
-     * @param resource|null $stream
+     * @param resource $stream
      * @throws \Gd\Codec\CodecException
      */
-    public function saveToStream(
-        $stream = null,
+    public function toStream(
+        $stream,
         ?\Gd\Codec\Format $format = null,
         ?\Gd\Codec\WriteOptions $options = null,
     ): void {}
@@ -487,7 +487,7 @@ final class GdImage
     /**
      * @throws \Gd\Codec\CodecException
      */
-    public function saveToString(
+    public function toString(
         \Gd\Codec\Format $format,
         ?\Gd\Codec\WriteOptions $options = null,
     ): string {}

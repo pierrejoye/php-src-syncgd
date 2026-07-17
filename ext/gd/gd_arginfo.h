@@ -1,5 +1,5 @@
 /* This is a generated file, edit gd.stub.php instead.
- * Stub hash: 7ae7456b5809dada2c5161552670f83240132afa */
+ * Stub hash: 7681d9b68950036a4b98e9e5bf4bd0a5202ca1d6 */
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_gd_info, 0, 0, IS_ARRAY, 0)
 ZEND_END_ARG_INFO()
@@ -559,19 +559,19 @@ ZEND_BEGIN_ARG_WITH_RETURN_TYPE_MASK_EX(arginfo_imageresolution, 0, 1, MAY_BE_AR
 	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, resolution_y, IS_LONG, 1, "null")
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_GdImage_saveTo, 0, 1, IS_VOID, 0)
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_GdImage_toFile, 0, 1, IS_VOID, 0)
 	ZEND_ARG_TYPE_INFO(0, path, IS_STRING, 0)
 	ZEND_ARG_OBJ_INFO_WITH_DEFAULT_VALUE(0, format, Gd\\Codec\\Format, 1, "null")
 	ZEND_ARG_OBJ_INFO_WITH_DEFAULT_VALUE(0, options, Gd\\Codec\\WriteOptions, 1, "null")
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_GdImage_saveToStream, 0, 0, IS_VOID, 0)
-	ZEND_ARG_INFO_WITH_DEFAULT_VALUE(0, stream, "null")
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_GdImage_toStream, 0, 1, IS_VOID, 0)
+	ZEND_ARG_INFO(0, stream)
 	ZEND_ARG_OBJ_INFO_WITH_DEFAULT_VALUE(0, format, Gd\\Codec\\Format, 1, "null")
 	ZEND_ARG_OBJ_INFO_WITH_DEFAULT_VALUE(0, options, Gd\\Codec\\WriteOptions, 1, "null")
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_GdImage_saveToString, 0, 1, IS_STRING, 0)
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_GdImage_toString, 0, 1, IS_STRING, 0)
 	ZEND_ARG_OBJ_INFO(0, format, Gd\\Codec\\Format, 0)
 	ZEND_ARG_OBJ_INFO_WITH_DEFAULT_VALUE(0, options, Gd\\Codec\\WriteOptions, 1, "null")
 ZEND_END_ARG_INFO()
@@ -745,9 +745,9 @@ ZEND_FUNCTION(imageaffinematrixconcat);
 ZEND_FUNCTION(imagegetinterpolation);
 ZEND_FUNCTION(imagesetinterpolation);
 ZEND_FUNCTION(imageresolution);
-ZEND_METHOD(GdImage, saveTo);
-ZEND_METHOD(GdImage, saveToStream);
-ZEND_METHOD(GdImage, saveToString);
+ZEND_METHOD(GdImage, toFile);
+ZEND_METHOD(GdImage, toStream);
+ZEND_METHOD(GdImage, toString);
 ZEND_METHOD(GdImage, rotate);
 ZEND_METHOD(GdImage, scale);
 ZEND_METHOD(GdImage, autoCrop);
@@ -893,9 +893,9 @@ static const zend_function_entry ext_functions[] = {
 };
 
 static const zend_function_entry class_GdImage_methods[] = {
-	ZEND_ME(GdImage, saveTo, arginfo_class_GdImage_saveTo, ZEND_ACC_PUBLIC)
-	ZEND_ME(GdImage, saveToStream, arginfo_class_GdImage_saveToStream, ZEND_ACC_PUBLIC)
-	ZEND_ME(GdImage, saveToString, arginfo_class_GdImage_saveToString, ZEND_ACC_PUBLIC)
+	ZEND_ME(GdImage, toFile, arginfo_class_GdImage_toFile, ZEND_ACC_PUBLIC)
+	ZEND_ME(GdImage, toStream, arginfo_class_GdImage_toStream, ZEND_ACC_PUBLIC)
+	ZEND_ME(GdImage, toString, arginfo_class_GdImage_toString, ZEND_ACC_PUBLIC)
 	ZEND_ME(GdImage, rotate, arginfo_class_GdImage_rotate, ZEND_ACC_PUBLIC)
 	ZEND_ME(GdImage, scale, arginfo_class_GdImage_scale, ZEND_ACC_PUBLIC)
 	ZEND_ME(GdImage, autoCrop, arginfo_class_GdImage_autoCrop, ZEND_ACC_PUBLIC)

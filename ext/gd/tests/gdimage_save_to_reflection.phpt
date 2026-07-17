@@ -1,5 +1,5 @@
 --TEST--
-GdImage generic saveTo* reflection and codec WriteOptions marker
+GdImage generic to* reflection and codec WriteOptions marker
 --EXTENSIONS--
 gd
 --FILE--
@@ -21,63 +21,69 @@ if (!enum_exists(Gd\Codec\Format::class)) {
 }
 
 $image = new ReflectionClass(GdImage::class);
-foreach (['saveTo', 'saveToStream', 'saveToString'] as $name) {
+foreach (['toFile', 'toStream', 'toString'] as $name) {
     if (!$image->hasMethod($name)) {
         $failures[] = "missing GdImage::$name";
     }
 }
 
-if ($image->hasMethod('saveTo')) {
-    $method = $image->getMethod('saveTo');
+foreach (['saveTo', 'saveToStream', 'saveToString'] as $name) {
+    if ($image->hasMethod($name)) {
+        $failures[] = "unexpected GdImage::$name";
+    }
+}
+
+if ($image->hasMethod('toFile')) {
+    $method = $image->getMethod('toFile');
     $params = $method->getParameters();
     if ((string) $params[0]->getType() !== 'string') {
-        $failures[] = 'saveTo path type';
+        $failures[] = 'toFile path type';
     }
     if ((string) $params[1]->getType() !== '?' . Gd\Codec\Format::class) {
-        $failures[] = 'saveTo format type';
+        $failures[] = 'toFile format type';
     }
     if (!$params[1]->isDefaultValueAvailable() || $params[1]->getDefaultValue() !== null) {
-        $failures[] = 'saveTo format default';
+        $failures[] = 'toFile format default';
     }
     if ((string) $params[2]->getType() !== '?' . Gd\Codec\WriteOptions::class) {
-        $failures[] = 'saveTo options type';
+        $failures[] = 'toFile options type';
     }
     if (!$params[2]->isDefaultValueAvailable() || $params[2]->getDefaultValue() !== null) {
-        $failures[] = 'saveTo options default';
+        $failures[] = 'toFile options default';
     }
 }
 
-if ($image->hasMethod('saveToStream')) {
-    $method = $image->getMethod('saveToStream');
+if ($image->hasMethod('toStream')) {
+    $method = $image->getMethod('toStream');
     $params = $method->getParameters();
-    if (!$params[0]->isDefaultValueAvailable() || $params[0]->getDefaultValue() !== null) {
-        $failures[] = 'saveToStream stream default';
+    if ($params[0]->isDefaultValueAvailable()) {
+        $failures[] = 'toStream stream required';
     }
     if ((string) $params[1]->getType() !== '?' . Gd\Codec\Format::class) {
-        $failures[] = 'saveToStream format type';
+        $failures[] = 'toStream format type';
     }
     if (!$params[1]->isDefaultValueAvailable() || $params[1]->getDefaultValue() !== null) {
-        $failures[] = 'saveToStream format default';
+        $failures[] = 'toStream format default';
     }
     if ((string) $params[2]->getType() !== '?' . Gd\Codec\WriteOptions::class) {
-        $failures[] = 'saveToStream options type';
+        $failures[] = 'toStream options type';
     }
     if (!$params[2]->isDefaultValueAvailable() || $params[2]->getDefaultValue() !== null) {
-        $failures[] = 'saveToStream options default';
+        $failures[] = 'toStream options default';
     }
 }
 
-if ($image->hasMethod('saveToString')) {
-    $method = $image->getMethod('saveToString');
+if ($image->hasMethod('toString')) {
+    $method = $image->getMethod('toString');
     $params = $method->getParameters();
     if ((string) $params[0]->getType() !== Gd\Codec\Format::class) {
-        $failures[] = 'saveToString format type';
+        $failures[] = 'toString format type';
     }
     if ((string) $params[1]->getType() !== '?' . Gd\Codec\WriteOptions::class) {
-        $failures[] = 'saveToString options type';
+        $failures[] = 'toString options type';
     }
     if ((string) $method->getReturnType() !== 'string') {
-        $failures[] = 'saveToString return type';
+        $failures[] = 'toString return type';
     }
 }
 
