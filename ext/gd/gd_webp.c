@@ -20,6 +20,7 @@
 #include "php_gd.h"
 #include "gd_codec_write.h"
 #include "gd_webp.h"
+#include "gd_metadata.h"
 #include "ext/spl/spl_exceptions.h"
 #include <stdint.h>
 
@@ -124,16 +125,29 @@ static bool php_gd_webp_bytes_are_animated(zend_string *bytes)
 #ifdef HAVE_GD_WEBP
 static zend_class_entry *php_gd_webp_write_options_ce;
 
-static int php_gd_webp_single_quality(zval *options_zv)
+static void php_gd_webp_build_write_options(zval *options_zv, gdWebpWriteOptions *options)
 {
 	zval rv;
 	zval *value;
 
+	gdWebpWriteOptionsInit(options);
 	if (options_zv == NULL) {
-		return -1;
+		return;
 	}
 	value = zend_read_property(php_gd_webp_write_options_ce, Z_OBJ_P(options_zv), ZEND_STRL("quality"), true, &rv);
-	return (int) Z_LVAL_P(value);
+	options->quality = (int) Z_LVAL_P(value);
+	value = zend_read_property(php_gd_webp_write_options_ce, Z_OBJ_P(options_zv), ZEND_STRL("metadata"), true, &rv);
+	if (Z_TYPE_P(value) == IS_OBJECT) {
+		options->metadata = php_gd_metadata_from_zval(value);
+	}
+}
+
+static void *php_gd_webp_encode(zval *image_zv, zval *options_zv, int *size)
+{
+	gdWebpWriteOptions options;
+
+	php_gd_webp_build_write_options(options_zv, &options);
+	return gdImageWebpPtrWithOptions(php_gd_libgdimageptr_from_zval_p(image_zv), size, &options);
 }
 
 static gdImagePtr php_gd_webp_decode_bytes(zend_string *bytes)
@@ -152,10 +166,12 @@ static gdImagePtr php_gd_webp_decode_bytes(zend_string *bytes)
 PHP_METHOD(Gd_Webp_WriteOptions, __construct)
 {
 	zend_long quality = -1;
+	zval *metadata = NULL;
 
-	ZEND_PARSE_PARAMETERS_START(0, 1)
+	ZEND_PARSE_PARAMETERS_START(0, 2)
 		Z_PARAM_OPTIONAL
 		Z_PARAM_LONG(quality)
+		Z_PARAM_OBJECT_OF_CLASS_OR_NULL(metadata, php_gd_metadata_ce)
 	ZEND_PARSE_PARAMETERS_END();
 
 	if (quality < -1) {
@@ -163,6 +179,7 @@ PHP_METHOD(Gd_Webp_WriteOptions, __construct)
 		RETURN_THROWS();
 	}
 	zend_update_property_long(php_gd_webp_write_options_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("quality"), quality);
+	if (metadata) zend_update_property(php_gd_webp_write_options_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("metadata"), metadata); else zend_update_property_null(php_gd_webp_write_options_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("metadata"));
 }
 
 PHP_METHOD(Gd_Webp_Codec, __construct)
@@ -240,7 +257,8 @@ static void php_gd_webp_write_to_context(INTERNAL_FUNCTION_PARAMETERS, bool requ
 {
 	zval *image_zv, *destination, *options_zv = NULL;
 	gdIOCtx *ctx;
-	int quality;
+	int size;
+	void *data;
 
 	ZEND_PARSE_PARAMETERS_START(2, 3)
 		Z_PARAM_OBJECT_OF_CLASS(image_zv, gd_image_ce)
@@ -260,8 +278,14 @@ static void php_gd_webp_write_to_context(INTERNAL_FUNCTION_PARAMETERS, bool requ
 		RETURN_THROWS();
 	}
 
-	quality = php_gd_webp_single_quality(options_zv);
-	gdImageWebpCtx(php_gd_libgdimageptr_from_zval_p(image_zv), ctx, quality);
+	data = php_gd_webp_encode(image_zv, options_zv, &size);
+	if (data == NULL || gdPutBuf(data, size, ctx) != size) {
+		gdFree(data);
+		ctx->gd_free(ctx);
+		php_gd_webp_throw("Failed to encode WebP image");
+		RETURN_THROWS();
+	}
+	gdFree(data);
 	ctx->gd_free(ctx);
 }
 
@@ -280,7 +304,6 @@ PHP_METHOD(Gd_Webp_Codec, toString)
 	zval *image_zv, *options_zv = NULL;
 	int size = 0;
 	void *data;
-	int quality;
 
 	ZEND_PARSE_PARAMETERS_START(1, 2)
 		Z_PARAM_OBJECT_OF_CLASS(image_zv, gd_image_ce)
@@ -288,8 +311,7 @@ PHP_METHOD(Gd_Webp_Codec, toString)
 		Z_PARAM_OBJECT_OF_CLASS(options_zv, php_gd_webp_write_options_ce)
 	ZEND_PARSE_PARAMETERS_END();
 
-	quality = php_gd_webp_single_quality(options_zv);
-	data = gdImageWebpPtrEx(php_gd_libgdimageptr_from_zval_p(image_zv), &size, quality);
+	data = php_gd_webp_encode(image_zv, options_zv, &size);
 	if (data == NULL || size < 0) {
 		gdFree(data);
 		php_gd_webp_throw("Failed to encode WebP image");
@@ -329,12 +351,36 @@ static void php_gd_webp_blend(zval *result, int blend)
 	ZVAL_OBJ(result, zend_enum_get_case_by_id(php_gd_webp_blend_method_ce, case_id));
 }
 
-#ifdef HAVE_GD_WEBP_ANIM_READ_API
+#if defined(HAVE_GD_BUNDLED) || defined(HAVE_GD_WEBP_ANIM_READ_API)
 static zend_class_entry *php_gd_webp_info_ce;
+#ifdef HAVE_GD_BUNDLED
+static zend_class_entry *php_gd_webp_reader_ce;
+static zend_object_handlers php_gd_webp_reader_handlers;
+#endif
+#ifdef HAVE_GD_WEBP_ANIM_READ_API
 static zend_class_entry *php_gd_webp_frame_ce;
 static zend_class_entry *php_gd_webp_anim_reader_ce;
 static zend_object_handlers php_gd_webp_anim_reader_handlers;
+#endif
 
+#ifdef HAVE_GD_BUNDLED
+typedef struct {
+	zend_string *bytes;
+	zval info;
+	bool read;
+	bool failed;
+	zend_object std;
+} php_gd_webp_reader_object;
+
+static php_gd_webp_reader_object *php_gd_webp_reader_from_object(zend_object *object)
+{
+	return (php_gd_webp_reader_object *) ((char *) object - offsetof(php_gd_webp_reader_object, std));
+}
+
+#define Z_GD_WEBP_READER_P(zv) php_gd_webp_reader_from_object(Z_OBJ_P((zv)))
+#endif
+
+#ifdef HAVE_GD_WEBP_ANIM_READ_API
 typedef struct {
 	gdWebpReadPtr reader;
 	zval info;
@@ -342,16 +388,21 @@ typedef struct {
 	bool failed;
 	zend_object std;
 } php_gd_webp_anim_reader_object;
+#endif
 
+#ifdef HAVE_GD_WEBP_ANIM_READ_API
 static php_gd_webp_anim_reader_object *php_gd_webp_anim_reader_from_object(zend_object *object)
 {
 	return (php_gd_webp_anim_reader_object *) ((char *) object - offsetof(php_gd_webp_anim_reader_object, std));
 }
 
 #define Z_GD_WEBP_ANIM_READER_P(zv) php_gd_webp_anim_reader_from_object(Z_OBJ_P((zv)))
+#endif
 
-static void php_gd_webp_create_info(zval *result, const gdWebpInfo *info)
+static void php_gd_webp_create_info(zval *result, const gdWebpInfo *info, gdImageMetadata *metadata)
 {
+	zval value;
+
 	object_init_ex(result, php_gd_webp_info_ce);
 	zend_update_property_long(php_gd_webp_info_ce, Z_OBJ_P(result), ZEND_STRL("width"), info->width);
 	zend_update_property_long(php_gd_webp_info_ce, Z_OBJ_P(result), ZEND_STRL("height"), info->height);
@@ -359,8 +410,12 @@ static void php_gd_webp_create_info(zval *result, const gdWebpInfo *info)
 	zend_update_property_long(php_gd_webp_info_ce, Z_OBJ_P(result), ZEND_STRL("loopCount"), info->loopCount);
 	zend_update_property_long(php_gd_webp_info_ce, Z_OBJ_P(result), ZEND_STRL("backgroundColor"), info->backgroundColor);
 	zend_update_property_long(php_gd_webp_info_ce, Z_OBJ_P(result), ZEND_STRL("formatFlags"), info->formatFlags);
+	php_gd_metadata_create_zval(&value, metadata);
+	zend_update_property(php_gd_webp_info_ce, Z_OBJ_P(result), ZEND_STRL("metadata"), &value);
+	zval_ptr_dtor(&value);
 }
 
+#ifdef HAVE_GD_WEBP_ANIM_READ_API
 static void php_gd_webp_create_frame(zval *result, gdImagePtr image, const gdWebpFrameInfo *info)
 {
 	zval value;
@@ -385,7 +440,72 @@ static void php_gd_webp_create_frame(zval *result, gdImagePtr image, const gdWeb
 	zend_update_property_bool(php_gd_webp_frame_ce, Z_OBJ_P(result), ZEND_STRL("hasAlpha"), info->hasAlpha != 0);
 	zend_update_property_bool(php_gd_webp_frame_ce, Z_OBJ_P(result), ZEND_STRL("complete"), info->complete != 0);
 }
+#endif
 
+#ifdef HAVE_GD_BUNDLED
+static zend_object *php_gd_webp_reader_create(zend_class_entry *class_entry)
+{
+	php_gd_webp_reader_object *reader = zend_object_alloc(sizeof(*reader), class_entry);
+
+	reader->bytes = NULL;
+	ZVAL_UNDEF(&reader->info);
+	reader->read = false;
+	reader->failed = false;
+	zend_object_std_init(&reader->std, class_entry);
+	object_properties_init(&reader->std, class_entry);
+	reader->std.handlers = &php_gd_webp_reader_handlers;
+	return &reader->std;
+}
+
+static void php_gd_webp_reader_free(zend_object *object)
+{
+	php_gd_webp_reader_object *reader = php_gd_webp_reader_from_object(object);
+
+	if (reader->bytes != NULL) {
+		zend_string_release(reader->bytes);
+	}
+	if (!Z_ISUNDEF(reader->info)) {
+		zval_ptr_dtor(&reader->info);
+	}
+	zend_object_std_dtor(&reader->std);
+}
+
+static bool php_gd_webp_initialize_info_reader(zval *result, zend_string *bytes)
+{
+	gdWebpReadOptions options;
+	gdWebpReadPtr webp;
+	gdWebpInfo info;
+	gdImageMetadata *metadata;
+	php_gd_webp_reader_object *reader;
+
+	if (ZSTR_LEN(bytes) > INT_MAX) {
+		zend_argument_value_error(1, "must not exceed %d bytes", INT_MAX);
+		return false;
+	}
+	metadata = gdImageMetadataCreate();
+	if (metadata == NULL) {
+		php_gd_webp_throw("Failed to allocate WebP metadata");
+		return false;
+	}
+	gdWebpReadOptionsInit(&options);
+	webp = gdWebpReadOpenPtr((int) ZSTR_LEN(bytes), ZSTR_VAL(bytes), &options);
+	if (webp == NULL || !gdWebpReadGetInfo(webp, &info) || gdWebpReadGetMetadata(webp, metadata) != GD_META_OK) {
+		if (webp != NULL) gdWebpReadClose(webp);
+		gdImageMetadataFree(metadata);
+		php_gd_webp_throw("Failed to open WebP input");
+		return false;
+	}
+	gdWebpReadClose(webp);
+
+	object_init_ex(result, php_gd_webp_reader_ce);
+	reader = Z_GD_WEBP_READER_P(result);
+	reader->bytes = zend_string_copy(bytes);
+	php_gd_webp_create_info(&reader->info, &info, metadata);
+	return true;
+}
+#endif
+
+#ifdef HAVE_GD_WEBP_ANIM_READ_API
 static zend_object *php_gd_webp_anim_reader_create(zend_class_entry *class_entry)
 {
 	php_gd_webp_anim_reader_object *reader = zend_object_alloc(sizeof(*reader), class_entry);
@@ -418,6 +538,7 @@ static bool php_gd_webp_initialize_reader(zval *result, zend_string *bytes)
 	gdWebpReadPtr webp;
 	gdWebpReadOptions options;
 	gdWebpInfo info;
+	gdImageMetadata *metadata;
 	php_gd_webp_anim_reader_object *reader;
 
 	if (ZSTR_LEN(bytes) > INT_MAX) {
@@ -427,11 +548,17 @@ static bool php_gd_webp_initialize_reader(zval *result, zend_string *bytes)
 
 	gdWebpReadOptionsInit(&options);
 	options.coalesced = 1;
+	metadata = gdImageMetadataCreate();
+	if (metadata == NULL) {
+		php_gd_webp_throw("Failed to allocate WebP metadata");
+		return false;
+	}
 	webp = gdWebpReadOpenPtr((int) ZSTR_LEN(bytes), ZSTR_VAL(bytes), &options);
-	if (webp == NULL || !gdWebpReadGetInfo(webp, &info)) {
+	if (webp == NULL || !gdWebpReadGetInfo(webp, &info) || gdWebpReadGetMetadata(webp, metadata) != GD_META_OK) {
 		if (webp != NULL) {
 			gdWebpReadClose(webp);
 		}
+		gdImageMetadataFree(metadata);
 		php_gd_webp_throw("Failed to open WebP input");
 		return false;
 	}
@@ -439,7 +566,7 @@ static bool php_gd_webp_initialize_reader(zval *result, zend_string *bytes)
 	object_init_ex(result, php_gd_webp_anim_reader_ce);
 	reader = Z_GD_WEBP_ANIM_READER_P(result);
 	reader->reader = webp;
-	php_gd_webp_create_info(&reader->info, &info);
+	php_gd_webp_create_info(&reader->info, &info, metadata);
 	return true;
 }
 
@@ -458,18 +585,21 @@ static bool php_gd_webp_is_animated_bytes(zend_string *bytes)
 	}
 	return result != 0;
 }
+#endif
 
 PHP_METHOD(Gd_Webp_Info, __construct)
 {
 	zend_long width, height, frame_count, loop_count, background_color, format_flags;
+	zval *metadata;
 
-	ZEND_PARSE_PARAMETERS_START(6, 6)
+	ZEND_PARSE_PARAMETERS_START(7, 7)
 		Z_PARAM_LONG(width)
 		Z_PARAM_LONG(height)
 		Z_PARAM_LONG(frame_count)
 		Z_PARAM_LONG(loop_count)
 		Z_PARAM_LONG(background_color)
 		Z_PARAM_LONG(format_flags)
+		Z_PARAM_OBJECT_OF_CLASS(metadata, php_gd_metadata_ce)
 	ZEND_PARSE_PARAMETERS_END();
 
 	zend_update_property_long(php_gd_webp_info_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("width"), width);
@@ -478,8 +608,94 @@ PHP_METHOD(Gd_Webp_Info, __construct)
 	zend_update_property_long(php_gd_webp_info_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("loopCount"), loop_count);
 	zend_update_property_long(php_gd_webp_info_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("backgroundColor"), background_color);
 	zend_update_property_long(php_gd_webp_info_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("formatFlags"), format_flags);
+	zend_update_property(php_gd_webp_info_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("metadata"), metadata);
 }
 
+#ifdef HAVE_GD_BUNDLED
+PHP_METHOD(Gd_Webp_Reader, __construct)
+{
+	ZEND_PARSE_PARAMETERS_NONE();
+}
+
+PHP_METHOD(Gd_Webp_Reader, fromString)
+{
+	zend_string *bytes;
+	ZEND_PARSE_PARAMETERS_START(1, 1)
+		Z_PARAM_STR(bytes)
+	ZEND_PARSE_PARAMETERS_END();
+	if (!php_gd_webp_initialize_info_reader(return_value, bytes)) RETURN_THROWS();
+}
+
+PHP_METHOD(Gd_Webp_Reader, fromFile)
+{
+	zend_string *path, *bytes;
+	ZEND_PARSE_PARAMETERS_START(1, 1)
+		Z_PARAM_PATH_STR(path)
+	ZEND_PARSE_PARAMETERS_END();
+	if (!php_gd_webp_read_file_bytes(path, &bytes)) RETURN_THROWS();
+	if (!php_gd_webp_initialize_info_reader(return_value, bytes)) {
+		zend_string_release(bytes);
+		RETURN_THROWS();
+	}
+	zend_string_release(bytes);
+}
+
+PHP_METHOD(Gd_Webp_Reader, fromStream)
+{
+	zval *stream_zv;
+	zend_string *bytes;
+	ZEND_PARSE_PARAMETERS_START(1, 1)
+		Z_PARAM_ZVAL(stream_zv)
+	ZEND_PARSE_PARAMETERS_END();
+	if (!php_gd_webp_read_stream_bytes(stream_zv, &bytes)) RETURN_THROWS();
+	if (!php_gd_webp_initialize_info_reader(return_value, bytes)) {
+		zend_string_release(bytes);
+		RETURN_THROWS();
+	}
+	zend_string_release(bytes);
+}
+
+PHP_METHOD(Gd_Webp_Reader, info)
+{
+	php_gd_webp_reader_object *reader = Z_GD_WEBP_READER_P(ZEND_THIS);
+	ZEND_PARSE_PARAMETERS_NONE();
+	RETURN_COPY(&reader->info);
+}
+
+PHP_METHOD(Gd_Webp_Reader, read)
+{
+	php_gd_webp_reader_object *reader = Z_GD_WEBP_READER_P(ZEND_THIS);
+	gdWebpReadOptions options;
+	gdWebpReadPtr webp;
+	gdWebpFrameInfo info;
+	gdImagePtr image = NULL;
+	int result;
+
+	ZEND_PARSE_PARAMETERS_NONE();
+	if (reader->failed) {
+		php_gd_webp_throw("WebP reader is in a failed state");
+		RETURN_THROWS();
+	}
+	if (reader->read) {
+		php_gd_webp_throw("WebP image has already been read");
+		RETURN_THROWS();
+	}
+	gdWebpReadOptionsInit(&options);
+	options.coalesced = 1;
+	webp = gdWebpReadOpenPtr((int) ZSTR_LEN(reader->bytes), ZSTR_VAL(reader->bytes), &options);
+	result = webp == NULL ? -1 : gdWebpReadNextImage(webp, &info, &image);
+	if (webp != NULL) gdWebpReadClose(webp);
+	reader->read = true;
+	if (result != 1 || image == NULL) {
+		reader->failed = true;
+		php_gd_webp_throw("Failed to decode WebP image");
+		RETURN_THROWS();
+	}
+	php_gd_assign_libgdimageptr_as_extgdimage(return_value, image);
+}
+#endif
+
+#ifdef HAVE_GD_WEBP_ANIM_READ_API
 PHP_METHOD(Gd_Webp_Frame, __construct)
 {
 	zval *image, *dispose = NULL, *blend = NULL;
@@ -731,12 +947,12 @@ static void php_gd_webp_anim_writer_free(zend_object *object)
 	zend_object_std_dtor(&writer->std);
 }
 
-static void php_gd_webp_build_options(zval *options_zv, gdWebpWriteOptions *options)
+static void php_gd_webp_build_options(zval *options_zv, gdWebpAnimWriteOptions *options)
 {
 	zval rv;
 	zval *value;
 
-	gdWebpWriteOptionsInit(options);
+	gdWebpAnimWriteOptionsInit(options);
 	options->method = 4;
 	options->kmin = 9;
 	options->kmax = 17;
@@ -769,7 +985,7 @@ static void php_gd_webp_build_options(zval *options_zv, gdWebpWriteOptions *opti
 }
 
 static bool php_gd_webp_create_writer(zval *return_value, gdWebpWritePtr webp,
-		gdIOCtx *ctx, php_gd_webp_destination destination, const gdWebpWriteOptions *options)
+		gdIOCtx *ctx, php_gd_webp_destination destination, const gdWebpAnimWriteOptions *options)
 {
 	php_gd_webp_anim_writer_object *writer;
 
@@ -867,7 +1083,7 @@ PHP_METHOD(Gd_Webp_AnimWriter, toFile)
 {
 	zval *path_zv;
 	zval *options_zv = NULL;
-	gdWebpWriteOptions options;
+	gdWebpAnimWriteOptions options;
 	gdIOCtx *ctx;
 	gdWebpWritePtr webp;
 
@@ -894,7 +1110,7 @@ PHP_METHOD(Gd_Webp_AnimWriter, toStream)
 {
 	zval *stream_zv;
 	zval *options_zv = NULL;
-	gdWebpWriteOptions options;
+	gdWebpAnimWriteOptions options;
 	gdIOCtx *ctx;
 	gdWebpWritePtr webp;
 
@@ -923,7 +1139,7 @@ PHP_METHOD(Gd_Webp_AnimWriter, toStream)
 PHP_METHOD(Gd_Webp_AnimWriter, toMemory)
 {
 	zval *options_zv = NULL;
-	gdWebpWriteOptions options;
+	gdWebpAnimWriteOptions options;
 	gdWebpWritePtr webp;
 
 	ZEND_PARSE_PARAMETERS_START(0, 1)
@@ -1024,6 +1240,8 @@ PHP_METHOD(Gd_Webp_AnimWriter, finish)
 }
 #endif
 
+#endif /* HAVE_GD_BUNDLED || HAVE_GD_WEBP_ANIM_READ_API */
+
 #endif /* HAVE_GD_WEBP_ANIM_READ_API || HAVE_GD_WEBP_ANIM_WRITE_API */
 
 void php_gd_webp_minit(void)
@@ -1045,8 +1263,18 @@ void php_gd_webp_minit(void)
 	php_gd_register_codec_extension("webp", php_gd_webp_write_options_ce);
 #endif
 
-#ifdef HAVE_GD_WEBP_ANIM_READ_API
+#if defined(HAVE_GD_BUNDLED) || defined(HAVE_GD_WEBP_ANIM_READ_API)
 	php_gd_webp_info_ce = register_class_Gd_Webp_Info();
+#ifdef HAVE_GD_BUNDLED
+	php_gd_webp_reader_ce = register_class_Gd_Webp_Reader();
+	php_gd_webp_reader_ce->create_object = php_gd_webp_reader_create;
+
+	memcpy(&php_gd_webp_reader_handlers, &std_object_handlers, sizeof(zend_object_handlers));
+	php_gd_webp_reader_handlers.offset = offsetof(php_gd_webp_reader_object, std);
+	php_gd_webp_reader_handlers.free_obj = php_gd_webp_reader_free;
+	php_gd_webp_reader_handlers.clone_obj = NULL;
+#endif
+#ifdef HAVE_GD_WEBP_ANIM_READ_API
 	php_gd_webp_frame_ce = register_class_Gd_Webp_Frame();
 	php_gd_webp_anim_reader_ce = register_class_Gd_Webp_AnimReader();
 	php_gd_webp_anim_reader_ce->create_object = php_gd_webp_anim_reader_create;
@@ -1055,6 +1283,7 @@ void php_gd_webp_minit(void)
 	php_gd_webp_anim_reader_handlers.offset = offsetof(php_gd_webp_anim_reader_object, std);
 	php_gd_webp_anim_reader_handlers.free_obj = php_gd_webp_anim_reader_free;
 	php_gd_webp_anim_reader_handlers.clone_obj = NULL;
+#endif
 #endif
 
 #ifdef HAVE_GD_WEBP_ANIM_WRITE_API

@@ -24,8 +24,22 @@ for ($i = 0; $i < 10; $i++) {
 echo "Test 1: String round-trip... ";
 $qoi_data = Gd\Qoi\Codec::toString($image);
 var_dump(is_string($qoi_data) && strlen($qoi_data) > 0);
-$restored = Gd\Qoi\Codec::fromString($qoi_data);
+
+// Test 1b: Header info is scalar and metadata-free
+echo "Test 1b: Header info... ";
+$reader = Gd\Qoi\Reader::fromString($qoi_data);
+$info = $reader->info();
+var_dump($info instanceof Gd\Qoi\Info && $info->width === 10 && $info->height === 10 && $info->channels === 4 && $info->colorspace === Gd\Qoi\Colorspace::SRGB);
+$restored = $reader->read();
 var_dump($restored instanceof GdImage);
+
+echo "Test 1c: Reader cannot be read twice... ";
+try {
+    $reader->read();
+    var_dump(false);
+} catch (Gd\Codec\CodecException $e) {
+    var_dump(true);
+}
 
 // Test 2: Verify image dimensions are preserved
 echo "Test 2: Image dimensions... ";
@@ -46,7 +60,9 @@ echo "All basic tests passed!\n";
 ?>
 --EXPECT--
 Test 1: String round-trip... bool(true)
+Test 1b: Header info... bool(true)
 bool(true)
+Test 1c: Reader cannot be read twice... bool(true)
 Test 2: Image dimensions... bool(true)
 Test 3: Linear colorspace... bool(true)
 Test 4: Different colorspaces produce different data... bool(true)

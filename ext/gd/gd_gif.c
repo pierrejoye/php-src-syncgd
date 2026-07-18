@@ -20,6 +20,7 @@
 #include "php_gd.h"
 #include "gd_codec_write.h"
 #include "gd_gif.h"
+#include "gd_metadata.h"
 #include "ext/spl/spl_exceptions.h"
 
 #ifdef HAVE_GD_BUNDLED
@@ -44,7 +45,13 @@ static void php_gd_gif_throw(const char *message)
 
 PHP_METHOD(Gd_Gif_WriteOptions, __construct)
 {
-	ZEND_PARSE_PARAMETERS_NONE();
+	zval *metadata = NULL;
+
+	ZEND_PARSE_PARAMETERS_START(0, 1)
+		Z_PARAM_OPTIONAL
+		Z_PARAM_OBJECT_OF_CLASS_OR_NULL(metadata, php_gd_metadata_ce)
+	ZEND_PARSE_PARAMETERS_END();
+	if (metadata) zend_update_property(php_gd_gif_write_options_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("metadata"), metadata); else zend_update_property_null(php_gd_gif_write_options_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("metadata"));
 }
 
 static zend_string *php_gd_gif_read_stream(php_stream *stream)
@@ -385,12 +392,36 @@ static int php_gd_gif_disposal_value(zval *value)
 
 #endif
 
-#ifdef HAVE_GD_GIF_ANIM_READ_API
+#if defined(HAVE_GD_BUNDLED) || defined(HAVE_GD_GIF_ANIM_READ_API)
 static zend_class_entry *php_gd_gif_info_ce;
+#ifdef HAVE_GD_BUNDLED
+static zend_class_entry *php_gd_gif_reader_ce;
+static zend_object_handlers php_gd_gif_reader_handlers;
+#endif
+#ifdef HAVE_GD_GIF_ANIM_READ_API
 static zend_class_entry *php_gd_gif_frame_ce;
 static zend_class_entry *php_gd_gif_anim_reader_ce;
 static zend_object_handlers php_gd_gif_anim_reader_handlers;
+#endif
 
+#ifdef HAVE_GD_BUNDLED
+typedef struct {
+	zend_string *bytes;
+	zval info;
+	bool read;
+	bool failed;
+	zend_object std;
+} php_gd_gif_reader_object;
+
+static php_gd_gif_reader_object *php_gd_gif_reader_from_object(zend_object *object)
+{
+	return (php_gd_gif_reader_object *) ((char *) object - offsetof(php_gd_gif_reader_object, std));
+}
+
+#define Z_GD_GIF_READER_P(zv) php_gd_gif_reader_from_object(Z_OBJ_P((zv)))
+#endif
+
+#ifdef HAVE_GD_GIF_ANIM_READ_API
 typedef struct {
 	gdGifReadPtr reader;
 	zend_string *bytes;
@@ -399,24 +430,41 @@ typedef struct {
 	bool failed;
 	zend_object std;
 } php_gd_gif_anim_reader_object;
+#endif
 
+#ifdef HAVE_GD_GIF_ANIM_READ_API
 static php_gd_gif_anim_reader_object *php_gd_gif_anim_reader_from_object(zend_object *object)
 {
 	return (php_gd_gif_anim_reader_object *) ((char *) object - offsetof(php_gd_gif_anim_reader_object, std));
 }
 
 #define Z_GD_GIF_ANIM_READER_P(zv) php_gd_gif_anim_reader_from_object(Z_OBJ_P((zv)))
+#endif
 
 static void php_gd_gif_create_info(zval *result, const gdGifInfo *info)
 {
 	object_init_ex(result, php_gd_gif_info_ce);
+#ifdef HAVE_GD_BUNDLED
+	 zend_update_property_string(php_gd_gif_info_ce, Z_OBJ_P(result), ZEND_STRL("version"), info->version);
+#endif
 	zend_update_property_long(php_gd_gif_info_ce, Z_OBJ_P(result), ZEND_STRL("width"), info->width);
 	zend_update_property_long(php_gd_gif_info_ce, Z_OBJ_P(result), ZEND_STRL("height"), info->height);
 	zend_update_property_long(php_gd_gif_info_ce, Z_OBJ_P(result), ZEND_STRL("backgroundIndex"), info->backgroundIndex);
 	zend_update_property_bool(php_gd_gif_info_ce, Z_OBJ_P(result), ZEND_STRL("globalColorTable"), info->globalColorTable != 0);
+#ifdef HAVE_GD_BUNDLED
+	zend_update_property_long(php_gd_gif_info_ce, Z_OBJ_P(result), ZEND_STRL("colorResolution"), info->colorResolution);
+	zend_update_property_double(php_gd_gif_info_ce, Z_OBJ_P(result), ZEND_STRL("pixelAspectRatio"), info->pixelAspectRatio);
+	if (info->loopCountPresent) {
+		zend_update_property_long(php_gd_gif_info_ce, Z_OBJ_P(result), ZEND_STRL("loopCount"), info->loopCount);
+	} else {
+		zend_update_property_null(php_gd_gif_info_ce, Z_OBJ_P(result), ZEND_STRL("loopCount"));
+	}
+#else
 	zend_update_property_long(php_gd_gif_info_ce, Z_OBJ_P(result), ZEND_STRL("loopCount"), info->loopCount);
+#endif
 }
 
+#ifdef HAVE_GD_GIF_ANIM_READ_API
 static void php_gd_gif_create_frame(zval *result, gdImagePtr image, const gdGifFrameInfo *info)
 {
 	zval value;
@@ -442,7 +490,55 @@ static void php_gd_gif_create_frame(zval *result, gdImagePtr image, const gdGifF
 	zend_update_property_bool(php_gd_gif_frame_ce, Z_OBJ_P(result), ZEND_STRL("localColorTable"), info->localColorTable != 0);
 	zend_update_property_bool(php_gd_gif_frame_ce, Z_OBJ_P(result), ZEND_STRL("interlaced"), info->interlace != 0);
 }
+#endif
 
+#ifdef HAVE_GD_BUNDLED
+static zend_object *php_gd_gif_reader_create(zend_class_entry *class_entry)
+{
+	php_gd_gif_reader_object *reader = zend_object_alloc(sizeof(*reader), class_entry);
+
+	reader->bytes = NULL;
+	ZVAL_UNDEF(&reader->info);
+	reader->read = false;
+	reader->failed = false;
+	zend_object_std_init(&reader->std, class_entry);
+	object_properties_init(&reader->std, class_entry);
+	reader->std.handlers = &php_gd_gif_reader_handlers;
+	return &reader->std;
+}
+
+static void php_gd_gif_reader_free(zend_object *object)
+{
+	php_gd_gif_reader_object *reader = php_gd_gif_reader_from_object(object);
+
+	if (reader->bytes != NULL) {
+		zend_string_release(reader->bytes);
+	}
+	if (!Z_ISUNDEF(reader->info)) {
+		zval_ptr_dtor(&reader->info);
+	}
+	zend_object_std_dtor(&reader->std);
+}
+
+static bool php_gd_gif_initialize_info_reader(zval *result, zend_string *bytes)
+{
+	php_gd_gif_reader_object *reader;
+	gdGifInfo info;
+
+	if (ZSTR_LEN(bytes) > INT_MAX || !gdGifGetInfoPtr((int) ZSTR_LEN(bytes), ZSTR_VAL(bytes), &info)) {
+		php_gd_gif_throw("Failed to open GIF input");
+		return false;
+	}
+
+	object_init_ex(result, php_gd_gif_reader_ce);
+	reader = Z_GD_GIF_READER_P(result);
+	reader->bytes = zend_string_copy(bytes);
+	php_gd_gif_create_info(&reader->info, &info);
+	return true;
+}
+#endif
+
+#ifdef HAVE_GD_GIF_ANIM_READ_API
 static zend_object *php_gd_gif_anim_reader_create(zend_class_entry *class_entry)
 {
 	php_gd_gif_anim_reader_object *reader = zend_object_alloc(sizeof(*reader), class_entry);
@@ -473,7 +569,9 @@ static void php_gd_gif_anim_reader_free(zend_object *object)
 	}
 	zend_object_std_dtor(&reader->std);
 }
+#endif
 
+#ifdef HAVE_GD_GIF_ANIM_READ_API
 static bool php_gd_gif_initialize_reader(zval *result, zend_string *bytes)
 {
 	gdGifReadPtr gif;
@@ -517,27 +615,128 @@ static bool php_gd_gif_is_animated_bytes(zend_string *bytes)
 	}
 	return result != 0;
 }
+#endif
 
 PHP_METHOD(Gd_Gif_Info, __construct)
 {
-	zend_long width, height, background_index, loop_count;
+	zend_string *version;
+	zend_long width, height, background_index, color_resolution;
+	double pixel_aspect_ratio;
+	zend_long loop_count = 0;
+	bool loop_count_is_null;
 	bool global_color_table;
 
-	ZEND_PARSE_PARAMETERS_START(5, 5)
+	ZEND_PARSE_PARAMETERS_START(8, 8)
+		Z_PARAM_STR(version)
 		Z_PARAM_LONG(width)
 		Z_PARAM_LONG(height)
 		Z_PARAM_LONG(background_index)
 		Z_PARAM_BOOL(global_color_table)
-		Z_PARAM_LONG(loop_count)
+		Z_PARAM_LONG(color_resolution)
+		Z_PARAM_DOUBLE(pixel_aspect_ratio)
+		Z_PARAM_LONG_OR_NULL(loop_count, loop_count_is_null)
 	ZEND_PARSE_PARAMETERS_END();
 
+	zend_update_property_str(php_gd_gif_info_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("version"), version);
 	zend_update_property_long(php_gd_gif_info_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("width"), width);
 	zend_update_property_long(php_gd_gif_info_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("height"), height);
 	zend_update_property_long(php_gd_gif_info_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("backgroundIndex"), background_index);
 	zend_update_property_bool(php_gd_gif_info_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("globalColorTable"), global_color_table);
-	zend_update_property_long(php_gd_gif_info_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("loopCount"), loop_count);
+	zend_update_property_long(php_gd_gif_info_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("colorResolution"), color_resolution);
+	zend_update_property_double(php_gd_gif_info_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("pixelAspectRatio"), pixel_aspect_ratio);
+	if (loop_count_is_null) zend_update_property_null(php_gd_gif_info_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("loopCount")); else zend_update_property_long(php_gd_gif_info_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("loopCount"), loop_count);
 }
 
+#ifdef HAVE_GD_BUNDLED
+PHP_METHOD(Gd_Gif_Reader, __construct)
+{
+	ZEND_PARSE_PARAMETERS_NONE();
+}
+
+PHP_METHOD(Gd_Gif_Reader, fromString)
+{
+	zend_string *bytes;
+
+	ZEND_PARSE_PARAMETERS_START(1, 1)
+		Z_PARAM_STR(bytes)
+	ZEND_PARSE_PARAMETERS_END();
+
+	if (!php_gd_gif_initialize_info_reader(return_value, bytes)) {
+		RETURN_THROWS();
+	}
+}
+
+PHP_METHOD(Gd_Gif_Reader, fromFile)
+{
+	zend_string *path, *bytes;
+
+	ZEND_PARSE_PARAMETERS_START(1, 1)
+		Z_PARAM_PATH_STR(path)
+	ZEND_PARSE_PARAMETERS_END();
+
+	if (!php_gd_gif_read_file_bytes(path, &bytes)) {
+		RETURN_THROWS();
+	}
+	if (!php_gd_gif_initialize_info_reader(return_value, bytes)) {
+		zend_string_release(bytes);
+		RETURN_THROWS();
+	}
+	zend_string_release(bytes);
+}
+
+PHP_METHOD(Gd_Gif_Reader, fromStream)
+{
+	zval *stream_zv;
+	zend_string *bytes;
+
+	ZEND_PARSE_PARAMETERS_START(1, 1)
+		Z_PARAM_ZVAL(stream_zv)
+	ZEND_PARSE_PARAMETERS_END();
+
+	if (!php_gd_gif_read_stream_bytes(stream_zv, &bytes)) {
+		RETURN_THROWS();
+	}
+	if (!php_gd_gif_initialize_info_reader(return_value, bytes)) {
+		zend_string_release(bytes);
+		RETURN_THROWS();
+	}
+	zend_string_release(bytes);
+}
+
+PHP_METHOD(Gd_Gif_Reader, info)
+{
+	php_gd_gif_reader_object *reader = Z_GD_GIF_READER_P(ZEND_THIS);
+
+	ZEND_PARSE_PARAMETERS_NONE();
+	RETURN_COPY(&reader->info);
+}
+
+PHP_METHOD(Gd_Gif_Reader, read)
+{
+	php_gd_gif_reader_object *reader = Z_GD_GIF_READER_P(ZEND_THIS);
+	gdImagePtr image;
+
+	ZEND_PARSE_PARAMETERS_NONE();
+	if (reader->failed) {
+		php_gd_gif_throw("GIF reader is in a failed state");
+		RETURN_THROWS();
+	}
+	if (reader->read) {
+		php_gd_gif_throw("GIF image has already been read");
+		RETURN_THROWS();
+	}
+	image = gdImageCreateFromGifPtr((int) ZSTR_LEN(reader->bytes), ZSTR_VAL(reader->bytes));
+	reader->read = true;
+	if (image == NULL) {
+		reader->failed = true;
+		php_gd_gif_throw("Failed to decode GIF image");
+		RETURN_THROWS();
+	}
+	php_gd_assign_libgdimageptr_as_extgdimage(return_value, image);
+}
+#endif
+
+#ifdef HAVE_GD_GIF_ANIM_READ_API
 PHP_METHOD(Gd_Gif_Frame, __construct)
 {
 	zval *image, *disposal = NULL;
@@ -718,6 +917,7 @@ PHP_METHOD(Gd_Gif_AnimReader, next)
 
 	php_gd_gif_create_frame(return_value, image, &info);
 }
+#endif
 #endif
 
 #ifdef HAVE_GD_GIF_ANIM_WRITE_API
@@ -1075,8 +1275,18 @@ void php_gd_gif_minit(void)
 	php_gd_gif_disposal_method_ce = register_class_Gd_Gif_DisposalMethod();
 #endif
 
-#ifdef HAVE_GD_GIF_ANIM_READ_API
+#if defined(HAVE_GD_BUNDLED) || defined(HAVE_GD_GIF_ANIM_READ_API)
 	php_gd_gif_info_ce = register_class_Gd_Gif_Info();
+#ifdef HAVE_GD_BUNDLED
+	php_gd_gif_reader_ce = register_class_Gd_Gif_Reader();
+	php_gd_gif_reader_ce->create_object = php_gd_gif_reader_create;
+
+	memcpy(&php_gd_gif_reader_handlers, &std_object_handlers, sizeof(zend_object_handlers));
+	php_gd_gif_reader_handlers.offset = offsetof(php_gd_gif_reader_object, std);
+	php_gd_gif_reader_handlers.free_obj = php_gd_gif_reader_free;
+	php_gd_gif_reader_handlers.clone_obj = NULL;
+#endif
+#ifdef HAVE_GD_GIF_ANIM_READ_API
 	php_gd_gif_frame_ce = register_class_Gd_Gif_Frame();
 	php_gd_gif_anim_reader_ce = register_class_Gd_Gif_AnimReader();
 	php_gd_gif_anim_reader_ce->create_object = php_gd_gif_anim_reader_create;
@@ -1085,6 +1295,7 @@ void php_gd_gif_minit(void)
 	php_gd_gif_anim_reader_handlers.offset = offsetof(php_gd_gif_anim_reader_object, std);
 	php_gd_gif_anim_reader_handlers.free_obj = php_gd_gif_anim_reader_free;
 	php_gd_gif_anim_reader_handlers.clone_obj = NULL;
+#endif
 #endif
 
 #ifdef HAVE_GD_GIF_ANIM_WRITE_API

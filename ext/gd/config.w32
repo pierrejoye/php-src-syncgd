@@ -146,7 +146,7 @@ if (PHP_GD != "no") {
 		CHECK_LIB("Advapi32.lib", "gd", PHP_GD);
 
 		AC_DEFINE("HAVE_GD_JPEG_CODEC", 1, "Define to 1 if GD library has the JPEG codec API.");
-		EXTENSION("gd", "gd.c gd_2d.c gd_text.c gd_image.c gd_codec_write.c gd_png.c gd_gif.c gd_webp.c gd_bmp.c gd_avif.c gd_heif.c gd_jxl.c gd_qoi.c gd_tiff.c gd_jpeg.c", null, "-Iext/gd/libgd");
+		EXTENSION("gd", "gd.c gd_2d.c gd_text.c gd_image.c gd_codec_write.c gd_metadata.c gd_png.c gd_gif.c gd_webp.c gd_bmp.c gd_avif.c gd_heif.c gd_jxl.c gd_qoi.c gd_tiff.c gd_jpeg.c", null, "-Iext/gd/libgd");
 		ADD_EXTENSION_DEP("gd", "spl");
 		ADD_SOURCES("ext/gd/libgd", "gd2copypal.c gd.c \
 			gdcache.c gdfontg.c gdfontl.c gdfontmb.c gdfonts.c gdfontt.c \
@@ -155,7 +155,7 @@ if (PHP_GD != "no") {
 			gdtables.c gd_topal.c gd_wbmp.c gdxpm.c wbmp.c gd_xbm.c gd_security.c gd_transform.c \
 			gd_filter.c gd_rotate.c gd_color_match.c gd_webp.c gd_avif.c \
 			gd_crop.c gd_interpolation.c gd_interesting.c gd_matrix.c gd_bmp.c gd_tga.c gd_qoi.c gd_jxl.c gd_color_map.c \
-			gd_heif.c gd_uhdr.c gd_tiff.c gd_nnquant.c gd_color.c gd_readimage.c gd_filename.c \
+			gd_heif.c gd_heif_metadata.c gd_avif_metadata.c gd_uhdr.c gd_tiff.c gd_nnquant.c gd_color.c gd_readimage.c gd_filename.c \
 			gd_array.c gd_span_rle.c \
 			gd_surface.c gd_version.c gd_compositor.c gd_gradient.c gd_path.c gd_path_arc.c gd_path_dash.c \
 			gd_path_matrix.c gd_path_stroke.c gd_draw.c gd_text.c gd_draw_blend.c gd_perceptual_diff.c", "gd");

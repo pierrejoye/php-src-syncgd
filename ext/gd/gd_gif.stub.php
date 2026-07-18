@@ -16,7 +16,9 @@ namespace Gd\Gif {
     /** @strict-properties */
     final readonly class WriteOptions implements \Gd\Codec\WriteOptions
     {
-        public function __construct() {}
+        public ?\Gd\Metadata $metadata;
+
+        public function __construct(?\Gd\Metadata $metadata = null) {}
     }
 
     final class Codec
@@ -58,24 +60,55 @@ namespace Gd\Gif {
     }
 #endif
 
-#ifdef HAVE_GD_GIF_ANIM_READ_API
+#if defined(HAVE_GD_BUNDLED) || defined(HAVE_GD_GIF_ANIM_READ_API)
+#ifdef HAVE_GD_BUNDLED
     /** @strict-properties */
     final readonly class Info
     {
+        public string $version;
         public int $width;
         public int $height;
         public int $backgroundIndex;
         public bool $globalColorTable;
-        public int $loopCount;
+        public int $colorResolution;
+        public float $pixelAspectRatio;
+        public ?int $loopCount;
 
         public function __construct(
+            string $version,
             int $width,
             int $height,
             int $backgroundIndex,
             bool $globalColorTable,
-            int $loopCount,
+            int $colorResolution,
+            float $pixelAspectRatio,
+            ?int $loopCount,
         ) {}
     }
+#endif
+#endif
+
+#ifdef HAVE_GD_BUNDLED
+    /**
+     * @strict-properties
+     * @not-serializable
+     */
+    final class Reader
+    {
+        private function __construct() {}
+
+        public static function fromFile(string $path): \Gd\Gif\Reader {}
+        public static function fromString(string $bytes): \Gd\Gif\Reader {}
+
+        /** @param resource $stream */
+        public static function fromStream($stream): \Gd\Gif\Reader {}
+
+        public function info(): Info {}
+        public function read(): \GdImage {}
+    }
+#endif
+
+#ifdef HAVE_GD_GIF_ANIM_READ_API
 
     /** @strict-properties */
     final readonly class Frame

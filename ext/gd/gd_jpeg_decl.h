@@ -1,8 +1,8 @@
 /* This is a generated file, edit gd_jpeg.stub.php instead.
- * Stub hash: e1f318fce28ca4b0b42490ce59ee099431b54893 */
+ * Stub hash: 6c0b4ad81d522ed34e3a531143cc9a96439afb52 */
 
-#ifndef ZEND_GD_JPEG_DECL_e1f318fce28ca4b0b42490ce59ee099431b54893_H
-#define ZEND_GD_JPEG_DECL_e1f318fce28ca4b0b42490ce59ee099431b54893_H
+#ifndef ZEND_GD_JPEG_DECL_6c0b4ad81d522ed34e3a531143cc9a96439afb52_H
+#define ZEND_GD_JPEG_DECL_6c0b4ad81d522ed34e3a531143cc9a96439afb52_H
 
 #if defined(HAVE_GD_JPEG_CODEC)
 typedef enum zend_enum_Gd_Jpeg_ColorSpace {
@@ -32,4 +32,4 @@ typedef enum zend_enum_Gd_Jpeg_DctMethod {
 } zend_enum_Gd_Jpeg_DctMethod;
 #endif
 
-#endif /* ZEND_GD_JPEG_DECL_e1f318fce28ca4b0b42490ce59ee099431b54893_H */
+#endif /* ZEND_GD_JPEG_DECL_6c0b4ad81d522ed34e3a531143cc9a96439afb52_H */

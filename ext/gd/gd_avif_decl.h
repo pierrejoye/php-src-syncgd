@@ -1,8 +1,8 @@
 /* This is a generated file, edit gd_avif.stub.php instead.
- * Stub hash: 823dc2161ef7cfe57d6f1abe1176c80ec77e42d9 */
+ * Stub hash: ee5eada0832c776c04f595fc1c623dcabec3a66d */
 
-#ifndef ZEND_GD_AVIF_DECL_823dc2161ef7cfe57d6f1abe1176c80ec77e42d9_H
-#define ZEND_GD_AVIF_DECL_823dc2161ef7cfe57d6f1abe1176c80ec77e42d9_H
+#ifndef ZEND_GD_AVIF_DECL_ee5eada0832c776c04f595fc1c623dcabec3a66d_H
+#define ZEND_GD_AVIF_DECL_ee5eada0832c776c04f595fc1c623dcabec3a66d_H
 
 #if defined(HAVE_GD_AVIF)
 typedef enum zend_enum_Gd_Avif_ChromaSubsampling {
@@ -11,4 +11,4 @@ typedef enum zend_enum_Gd_Avif_ChromaSubsampling {
 } zend_enum_Gd_Avif_ChromaSubsampling;
 #endif
 
-#endif /* ZEND_GD_AVIF_DECL_823dc2161ef7cfe57d6f1abe1176c80ec77e42d9_H */
+#endif /* ZEND_GD_AVIF_DECL_ee5eada0832c776c04f595fc1c623dcabec3a66d_H */

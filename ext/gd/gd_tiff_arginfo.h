@@ -1,5 +1,5 @@
 /* This is a generated file, edit gd_tiff.stub.php instead.
- * Stub hash: ca71933429f04399b0a2a89515bbb1ae770f2677
+ * Stub hash: d6c4296d30ee85e978b13c10f899017ba5dbbd72
  * Has decl header: yes */
 
 #if defined(HAVE_GD_TIFF_WRITE_API)
@@ -10,6 +10,7 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Gd_Tiff_WriteOptions___construct, 0, 0, 0)
 	ZEND_ARG_OBJ_INFO_WITH_DEFAULT_VALUE(0, resolutionUnit, Gd\\Tiff\\ResolutionUnit, 0, "Gd\\Tiff\\ResolutionUnit::Inch")
 	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, xResolution, IS_DOUBLE, 1, "null")
 	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, yResolution, IS_DOUBLE, 1, "null")
+	ZEND_ARG_OBJ_INFO_WITH_DEFAULT_VALUE(0, metadata, Gd\\Metadata, 1, "null")
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Gd_Tiff_Writer___construct, 0, 0, 0)
@@ -72,7 +73,7 @@ ZEND_END_ARG_INFO()
 #endif
 
 #if defined(HAVE_GD_TIFF_READ_API)
-ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Gd_Tiff_Info___construct, 0, 0, 13)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Gd_Tiff_Info___construct, 0, 0, 14)
 	ZEND_ARG_TYPE_INFO(0, width, IS_LONG, 0)
 	ZEND_ARG_TYPE_INFO(0, height, IS_LONG, 0)
 	ZEND_ARG_TYPE_INFO(0, pageCount, IS_LONG, 0)
@@ -86,6 +87,7 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Gd_Tiff_Info___construct, 0, 0, 13)
 	ZEND_ARG_TYPE_INFO(0, xResolution, IS_DOUBLE, 1)
 	ZEND_ARG_TYPE_INFO(0, yResolution, IS_DOUBLE, 1)
 	ZEND_ARG_OBJ_INFO(0, resolutionUnit, Gd\\Tiff\\ResolutionUnit, 1)
+	ZEND_ARG_OBJ_INFO(0, metadata, Gd\\Metadata, 0)
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Gd_Tiff_Page___construct, 0, 0, 18)
@@ -341,6 +343,13 @@ static zend_class_entry *register_class_Gd_Tiff_WriteOptions(zend_class_entry *c
 	zend_declare_typed_property(class_entry, property_yResolution_name, &property_yResolution_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_DOUBLE|MAY_BE_NULL));
 	zend_string_release_ex(property_yResolution_name, true);
 
+	zval property_metadata_default_value;
+	ZVAL_UNDEF(&property_metadata_default_value);
+	zend_string *property_metadata_name = zend_string_init("metadata", sizeof("metadata") - 1, true);
+	zend_string *property_metadata_class_Gd_Metadata = zend_string_init("Gd\\Metadata", sizeof("Gd\\Metadata")-1, 1);
+	zend_declare_typed_property(class_entry, property_metadata_name, &property_metadata_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_metadata_class_Gd_Metadata, 0, MAY_BE_NULL));
+	zend_string_release_ex(property_metadata_name, true);
+
 	return class_entry;
 }
 #endif
@@ -515,6 +524,13 @@ static zend_class_entry *register_class_Gd_Tiff_Info(void)
 	zend_string *property_resolutionUnit_class_Gd_Tiff_ResolutionUnit = zend_string_init("Gd\\Tiff\\ResolutionUnit", sizeof("Gd\\Tiff\\ResolutionUnit")-1, 1);
 	zend_declare_typed_property(class_entry, property_resolutionUnit_name, &property_resolutionUnit_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_resolutionUnit_class_Gd_Tiff_ResolutionUnit, 0, MAY_BE_NULL));
 	zend_string_release_ex(property_resolutionUnit_name, true);
+
+	zval property_metadata_default_value;
+	ZVAL_UNDEF(&property_metadata_default_value);
+	zend_string *property_metadata_name = zend_string_init("metadata", sizeof("metadata") - 1, true);
+	zend_string *property_metadata_class_Gd_Metadata = zend_string_init("Gd\\Metadata", sizeof("Gd\\Metadata")-1, 1);
+	zend_declare_typed_property(class_entry, property_metadata_name, &property_metadata_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_metadata_class_Gd_Metadata, 0, 0));
+	zend_string_release_ex(property_metadata_name, true);
 
 	return class_entry;
 }

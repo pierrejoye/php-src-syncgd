@@ -419,6 +419,8 @@ if test "$PHP_GD" != "no"; then
       libgd/gd_jxl.c
       libgd/gd_color_map.c
       libgd/gd_heif.c
+      libgd/gd_heif_metadata.c
+      libgd/gd_avif_metadata.c
       libgd/gd_uhdr.c
       libgd/gd_nnquant.c
       libgd/gd_color.c
@@ -512,7 +514,7 @@ dnl Various checks for GD features
     ])
 
     PHP_NEW_EXTENSION([gd],
-      [gd.c gd_2d.c gd_text.c gd_image.c gd_codec_write.c gd_png.c gd_gif.c gd_webp.c gd_bmp.c gd_avif.c gd_heif.c gd_jxl.c gd_qoi.c gd_tiff.c gd_jpeg.c $extra_sources],
+      [gd.c gd_2d.c gd_text.c gd_image.c gd_codec_write.c gd_metadata.c gd_png.c gd_gif.c gd_webp.c gd_bmp.c gd_avif.c gd_heif.c gd_jxl.c gd_qoi.c gd_tiff.c gd_jpeg.c $extra_sources],
       [$ext_shared],,
       [-Wno-strict-prototypes -I@ext_srcdir@/libgd])
     PHP_ADD_BUILD_DIR([$ext_builddir/libgd])
@@ -549,9 +551,10 @@ dnl Various checks for GD features
       [],
       [$GD_SHARED_LIBADD])
 
-    PHP_CHECK_LIBRARY([gd], [gdImageQoiPtrEx],
-      [AC_DEFINE([HAVE_GD_QOI], [1],
-        [Define to 1 if GD library has QOI support.])],
+    PHP_CHECK_LIBRARY([gd], [gdImageQoiPtrWithOptions],
+      [PHP_CHECK_LIBRARY([gd], [gdQoiGetInfoPtr],
+        [AC_DEFINE([HAVE_GD_QOI], [1],
+          [Define to 1 if GD library has QOI support.])])],
       [],
       [$GD_SHARED_LIBADD])
 
@@ -692,7 +695,7 @@ int main(void) {
       ])
     ])
 
-    PHP_NEW_EXTENSION([gd], [gd.c gd_image.c gd_codec_write.c gd_png.c gd_gif.c gd_webp.c gd_bmp.c gd_avif.c gd_heif.c gd_jxl.c gd_qoi.c gd_tiff.c gd_jpeg.c $extra_sources], [$ext_shared])
+    PHP_NEW_EXTENSION([gd], [gd.c gd_image.c gd_codec_write.c gd_metadata.c gd_png.c gd_gif.c gd_webp.c gd_bmp.c gd_avif.c gd_heif.c gd_jxl.c gd_qoi.c gd_tiff.c gd_jpeg.c $extra_sources], [$ext_shared])
     PHP_INSTALL_HEADERS([ext/gd], [php_gd.h])
     PHP_CHECK_LIBRARY([gd], [gdImageCreate],
       [],

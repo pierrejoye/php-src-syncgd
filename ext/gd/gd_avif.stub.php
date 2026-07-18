@@ -27,18 +27,64 @@ namespace Gd\Avif {
     }
 
     /** @strict-properties */
+    final readonly class Info
+    {
+        public int $width;
+        public int $height;
+        public bool $isAnimation;
+        public bool $isProgressive;
+        public int $frameCount;
+        public float $duration;
+        public bool $hasAlpha;
+        public int $bitDepth;
+        public int $yuvFormat;
+        public \Gd\Metadata $metadata;
+
+        public function __construct(
+            int $width,
+            int $height,
+            bool $isAnimation,
+            bool $isProgressive,
+            int $frameCount,
+            float $duration,
+            bool $hasAlpha,
+            int $bitDepth,
+            int $yuvFormat,
+            \Gd\Metadata $metadata,
+        ) {}
+    }
+
+    /**
+     * @strict-properties
+     * @not-serializable
+     */
+    final class Reader
+    {
+        private function __construct() {}
+
+        public static function fromFile(string $path): \Gd\Avif\Reader {}
+        public static function fromString(string $bytes): \Gd\Avif\Reader {}
+        /** @param resource $stream */
+        public static function fromStream($stream): \Gd\Avif\Reader {}
+        public function info(): Info {}
+        public function read(): \GdImage {}
+    }
+
+    /** @strict-properties */
     final readonly class WriteOptions implements \Gd\Codec\WriteOptions
     {
         public int $quality;
         public int $speed;
         public bool $lossless;
         public ?ChromaSubsampling $chromaSubsampling;
+        public ?\Gd\Metadata $metadata;
 
         public function __construct(
             int $quality = -1,
             int $speed = -1,
             bool $lossless = false,
             ?ChromaSubsampling $chromaSubsampling = null,
+            ?\Gd\Metadata $metadata = null,
         ) {}
     }
 

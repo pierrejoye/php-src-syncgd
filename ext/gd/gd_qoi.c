@@ -20,7 +20,9 @@
 #include "php_gd.h"
 #include "gd_codec_write.h"
 #include "gd_qoi.h"
+#include "gd_metadata.h"
 #include "ext/spl/spl_exceptions.h"
+#include <limits.h>
 
 #ifdef HAVE_GD_BUNDLED
 # include "libgd/gd.h"
@@ -36,7 +38,26 @@ static zend_class_entry *php_gd_codec_exception_ce;
 
 #ifdef HAVE_GD_QOI
 static zend_class_entry *php_gd_qoi_colorspace_ce;
+static zend_class_entry *php_gd_qoi_read_options_ce;
 static zend_class_entry *php_gd_qoi_write_options_ce;
+static zend_class_entry *php_gd_qoi_info_ce;
+static zend_class_entry *php_gd_qoi_reader_ce;
+static zend_object_handlers php_gd_qoi_reader_handlers;
+
+typedef struct {
+	zend_string *bytes;
+	zval info;
+	bool read;
+	bool failed;
+	zend_object std;
+} php_gd_qoi_reader_object;
+
+static php_gd_qoi_reader_object *php_gd_qoi_reader_from_object(zend_object *object)
+{
+	return (php_gd_qoi_reader_object *) ((char *) object - offsetof(php_gd_qoi_reader_object, std));
+}
+
+#define Z_GD_QOI_READER_P(zv) php_gd_qoi_reader_from_object(Z_OBJ_P((zv)))
 
 static int php_gd_qoi_colorspace(zval *colorspace)
 {
@@ -58,36 +79,163 @@ static void php_gd_qoi_throw_open_failure(const char *message)
 	}
 }
 
-static gdImagePtr php_gd_qoi_decode_from_stream(php_stream *stream)
+static bool php_gd_qoi_create_info(zval *result, zend_string *bytes)
 {
-	gdImagePtr im = NULL;
-	FILE *fp = NULL;
+	gdQoiInfo info;
 
-	if (php_stream_is(stream, PHP_STREAM_IS_STDIO)
-		&& FAILURE != php_stream_cast(stream, PHP_STREAM_AS_STDIO, (void **) &fp, REPORT_ERRORS)
-	) {
-		im = gdImageCreateFromQoi(fp);
-		if (fp != NULL) {
-			fflush(fp);
-		}
+	if (ZSTR_LEN(bytes) > INT_MAX) {
+		php_gd_qoi_throw_open_failure("QOI input is too large");
+		return false;
 	}
 
+	gdQoiInfoInit(&info);
+	if (!gdQoiGetInfoPtr((int) ZSTR_LEN(bytes), ZSTR_VAL(bytes), &info)) {
+		zend_throw_exception(php_gd_codec_exception_ce, "Failed to read QOI info", 0);
+		return false;
+	}
+
+	object_init_ex(result, php_gd_qoi_info_ce);
+	zval colorspace;
+	ZVAL_OBJ(&colorspace, zend_enum_get_case_by_id(php_gd_qoi_colorspace_ce,
+		info.colorspace == GD_QOI_LINEAR ? ZEND_ENUM_Gd_Qoi_Colorspace_Linear : ZEND_ENUM_Gd_Qoi_Colorspace_SRGB));
+	zend_update_property_long(php_gd_qoi_info_ce, Z_OBJ_P(result), ZEND_STRL("width"), info.width);
+	zend_update_property_long(php_gd_qoi_info_ce, Z_OBJ_P(result), ZEND_STRL("height"), info.height);
+	zend_update_property_long(php_gd_qoi_info_ce, Z_OBJ_P(result), ZEND_STRL("channels"), info.channels);
+	zend_update_property_long(php_gd_qoi_info_ce, Z_OBJ_P(result), ZEND_STRL("colorspaceTag"), info.colorspace);
+	zend_update_property(php_gd_qoi_info_ce, Z_OBJ_P(result), ZEND_STRL("colorspace"), &colorspace);
+	return true;
+}
+
+static zend_string *php_gd_qoi_read_stream(php_stream *stream)
+{
+	return php_stream_copy_to_mem(stream, PHP_STREAM_COPY_ALL, 0);
+}
+
+static bool php_gd_qoi_read_file_bytes(zend_string *path, zend_string **bytes)
+{
+	php_stream *stream = php_stream_open_wrapper(ZSTR_VAL(path), "rb", REPORT_ERRORS | IGNORE_PATH, NULL);
+
+	if (stream == NULL) {
+		php_gd_qoi_throw_open_failure("Failed to open QOI input");
+		return false;
+	}
+	*bytes = php_gd_qoi_read_stream(stream);
+	php_stream_close(stream);
+	if (*bytes == NULL) {
+		php_gd_qoi_throw_open_failure("Failed to read QOI input");
+		return false;
+	}
+	return true;
+}
+
+static bool php_gd_qoi_read_stream_bytes(zval *stream_zv, zend_string **bytes)
+{
+	php_stream *stream;
+
+	if (Z_TYPE_P(stream_zv) != IS_RESOURCE) {
+		zend_argument_type_error(1, "must be a valid stream resource");
+		return false;
+	}
+	php_stream_from_zval_no_verify(stream, stream_zv);
+	if (stream == NULL) {
+		zend_argument_type_error(1, "must be a valid stream resource");
+		return false;
+	}
+	*bytes = php_gd_qoi_read_stream(stream);
+	if (*bytes == NULL) {
+		php_gd_qoi_throw_open_failure("Failed to read QOI input");
+		return false;
+	}
+	return true;
+}
+
+static gdImagePtr php_gd_qoi_decode_bytes(zend_string *bytes)
+{
+	if (ZSTR_LEN(bytes) > INT_MAX) {
+		return NULL;
+	}
+	return gdImageCreateFromQoiPtr((int) ZSTR_LEN(bytes), ZSTR_VAL(bytes));
+}
+
+static zend_object *php_gd_qoi_reader_create(zend_class_entry *class_entry)
+{
+	php_gd_qoi_reader_object *reader = zend_object_alloc(sizeof(*reader), class_entry);
+
+	reader->bytes = NULL;
+	ZVAL_UNDEF(&reader->info);
+	reader->read = false;
+	reader->failed = false;
+	zend_object_std_init(&reader->std, class_entry);
+	object_properties_init(&reader->std, class_entry);
+	reader->std.handlers = &php_gd_qoi_reader_handlers;
+	return &reader->std;
+}
+
+static void php_gd_qoi_reader_free(zend_object *object)
+{
+	php_gd_qoi_reader_object *reader = php_gd_qoi_reader_from_object(object);
+
+	if (reader->bytes != NULL) {
+		zend_string_release(reader->bytes);
+	}
+	if (!Z_ISUNDEF(reader->info)) {
+		zval_ptr_dtor(&reader->info);
+	}
+	zend_object_std_dtor(&reader->std);
+}
+
+static bool php_gd_qoi_initialize_reader(zval *result, zend_string *bytes)
+{
+	php_gd_qoi_reader_object *reader;
+
+	object_init_ex(result, php_gd_qoi_reader_ce);
+	reader = Z_GD_QOI_READER_P(result);
+	reader->bytes = zend_string_copy(bytes);
+	if (!php_gd_qoi_create_info(&reader->info, bytes)) {
+		return false;
+	}
+	return true;
+}
+
+static bool php_gd_qoi_reader_read_image(php_gd_qoi_reader_object *reader, zval *return_value)
+{
+	gdImagePtr im;
+
+	if (reader->failed) {
+		php_gd_qoi_throw_open_failure("QOI reader is in a failed state");
+		return false;
+	}
+	if (reader->read) {
+		php_gd_qoi_throw_open_failure("QOI image has already been read");
+		return false;
+	}
+
+	im = php_gd_qoi_decode_bytes(reader->bytes);
+	reader->read = true;
 	if (im == NULL) {
-		zend_string *bytes = php_stream_copy_to_mem(stream, PHP_STREAM_COPY_ALL, 0);
-
-		if (bytes == NULL) {
-			return NULL;
-		}
-		if (ZSTR_LEN(bytes) > ZEND_LONG_MAX) {
-			zend_string_release_ex(bytes, 0);
-			return NULL;
-		}
-
-		im = gdImageCreateFromQoiPtr((int) ZSTR_LEN(bytes), ZSTR_VAL(bytes));
-		zend_string_release_ex(bytes, 0);
+		reader->failed = true;
+		zend_throw_exception(php_gd_codec_exception_ce, "Failed to decode QOI image", 0);
+		return false;
 	}
 
-	return im;
+	php_gd_assign_libgdimageptr_as_extgdimage(return_value, im);
+	return true;
+}
+
+static bool php_gd_qoi_decode_reader_bytes(zend_string *bytes, zval *return_value)
+{
+	zval reader_zv;
+	php_gd_qoi_reader_object *reader;
+	bool result;
+
+	if (!php_gd_qoi_initialize_reader(&reader_zv, bytes)) {
+		zval_ptr_dtor(&reader_zv);
+		return false;
+	}
+	reader = Z_GD_QOI_READER_P(&reader_zv);
+	result = php_gd_qoi_reader_read_image(reader, return_value);
+	zval_ptr_dtor(&reader_zv);
+	return result;
 }
 
 PHP_METHOD(Gd_Qoi_Codec, __construct)
@@ -95,14 +243,20 @@ PHP_METHOD(Gd_Qoi_Codec, __construct)
 	ZEND_PARSE_PARAMETERS_NONE();
 }
 
+PHP_METHOD(Gd_Qoi_ReadOptions, __construct)
+{
+	ZEND_PARSE_PARAMETERS_NONE();
+}
+
 PHP_METHOD(Gd_Qoi_WriteOptions, __construct)
 {
-	zval *colorspace_zv = NULL;
+	zval *colorspace_zv = NULL, *metadata = NULL;
 	zval default_colorspace;
 
-	ZEND_PARSE_PARAMETERS_START(0, 1)
+	ZEND_PARSE_PARAMETERS_START(0, 2)
 		Z_PARAM_OPTIONAL
 		Z_PARAM_OBJECT_OF_CLASS(colorspace_zv, php_gd_qoi_colorspace_ce)
+		Z_PARAM_OBJECT_OF_CLASS_OR_NULL(metadata, php_gd_metadata_ce)
 	ZEND_PARSE_PARAMETERS_END();
 
 	if (colorspace_zv == NULL) {
@@ -111,43 +265,146 @@ PHP_METHOD(Gd_Qoi_WriteOptions, __construct)
 	}
 
 	zend_update_property(php_gd_qoi_write_options_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("colorspace"), colorspace_zv);
+	if (metadata != NULL) {
+		zend_update_property(php_gd_qoi_write_options_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("metadata"), metadata);
+	} else {
+		zend_update_property_null(php_gd_qoi_write_options_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("metadata"));
+	}
+}
+
+PHP_METHOD(Gd_Qoi_Info, __construct)
+{
+	zend_long width, height, channels, colorspace_tag;
+	zval *colorspace;
+
+	ZEND_PARSE_PARAMETERS_START(5, 5)
+		Z_PARAM_LONG(width)
+		Z_PARAM_LONG(height)
+		Z_PARAM_LONG(channels)
+		Z_PARAM_LONG(colorspace_tag)
+		Z_PARAM_OBJECT_OF_CLASS(colorspace, php_gd_qoi_colorspace_ce)
+	ZEND_PARSE_PARAMETERS_END();
+
+	zend_update_property_long(php_gd_qoi_info_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("width"), width);
+	zend_update_property_long(php_gd_qoi_info_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("height"), height);
+	zend_update_property_long(php_gd_qoi_info_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("channels"), channels);
+	zend_update_property_long(php_gd_qoi_info_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("colorspaceTag"), colorspace_tag);
+	zend_update_property(php_gd_qoi_info_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("colorspace"), colorspace);
+}
+
+PHP_METHOD(Gd_Qoi_Reader, __construct)
+{
+	ZEND_PARSE_PARAMETERS_NONE();
+}
+
+PHP_METHOD(Gd_Qoi_Reader, fromString)
+{
+	zend_string *bytes;
+	zval *options = NULL;
+
+	ZEND_PARSE_PARAMETERS_START(1, 2)
+		Z_PARAM_STR(bytes)
+		Z_PARAM_OPTIONAL
+		Z_PARAM_OBJECT_OF_CLASS(options, php_gd_qoi_read_options_ce)
+	ZEND_PARSE_PARAMETERS_END();
+
+	if (!php_gd_qoi_initialize_reader(return_value, bytes)) {
+		RETURN_THROWS();
+	}
+}
+
+PHP_METHOD(Gd_Qoi_Reader, fromFile)
+{
+	zend_string *path, *bytes;
+	zval *options = NULL;
+
+	ZEND_PARSE_PARAMETERS_START(1, 2)
+		Z_PARAM_PATH_STR(path)
+		Z_PARAM_OPTIONAL
+		Z_PARAM_OBJECT_OF_CLASS(options, php_gd_qoi_read_options_ce)
+	ZEND_PARSE_PARAMETERS_END();
+
+	if (!php_gd_qoi_read_file_bytes(path, &bytes)) {
+		RETURN_THROWS();
+	}
+	if (!php_gd_qoi_initialize_reader(return_value, bytes)) {
+		zend_string_release(bytes);
+		RETURN_THROWS();
+	}
+	zend_string_release(bytes);
+}
+
+PHP_METHOD(Gd_Qoi_Reader, fromStream)
+{
+	zval *stream_zv;
+	zval *options = NULL;
+	zend_string *bytes;
+
+	ZEND_PARSE_PARAMETERS_START(1, 2)
+		Z_PARAM_ZVAL(stream_zv)
+		Z_PARAM_OPTIONAL
+		Z_PARAM_OBJECT_OF_CLASS(options, php_gd_qoi_read_options_ce)
+	ZEND_PARSE_PARAMETERS_END();
+
+	if (!php_gd_qoi_read_stream_bytes(stream_zv, &bytes)) {
+		RETURN_THROWS();
+	}
+	if (!php_gd_qoi_initialize_reader(return_value, bytes)) {
+		zend_string_release(bytes);
+		RETURN_THROWS();
+	}
+	zend_string_release(bytes);
+}
+
+PHP_METHOD(Gd_Qoi_Reader, info)
+{
+	php_gd_qoi_reader_object *reader = Z_GD_QOI_READER_P(ZEND_THIS);
+
+	ZEND_PARSE_PARAMETERS_NONE();
+	RETURN_COPY(&reader->info);
+}
+
+PHP_METHOD(Gd_Qoi_Reader, read)
+{
+	php_gd_qoi_reader_object *reader = Z_GD_QOI_READER_P(ZEND_THIS);
+
+	ZEND_PARSE_PARAMETERS_NONE();
+	if (!php_gd_qoi_reader_read_image(reader, return_value)) {
+		RETURN_THROWS();
+	}
 }
 
 PHP_METHOD(Gd_Qoi_Codec, fromFile)
 {
-	zend_string *path;
-	php_stream *stream;
-	gdImagePtr im;
+	zend_string *path, *bytes;
+	zval *options = NULL;
 
-	ZEND_PARSE_PARAMETERS_START(1, 1)
+	ZEND_PARSE_PARAMETERS_START(1, 2)
 		Z_PARAM_PATH_STR(path)
+		Z_PARAM_OPTIONAL
+		Z_PARAM_OBJECT_OF_CLASS(options, php_gd_qoi_read_options_ce)
 	ZEND_PARSE_PARAMETERS_END();
 
-	stream = php_stream_open_wrapper(ZSTR_VAL(path), "rb", REPORT_ERRORS | IGNORE_PATH, NULL);
-	if (stream == NULL) {
-		php_gd_qoi_throw_open_failure("Failed to open QOI input");
+	if (!php_gd_qoi_read_file_bytes(path, &bytes)) {
 		RETURN_THROWS();
 	}
-
-	im = php_gd_qoi_decode_from_stream(stream);
-	php_stream_close(stream);
-
-	if (im == NULL) {
-		zend_throw_exception(php_gd_codec_exception_ce, "Failed to decode QOI image", 0);
+	if (!php_gd_qoi_decode_reader_bytes(bytes, return_value)) {
+		zend_string_release(bytes);
 		RETURN_THROWS();
 	}
-
-	php_gd_assign_libgdimageptr_as_extgdimage(return_value, im);
+	zend_string_release(bytes);
 }
 
 PHP_METHOD(Gd_Qoi_Codec, fromStream)
 {
 	zval *stream_zv;
-	php_stream *stream;
-	gdImagePtr im;
+	zval *options = NULL;
+	zend_string *bytes;
 
-	ZEND_PARSE_PARAMETERS_START(1, 1)
+	ZEND_PARSE_PARAMETERS_START(1, 2)
 		Z_PARAM_ZVAL(stream_zv)
+		Z_PARAM_OPTIONAL
+		Z_PARAM_OBJECT_OF_CLASS(options, php_gd_qoi_read_options_ce)
 	ZEND_PARSE_PARAMETERS_END();
 
 	if (Z_TYPE_P(stream_zv) != IS_RESOURCE) {
@@ -155,28 +412,25 @@ PHP_METHOD(Gd_Qoi_Codec, fromStream)
 		RETURN_THROWS();
 	}
 
-	php_stream_from_zval_no_verify(stream, stream_zv);
-	if (stream == NULL) {
-		zend_argument_type_error(1, "must be a valid stream resource");
+	if (!php_gd_qoi_read_stream_bytes(stream_zv, &bytes)) {
 		RETURN_THROWS();
 	}
-
-	im = php_gd_qoi_decode_from_stream(stream);
-	if (im == NULL) {
-		zend_throw_exception(php_gd_codec_exception_ce, "Failed to decode QOI image", 0);
+	if (!php_gd_qoi_decode_reader_bytes(bytes, return_value)) {
+		zend_string_release(bytes);
 		RETURN_THROWS();
 	}
-
-	php_gd_assign_libgdimageptr_as_extgdimage(return_value, im);
+	zend_string_release(bytes);
 }
 
 PHP_METHOD(Gd_Qoi_Codec, fromString)
 {
 	zend_string *bytes;
-	gdImagePtr im;
+	zval *options = NULL;
 
-	ZEND_PARSE_PARAMETERS_START(1, 1)
+	ZEND_PARSE_PARAMETERS_START(1, 2)
 		Z_PARAM_STR(bytes)
+		Z_PARAM_OPTIONAL
+		Z_PARAM_OBJECT_OF_CLASS(options, php_gd_qoi_read_options_ce)
 	ZEND_PARSE_PARAMETERS_END();
 
 	if (ZSTR_LEN(bytes) > ZEND_LONG_MAX) {
@@ -184,13 +438,9 @@ PHP_METHOD(Gd_Qoi_Codec, fromString)
 		RETURN_THROWS();
 	}
 
-	im = gdImageCreateFromQoiPtr((int) ZSTR_LEN(bytes), ZSTR_VAL(bytes));
-	if (im == NULL) {
-		zend_throw_exception(php_gd_codec_exception_ce, "Failed to decode QOI image", 0);
+	if (!php_gd_qoi_decode_reader_bytes(bytes, return_value)) {
 		RETURN_THROWS();
 	}
-
-	php_gd_assign_libgdimageptr_as_extgdimage(return_value, im);
 }
 
 static void php_gd_qoi_write_to_context(INTERNAL_FUNCTION_PARAMETERS, bool require_stream)
@@ -200,7 +450,6 @@ static void php_gd_qoi_write_to_context(INTERNAL_FUNCTION_PARAMETERS, bool requi
 	zval *options_zv = NULL;
 	zval rv, *colorspace_zv;
 	gdIOCtx *ctx;
-	int colorspace;
 
 	ZEND_PARSE_PARAMETERS_START(2, 3)
 		Z_PARAM_OBJECT_OF_CLASS(image_zv, gd_image_ce)
@@ -220,16 +469,20 @@ static void php_gd_qoi_write_to_context(INTERNAL_FUNCTION_PARAMETERS, bool requi
 		php_gd_qoi_throw_open_failure("Failed to open QOI output");
 		RETURN_THROWS();
 	}
+	gdQoiWriteOptions options;
+	gdQoiWriteOptionsInit(&options);
 
 	if (options_zv != NULL) {
 		colorspace_zv = zend_read_property(php_gd_qoi_write_options_ce, Z_OBJ_P(options_zv), ZEND_STRL("colorspace"), true, &rv);
-		colorspace = php_gd_qoi_colorspace(colorspace_zv);
-	} else {
-		colorspace = GD_QOI_SRGB;
+		options.colorspace = php_gd_qoi_colorspace(colorspace_zv);
 	}
 
-	gdImageQoiCtxEx(php_gd_libgdimageptr_from_zval_p(image_zv), ctx, colorspace);
+	int result = gdImageQoiCtxWithOptions(php_gd_libgdimageptr_from_zval_p(image_zv), ctx, &options);
 	ctx->gd_free(ctx);
+	if (!result) {
+		zend_throw_exception(php_gd_codec_exception_ce, "Failed to encode QOI image", 0);
+		RETURN_THROWS();
+	}
 }
 
 PHP_METHOD(Gd_Qoi_Codec, toFile)
@@ -248,8 +501,8 @@ PHP_METHOD(Gd_Qoi_Codec, toString)
 	zval *options_zv = NULL;
 	zval rv, *colorspace_zv;
 	int size = 0;
-	int colorspace;
 	void *data;
+	gdQoiWriteOptions options;
 
 	ZEND_PARSE_PARAMETERS_START(1, 2)
 		Z_PARAM_OBJECT_OF_CLASS(image_zv, gd_image_ce)
@@ -257,14 +510,13 @@ PHP_METHOD(Gd_Qoi_Codec, toString)
 		Z_PARAM_OBJECT_OF_CLASS(options_zv, php_gd_qoi_write_options_ce)
 	ZEND_PARSE_PARAMETERS_END();
 
+	gdQoiWriteOptionsInit(&options);
 	if (options_zv != NULL) {
 		colorspace_zv = zend_read_property(php_gd_qoi_write_options_ce, Z_OBJ_P(options_zv), ZEND_STRL("colorspace"), true, &rv);
-		colorspace = php_gd_qoi_colorspace(colorspace_zv);
-	} else {
-		colorspace = GD_QOI_SRGB;
+		options.colorspace = php_gd_qoi_colorspace(colorspace_zv);
 	}
 
-	data = gdImageQoiPtrEx(php_gd_libgdimageptr_from_zval_p(image_zv), &size, colorspace);
+	data = gdImageQoiPtrWithOptions(php_gd_libgdimageptr_from_zval_p(image_zv), &size, &options);
 	if (data == NULL || size < 0) {
 		gdFree(data);
 		zend_throw_exception(php_gd_codec_exception_ce, "Failed to encode QOI image", 0);
@@ -284,7 +536,16 @@ void php_gd_qoi_minit(void)
 	zend_class_entry *codec_ce;
 
 	php_gd_qoi_colorspace_ce = register_class_Gd_Qoi_Colorspace();
+	php_gd_qoi_read_options_ce = register_class_Gd_Qoi_ReadOptions();
 	php_gd_qoi_write_options_ce = register_class_Gd_Qoi_WriteOptions(php_gd_get_codec_write_options_ce());
+	php_gd_qoi_info_ce = register_class_Gd_Qoi_Info();
+	php_gd_qoi_reader_ce = register_class_Gd_Qoi_Reader();
+	php_gd_qoi_reader_ce->create_object = php_gd_qoi_reader_create;
+
+	memcpy(&php_gd_qoi_reader_handlers, &std_object_handlers, sizeof(zend_object_handlers));
+	php_gd_qoi_reader_handlers.offset = offsetof(php_gd_qoi_reader_object, std);
+	php_gd_qoi_reader_handlers.free_obj = php_gd_qoi_reader_free;
+	php_gd_qoi_reader_handlers.clone_obj = NULL;
 	codec_ce = register_class_Gd_Qoi_Codec();
 	php_gd_register_codec_write(php_gd_qoi_write_options_ce, codec_ce);
 	php_gd_register_codec_format("Qoi", php_gd_qoi_write_options_ce);

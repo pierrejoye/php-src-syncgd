@@ -11,6 +11,7 @@
 #include "gd.h"
 #include "gd_errors.h"
 #include "gdhelpers.h"
+#include "gd_heif_metadata.h"
 #include <limits.h>
 #include <math.h>
 #include <stdio.h>
@@ -31,7 +32,8 @@ typedef enum gd_heif_brand {
 } gd_heif_brand;
 
 static gdImagePtr _gdImageCreateFromHeifCtx(gdIOCtx *infile, gd_heif_brand expected_brand,
-                                            const gdHeifReadOptions *options);
+                                            const gdHeifReadOptions *options,
+                                            gdImageMetadata *metadata);
 
 BGD_DECLARE(void) gdHeifReadOptionsInit(gdHeifReadOptions *options)
 {
@@ -75,7 +77,25 @@ gdImageCreateFromHeifPtrWithOptions(int size, void *data, const gdHeifReadOption
     if (!in)
         return NULL;
     im = _gdImageCreateFromHeifCtx(in, GD_HEIF_BRAND_AVIF | GD_HEIF_BRAND_MIF1 |
-                                           GD_HEIF_BRAND_HEIC | GD_HEIF_BRAND_HEIX, options);
+                                           GD_HEIF_BRAND_HEIC | GD_HEIF_BRAND_HEIX, options, NULL);
+    in->gd_free(in);
+
+    return im;
+}
+
+BGD_DECLARE(gdImagePtr)
+gdImageCreateFromHeifPtrWithOptionsAndMetadata(int size, void *data,
+                                                const gdHeifReadOptions *options,
+                                                gdImageMetadata *metadata)
+{
+    gdImagePtr im;
+    gdIOCtx *in = gdNewDynamicCtxEx(size, data, 0);
+
+    if (!in)
+        return NULL;
+    im = _gdImageCreateFromHeifCtx(in, GD_HEIF_BRAND_AVIF | GD_HEIF_BRAND_MIF1 |
+                                           GD_HEIF_BRAND_HEIC | GD_HEIF_BRAND_HEIX,
+                                   options, metadata);
     in->gd_free(in);
 
     return im;
@@ -98,7 +118,8 @@ static int _gdHeifCheckBrand(unsigned char *magic, gd_heif_brand expected_brand)
 }
 
 static gdImagePtr _gdImageCreateFromHeifCtx(gdIOCtx *infile, gd_heif_brand expected_brand,
-                                            const gdHeifReadOptions *options)
+                                            const gdHeifReadOptions *options,
+                                            gdImageMetadata *metadata)
 {
     struct heif_context *heif_ctx;
     struct heif_decoding_options *heif_dec_opts;
@@ -169,6 +190,17 @@ static gdImagePtr _gdImageCreateFromHeifCtx(gdIOCtx *infile, gd_heif_brand expec
         return NULL;
     }
 
+    if (metadata != NULL) {
+        gdHeifInfo info;
+        int metadata_status = gdHeifReadMetadataFromPtr((int) size, filedata, &info, metadata);
+        if (metadata_status != GD_META_OK) {
+            gdFree(filedata);
+            heif_image_handle_release(heif_imhandle);
+            heif_context_free(heif_ctx);
+            return NULL;
+        }
+    }
+
     heif_im = NULL;
     heif_dec_opts = heif_decoding_options_alloc();
     if (heif_dec_opts == NULL) {
@@ -237,7 +269,7 @@ BGD_DECLARE(gdImagePtr) gdImageCreateFromHeifCtx(gdIOCtx *infile)
 {
     return _gdImageCreateFromHeifCtx(infile, GD_HEIF_BRAND_AVIF | GD_HEIF_BRAND_MIF1 |
                                                  GD_HEIF_BRAND_HEIC | GD_HEIF_BRAND_HEIX,
-                                     NULL);
+                                     NULL, NULL);
 }
 
 static struct heif_error _gdImageWriteHeif(struct heif_context *heif_ctx, const void *data,
@@ -277,6 +309,7 @@ static int _gdImageHeifCtx(gdImagePtr im, gdIOCtx *outfile, const gdHeifWriteOpt
     struct heif_context *heif_ctx;
     struct heif_encoder *heif_enc;
     struct heif_image *heif_im;
+    struct heif_image_handle *heif_imhandle = NULL;
     struct heif_writer heif_wr;
     struct heif_error err;
     uint8_t *rgba;
@@ -407,10 +440,24 @@ static int _gdImageHeifCtx(gdImagePtr im, gdIOCtx *outfile, const gdHeifWriteOpt
         }
         row_start += stride;
     }
-    err = heif_context_encode_image(heif_ctx, heif_im, heif_enc, NULL, NULL);
+    if (options->metadata != NULL && gdHeifApplyImageMetadata(heif_im, options->metadata) != GD_META_OK) {
+        gd_error("gd-heif metadata color profile application failed\n");
+        heif_image_release(heif_im);
+        heif_encoder_release(heif_enc);
+        heif_context_free(heif_ctx);
+        return GD_FALSE;
+    }
+    err = heif_context_encode_image(heif_ctx, heif_im, heif_enc, NULL, &heif_imhandle);
     heif_encoder_release(heif_enc);
-    if (err.code != heif_error_Ok) {
+    if (err.code != heif_error_Ok || heif_imhandle == NULL) {
         gd_error("gd-heif encoding failed\n");
+        heif_image_release(heif_im);
+        heif_context_free(heif_ctx);
+        return GD_FALSE;
+    }
+    if (options->metadata != NULL && gdHeifApplyMetadata(heif_ctx, heif_im, heif_imhandle, options->metadata) != GD_META_OK) {
+        gd_error("gd-heif metadata application failed\n");
+        heif_image_handle_release(heif_imhandle);
         heif_image_release(heif_im);
         heif_context_free(heif_ctx);
         return GD_FALSE;
@@ -419,6 +466,7 @@ static int _gdImageHeifCtx(gdImagePtr im, gdIOCtx *outfile, const gdHeifWriteOpt
     heif_wr.writer_api_version = 1;
     err = heif_context_write(heif_ctx, &heif_wr, (void *)outfile);
 
+    heif_image_handle_release(heif_imhandle);
     heif_image_release(heif_im);
     heif_context_free(heif_ctx);
     if (err.code != heif_error_Ok) {
@@ -546,6 +594,15 @@ BGD_DECLARE(gdImagePtr) gdImageCreateFromHeifPtr(int size, void *data)
 
 BGD_DECLARE(gdImagePtr)
 gdImageCreateFromHeifPtrWithOptions(int size, void *data, const gdHeifReadOptions *options)
+{
+    _noHeifError();
+    return NULL;
+}
+
+BGD_DECLARE(gdImagePtr)
+gdImageCreateFromHeifPtrWithOptionsAndMetadata(int size, void *data,
+                                                const gdHeifReadOptions *options,
+                                                gdImageMetadata *metadata)
 {
     _noHeifError();
     return NULL;

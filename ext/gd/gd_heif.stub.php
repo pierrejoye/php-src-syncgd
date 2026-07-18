@@ -44,13 +44,65 @@ namespace Gd\Heif {
         public bool $lossless;
         public CompressionFormat $codec;
         public ChromaSubsampling $chromaSubsampling;
+        public ?\Gd\Metadata $metadata;
 
         public function __construct(
             int $quality = -1,
             bool $lossless = false,
             CompressionFormat $codec = CompressionFormat::Hevc,
             ChromaSubsampling $chromaSubsampling = ChromaSubsampling::Yuv444,
+            ?\Gd\Metadata $metadata = null,
         ) {}
+    }
+
+    /** @strict-properties */
+    final readonly class Info
+    {
+        public int $width;
+        public int $height;
+        public int $topLevelImageCount;
+        public bool $hasAlpha;
+        public int $bitDepth;
+        public bool $isAnimation;
+        public \Gd\Metadata $metadata;
+
+        public function __construct(
+            int $width,
+            int $height,
+            int $topLevelImageCount,
+            bool $hasAlpha,
+            int $bitDepth,
+            bool $isAnimation,
+            \Gd\Metadata $metadata,
+        ) {}
+    }
+
+    /**
+     * @strict-properties
+     * @not-serializable
+     */
+    final class Reader
+    {
+        private function __construct() {}
+
+        public static function fromFile(
+            string $path,
+            ReadOptions $options = new ReadOptions(),
+        ): \Gd\Heif\Reader {}
+
+        public static function fromString(
+            string $bytes,
+            ReadOptions $options = new ReadOptions(),
+        ): \Gd\Heif\Reader {}
+
+        /** @param resource $stream */
+        public static function fromStream(
+            $stream,
+            ReadOptions $options = new ReadOptions(),
+        ): \Gd\Heif\Reader {}
+
+        public function info(): Info {}
+        public function read(): \GdImage {}
     }
 
     final class Codec

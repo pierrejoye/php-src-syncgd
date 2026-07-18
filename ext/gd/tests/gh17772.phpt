@@ -3,7 +3,7 @@ GH-17772 (imagepalettetotruecolor segfault on image deallocation)
 --EXTENSIONS--
 gd
 --INI--
-memory_limit=2M
+memory_limit=1M
 --CREDITS--
 YuanchengJiang
 --SKIPIF--

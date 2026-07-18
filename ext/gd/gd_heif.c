@@ -19,6 +19,7 @@
 #include "php_gd.h"
 #include "gd_codec_write.h"
 #include "gd_heif.h"
+#include "gd_metadata.h"
 #include "ext/spl/spl_exceptions.h"
 #include <limits.h>
 
@@ -39,6 +40,34 @@ static zend_class_entry *php_gd_heif_compression_format_ce;
 static zend_class_entry *php_gd_heif_chroma_subsampling_ce;
 static zend_class_entry *php_gd_heif_read_options_ce;
 static zend_class_entry *php_gd_heif_write_options_ce;
+static zend_class_entry *php_gd_heif_info_ce;
+static zend_class_entry *php_gd_heif_reader_ce;
+static zend_object_handlers php_gd_heif_reader_handlers;
+
+typedef struct {
+	int width;
+	int height;
+	int top_level_image_count;
+	int has_alpha;
+	int bit_depth;
+	int is_animation;
+} php_gd_heif_info;
+
+typedef struct {
+	zend_string *bytes;
+	zval info;
+	gdHeifReadOptions read_options;
+	bool read;
+	bool failed;
+	zend_object std;
+} php_gd_heif_reader_object;
+
+static php_gd_heif_reader_object *php_gd_heif_reader_from_object(zend_object *object)
+{
+	return (php_gd_heif_reader_object *) ((char *) object - offsetof(php_gd_heif_reader_object, std));
+}
+
+#define Z_GD_HEIF_READER_P(zv) php_gd_heif_reader_from_object(Z_OBJ_P((zv)))
 
 static void php_gd_heif_throw(const char *message)
 {
@@ -121,6 +150,120 @@ static gdImagePtr php_gd_heif_decode_bytes(zend_string *bytes, zval *options_zv)
 #endif
 }
 
+static void php_gd_heif_build_read_options(zval *options_zv, gdHeifReadOptions *options)
+{
+	zval rv;
+	zval *value;
+
+	gdHeifReadOptionsInit(options);
+	if (options_zv != NULL) {
+		value = zend_read_property(php_gd_heif_read_options_ce, Z_OBJ_P(options_zv), ZEND_STRL("ignoreTransformations"), true, &rv);
+		options->ignore_transformations = zend_is_true(value);
+	}
+}
+
+static void php_gd_heif_create_info(zval *result, const php_gd_heif_info *info, gdImageMetadata *metadata)
+{
+	zval value;
+
+	object_init_ex(result, php_gd_heif_info_ce);
+	zend_update_property_long(php_gd_heif_info_ce, Z_OBJ_P(result), ZEND_STRL("width"), info->width);
+	zend_update_property_long(php_gd_heif_info_ce, Z_OBJ_P(result), ZEND_STRL("height"), info->height);
+	zend_update_property_long(php_gd_heif_info_ce, Z_OBJ_P(result), ZEND_STRL("topLevelImageCount"), info->top_level_image_count);
+	zend_update_property_bool(php_gd_heif_info_ce, Z_OBJ_P(result), ZEND_STRL("hasAlpha"), info->has_alpha);
+	zend_update_property_long(php_gd_heif_info_ce, Z_OBJ_P(result), ZEND_STRL("bitDepth"), info->bit_depth);
+	zend_update_property_bool(php_gd_heif_info_ce, Z_OBJ_P(result), ZEND_STRL("isAnimation"), info->is_animation);
+	php_gd_metadata_create_zval(&value, metadata);
+	zend_update_property(php_gd_heif_info_ce, Z_OBJ_P(result), ZEND_STRL("metadata"), &value);
+	zval_ptr_dtor(&value);
+}
+
+static zend_object *php_gd_heif_reader_create(zend_class_entry *class_entry)
+{
+	php_gd_heif_reader_object *reader = zend_object_alloc(sizeof(*reader), class_entry);
+
+	reader->bytes = NULL;
+	ZVAL_UNDEF(&reader->info);
+	gdHeifReadOptionsInit(&reader->read_options);
+	reader->read = false;
+	reader->failed = false;
+	zend_object_std_init(&reader->std, class_entry);
+	object_properties_init(&reader->std, class_entry);
+	reader->std.handlers = &php_gd_heif_reader_handlers;
+	return &reader->std;
+}
+
+static void php_gd_heif_reader_free(zend_object *object)
+{
+	php_gd_heif_reader_object *reader = php_gd_heif_reader_from_object(object);
+
+	if (reader->bytes != NULL) {
+		zend_string_release(reader->bytes);
+	}
+	if (!Z_ISUNDEF(reader->info)) {
+		zval_ptr_dtor(&reader->info);
+	}
+	zend_object_std_dtor(&reader->std);
+}
+
+static bool php_gd_heif_initialize_reader(zval *result, zend_string *bytes,
+		const gdHeifReadOptions *options)
+{
+	php_gd_heif_reader_object *reader;
+	gdImageMetadata *metadata = gdImageMetadataCreate();
+	php_gd_heif_info info;
+
+	if (metadata == NULL) {
+		php_gd_heif_throw("Failed to allocate HEIF metadata");
+		return false;
+	}
+#ifdef HAVE_GD_BUNDLED
+	gdHeifInfo gd_info;
+	if (ZSTR_LEN(bytes) > INT_MAX || gdHeifReadMetadataFromPtr((int) ZSTR_LEN(bytes), ZSTR_VAL(bytes), &gd_info, metadata) != GD_META_OK) {
+		gdImageMetadataFree(metadata);
+		php_gd_heif_throw("Failed to read HEIF metadata");
+		return false;
+	}
+	info.width = gd_info.width;
+	info.height = gd_info.height;
+	info.top_level_image_count = gd_info.top_level_image_count;
+	info.has_alpha = gd_info.has_alpha;
+	info.bit_depth = gd_info.bit_depth;
+	info.is_animation = gd_info.is_animation;
+#else
+	if (ZSTR_LEN(bytes) > INT_MAX) {
+		gdImageMetadataFree(metadata);
+		php_gd_heif_throw("HEIF input is too large");
+		return false;
+	}
+	if (!options->ignore_transformations) {
+		gdImageMetadataFree(metadata);
+		php_gd_heif_throw("Respecting HEIF transformations is not supported by this gd build");
+		return false;
+	}
+	gdImagePtr image = gdImageCreateFromHeifPtr((int) ZSTR_LEN(bytes), ZSTR_VAL(bytes));
+	if (image == NULL) {
+		gdImageMetadataFree(metadata);
+		php_gd_heif_throw("Failed to read HEIF input");
+		return false;
+	}
+	info.width = gdImageSX(image);
+	info.height = gdImageSY(image);
+	info.top_level_image_count = 1;
+	info.has_alpha = false;
+	info.bit_depth = 8;
+	info.is_animation = false;
+	gdImageDestroy(image);
+#endif
+
+	object_init_ex(result, php_gd_heif_reader_ce);
+	reader = Z_GD_HEIF_READER_P(result);
+	reader->bytes = zend_string_copy(bytes);
+	reader->read_options = *options;
+	php_gd_heif_create_info(&reader->info, &info, metadata);
+	return true;
+}
+
 static gdHeifCodec php_gd_heif_codec_from_zval(zval *value)
 {
 	switch (zend_enum_fetch_case_id(Z_OBJ_P(value))) {
@@ -152,6 +295,7 @@ typedef struct {
 	bool lossless;
 	gdHeifCodec codec;
 	gdHeifChroma chroma;
+	gdImageMetadata *metadata;
 } php_gd_heif_write_options;
 
 static bool php_gd_heif_read_write_options(zval *options_zv, php_gd_heif_write_options *options)
@@ -163,6 +307,7 @@ static bool php_gd_heif_read_write_options(zval *options_zv, php_gd_heif_write_o
 	options->lossless = false;
 	options->codec = GD_HEIF_CODEC_HEVC;
 	options->chroma = GD_HEIF_CHROMA_444;
+	options->metadata = NULL;
 	if (options_zv == NULL) {
 		return true;
 	}
@@ -175,6 +320,10 @@ static bool php_gd_heif_read_write_options(zval *options_zv, php_gd_heif_write_o
 	options->codec = php_gd_heif_codec_from_zval(value);
 	value = zend_read_property(php_gd_heif_write_options_ce, Z_OBJ_P(options_zv), ZEND_STRL("chromaSubsampling"), true, &rv);
 	options->chroma = php_gd_heif_chroma_from_zval(value);
+	value = zend_read_property(php_gd_heif_write_options_ce, Z_OBJ_P(options_zv), ZEND_STRL("metadata"), true, &rv);
+	if (Z_TYPE_P(value) == IS_OBJECT) {
+		options->metadata = php_gd_metadata_from_zval(value);
+	}
 
 	if (options->codec == GD_HEIF_CODEC_UNKNOWN || options->chroma == NULL) {
 		php_gd_heif_throw("Unsupported HEIF write option");
@@ -201,6 +350,7 @@ static bool php_gd_heif_encode_to_string(zval *image_zv, zval *options_zv, zend_
 	gd_options.lossless = options.lossless ? 1 : 0;
 	gd_options.codec = options.codec;
 	gd_options.chroma = options.chroma;
+	gd_options.metadata = options.metadata;
 	data = gdImageHeifPtrWithOptions(php_gd_libgdimageptr_from_zval_p(image_zv), &size, &gd_options);
 #else
 	data = gdImageHeifPtrEx(
@@ -235,19 +385,165 @@ PHP_METHOD(Gd_Heif_ReadOptions, __construct)
 	zend_update_property_bool(php_gd_heif_read_options_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("ignoreTransformations"), ignore_transformations);
 }
 
+PHP_METHOD(Gd_Heif_Info, __construct)
+{
+	zend_long width, height;
+	zend_long top_level_image_count, bit_depth;
+	bool has_alpha, is_animation;
+	zval *metadata;
+
+	ZEND_PARSE_PARAMETERS_START(7, 7)
+		Z_PARAM_LONG(width)
+		Z_PARAM_LONG(height)
+		Z_PARAM_LONG(top_level_image_count)
+		Z_PARAM_BOOL(has_alpha)
+		Z_PARAM_LONG(bit_depth)
+		Z_PARAM_BOOL(is_animation)
+		Z_PARAM_OBJECT_OF_CLASS(metadata, php_gd_metadata_ce)
+	ZEND_PARSE_PARAMETERS_END();
+
+	zend_update_property_long(php_gd_heif_info_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("width"), width);
+	zend_update_property_long(php_gd_heif_info_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("height"), height);
+	zend_update_property_long(php_gd_heif_info_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("topLevelImageCount"), top_level_image_count);
+	zend_update_property_bool(php_gd_heif_info_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("hasAlpha"), has_alpha);
+	zend_update_property_long(php_gd_heif_info_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("bitDepth"), bit_depth);
+	zend_update_property_bool(php_gd_heif_info_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("isAnimation"), is_animation);
+	zend_update_property(php_gd_heif_info_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("metadata"), metadata);
+}
+
+PHP_METHOD(Gd_Heif_Reader, __construct)
+{
+	ZEND_PARSE_PARAMETERS_NONE();
+}
+
+PHP_METHOD(Gd_Heif_Reader, fromString)
+{
+	zend_string *bytes;
+	zval *options_zv = NULL;
+	gdHeifReadOptions options;
+
+	ZEND_PARSE_PARAMETERS_START(1, 2)
+		Z_PARAM_STR(bytes)
+		Z_PARAM_OPTIONAL
+		Z_PARAM_OBJECT_OF_CLASS(options_zv, php_gd_heif_read_options_ce)
+	ZEND_PARSE_PARAMETERS_END();
+
+	if (ZSTR_LEN(bytes) > INT_MAX) {
+		zend_argument_value_error(1, "must not exceed %d bytes", INT_MAX);
+		RETURN_THROWS();
+	}
+	php_gd_heif_build_read_options(options_zv, &options);
+	if (!php_gd_heif_initialize_reader(return_value, bytes, &options)) {
+		RETURN_THROWS();
+	}
+}
+
+PHP_METHOD(Gd_Heif_Reader, fromFile)
+{
+	zend_string *path, *bytes;
+	zval *options_zv = NULL;
+	gdHeifReadOptions options;
+
+	ZEND_PARSE_PARAMETERS_START(1, 2)
+		Z_PARAM_PATH_STR(path)
+		Z_PARAM_OPTIONAL
+		Z_PARAM_OBJECT_OF_CLASS(options_zv, php_gd_heif_read_options_ce)
+	ZEND_PARSE_PARAMETERS_END();
+
+	if (!php_gd_heif_read_file_bytes(path, &bytes)) {
+		RETURN_THROWS();
+	}
+	if (ZSTR_LEN(bytes) > INT_MAX) {
+		zend_string_release(bytes);
+		zend_argument_value_error(1, "must not exceed %d bytes", INT_MAX);
+		RETURN_THROWS();
+	}
+	php_gd_heif_build_read_options(options_zv, &options);
+	if (!php_gd_heif_initialize_reader(return_value, bytes, &options)) {
+		zend_string_release(bytes);
+		RETURN_THROWS();
+	}
+	zend_string_release(bytes);
+}
+
+PHP_METHOD(Gd_Heif_Reader, fromStream)
+{
+	zval *stream_zv, *options_zv = NULL;
+	zend_string *bytes;
+	gdHeifReadOptions options;
+
+	ZEND_PARSE_PARAMETERS_START(1, 2)
+		Z_PARAM_ZVAL(stream_zv)
+		Z_PARAM_OPTIONAL
+		Z_PARAM_OBJECT_OF_CLASS(options_zv, php_gd_heif_read_options_ce)
+	ZEND_PARSE_PARAMETERS_END();
+
+	if (!php_gd_heif_read_stream_bytes(stream_zv, &bytes)) {
+		RETURN_THROWS();
+	}
+	if (ZSTR_LEN(bytes) > INT_MAX) {
+		zend_string_release(bytes);
+		zend_argument_value_error(1, "must not exceed %d bytes", INT_MAX);
+		RETURN_THROWS();
+	}
+	php_gd_heif_build_read_options(options_zv, &options);
+	if (!php_gd_heif_initialize_reader(return_value, bytes, &options)) {
+		zend_string_release(bytes);
+		RETURN_THROWS();
+	}
+	zend_string_release(bytes);
+}
+
+PHP_METHOD(Gd_Heif_Reader, info)
+{
+	php_gd_heif_reader_object *reader = Z_GD_HEIF_READER_P(ZEND_THIS);
+
+	ZEND_PARSE_PARAMETERS_NONE();
+	RETURN_COPY(&reader->info);
+}
+
+PHP_METHOD(Gd_Heif_Reader, read)
+{
+	php_gd_heif_reader_object *reader = Z_GD_HEIF_READER_P(ZEND_THIS);
+	gdImagePtr image;
+
+	ZEND_PARSE_PARAMETERS_NONE();
+	if (reader->failed) {
+		php_gd_heif_throw("HEIF reader is in a failed state");
+		RETURN_THROWS();
+	}
+	if (reader->read) {
+		php_gd_heif_throw("HEIF image has already been read");
+		RETURN_THROWS();
+	}
+	#ifdef HAVE_GD_BUNDLED
+	image = gdImageCreateFromHeifPtrWithOptions((int) ZSTR_LEN(reader->bytes), ZSTR_VAL(reader->bytes), &reader->read_options);
+	#else
+	image = gdImageCreateFromHeifPtr((int) ZSTR_LEN(reader->bytes), ZSTR_VAL(reader->bytes));
+	#endif
+	reader->read = true;
+	if (image == NULL) {
+		reader->failed = true;
+		php_gd_heif_throw("Failed to decode HEIF image");
+		RETURN_THROWS();
+	}
+	php_gd_assign_libgdimageptr_as_extgdimage(return_value, image);
+}
+
 PHP_METHOD(Gd_Heif_WriteOptions, __construct)
 {
 	zend_long quality = -1;
 	bool lossless = false;
 	zval *codec = NULL, *chroma_subsampling = NULL;
-	zval default_codec_zv, default_chroma_zv;
+	zval default_codec_zv, default_chroma_zv, *metadata = NULL;
 
-	ZEND_PARSE_PARAMETERS_START(0, 4)
+	ZEND_PARSE_PARAMETERS_START(0, 5)
 		Z_PARAM_OPTIONAL
 		Z_PARAM_LONG(quality)
 		Z_PARAM_BOOL(lossless)
 		Z_PARAM_OBJECT_OF_CLASS(codec, php_gd_heif_compression_format_ce)
 		Z_PARAM_OBJECT_OF_CLASS(chroma_subsampling, php_gd_heif_chroma_subsampling_ce)
+		Z_PARAM_OBJECT_OF_CLASS_OR_NULL(metadata, php_gd_metadata_ce)
 	ZEND_PARSE_PARAMETERS_END();
 
 	if (quality < -1 || quality > 100) {
@@ -268,6 +564,7 @@ PHP_METHOD(Gd_Heif_WriteOptions, __construct)
 	zend_update_property_bool(php_gd_heif_write_options_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("lossless"), lossless);
 	zend_update_property(php_gd_heif_write_options_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("codec"), codec);
 	zend_update_property(php_gd_heif_write_options_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("chromaSubsampling"), chroma_subsampling);
+	if (metadata) zend_update_property(php_gd_heif_write_options_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("metadata"), metadata); else zend_update_property_null(php_gd_heif_write_options_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("metadata"));
 }
 
 PHP_METHOD(Gd_Heif_Codec, __construct)
@@ -442,6 +739,15 @@ void php_gd_heif_minit(void)
 	php_gd_heif_compression_format_ce = register_class_Gd_Heif_CompressionFormat();
 	php_gd_heif_chroma_subsampling_ce = register_class_Gd_Heif_ChromaSubsampling();
 	php_gd_heif_read_options_ce = register_class_Gd_Heif_ReadOptions();
+	php_gd_heif_info_ce = register_class_Gd_Heif_Info();
+	php_gd_heif_reader_ce = register_class_Gd_Heif_Reader();
+	php_gd_heif_reader_ce->create_object = php_gd_heif_reader_create;
+
+	memcpy(&php_gd_heif_reader_handlers, &std_object_handlers, sizeof(zend_object_handlers));
+	php_gd_heif_reader_handlers.offset = offsetof(php_gd_heif_reader_object, std);
+	php_gd_heif_reader_handlers.free_obj = php_gd_heif_reader_free;
+	php_gd_heif_reader_handlers.clone_obj = NULL;
+
 	php_gd_heif_write_options_ce = register_class_Gd_Heif_WriteOptions(php_gd_get_codec_write_options_ce());
 	codec_ce = register_class_Gd_Heif_Codec();
 	php_gd_register_codec_write(php_gd_heif_write_options_ce, codec_ce);

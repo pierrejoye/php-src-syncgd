@@ -530,7 +530,7 @@ final class GdImage
         ?\Gd\Rect $clip = null,
     ): GdImage {}
 #endif
-
+#ifdef HAVE_GD_BUNDLED
     public function getContext(): \Gd\Context {}
 
     public function perceptualDiff(
@@ -538,6 +538,7 @@ final class GdImage
         float $threshold,
         \Gd\PerceptualDiffOptions $options = new \Gd\PerceptualDiffOptions(),
     ): \Gd\PerceptualDiffResult {}
+#endif
 }
 
 /**

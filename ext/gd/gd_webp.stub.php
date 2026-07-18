@@ -18,9 +18,11 @@ namespace Gd\Webp {
     final readonly class WriteOptions implements \Gd\Codec\WriteOptions
     {
         public int $quality;
+        public ?\Gd\Metadata $metadata;
 
         public function __construct(
             int $quality = -1,
+            ?\Gd\Metadata $metadata = null,
         ) {}
     }
 
@@ -68,7 +70,7 @@ namespace Gd\Webp {
     }
 #endif
 
-#ifdef HAVE_GD_WEBP_ANIM_READ_API
+#if defined(HAVE_GD_BUNDLED) || defined(HAVE_GD_WEBP_ANIM_READ_API)
     /** @strict-properties */
     final readonly class Info
     {
@@ -78,6 +80,7 @@ namespace Gd\Webp {
         public int $loopCount;
         public int $backgroundColor;
         public int $formatFlags;
+        public \Gd\Metadata $metadata;
 
         public function __construct(
             int $width,
@@ -86,8 +89,32 @@ namespace Gd\Webp {
             int $loopCount,
             int $backgroundColor,
             int $formatFlags,
+            \Gd\Metadata $metadata,
         ) {}
     }
+#endif
+
+#ifdef HAVE_GD_BUNDLED
+    /**
+     * @strict-properties
+     * @not-serializable
+     */
+    final class Reader
+    {
+        private function __construct() {}
+
+        public static function fromFile(string $path): \Gd\Webp\Reader {}
+        public static function fromString(string $bytes): \Gd\Webp\Reader {}
+
+        /** @param resource $stream */
+        public static function fromStream($stream): \Gd\Webp\Reader {}
+
+        public function info(): Info {}
+        public function read(): \GdImage {}
+    }
+#endif
+
+#ifdef HAVE_GD_WEBP_ANIM_READ_API
 
     /** @strict-properties */
     final readonly class Frame

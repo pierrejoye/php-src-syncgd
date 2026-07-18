@@ -107,6 +107,7 @@ static void php_imagettftext_common(INTERNAL_FUNCTION_PARAMETERS, int);
 #include "gd_qoi.h"
 #include "gd_tiff.h"
 #include "gd_jpeg.h"
+#include "gd_metadata.h"
 #include "gd_image.h"
 #ifdef HAVE_GD_BUNDLED
 # include "gd_2d.h"
@@ -356,6 +357,7 @@ PHP_MINIT_FUNCTION(gd)
 {
 	php_gd_object_minit_helper();
 	php_gd_font_minit_helper();
+	php_gd_metadata_minit();
 	php_gd_image_minit();
 #ifdef HAVE_GD_BUNDLED
 	php_gd_2d_minit();

@@ -1,5 +1,5 @@
 /* This is a generated file, edit gd_heif.stub.php instead.
- * Stub hash: f6b7d38dcfd845dfce83ff91696516eba56cd9d7
+ * Stub hash: 0327fc7ce0fe4992e5883374389e6b1ce725c915
  * Has decl header: yes */
 
 #if defined(HAVE_GD_HEIF)
@@ -12,10 +12,44 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Gd_Heif_WriteOptions___construct, 0, 0, 0)
 	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, lossless, _IS_BOOL, 0, "false")
 	ZEND_ARG_OBJ_INFO_WITH_DEFAULT_VALUE(0, codec, Gd\\Heif\\CompressionFormat, 0, "Gd\\Heif\\CompressionFormat::Hevc")
 	ZEND_ARG_OBJ_INFO_WITH_DEFAULT_VALUE(0, chromaSubsampling, Gd\\Heif\\ChromaSubsampling, 0, "Gd\\Heif\\ChromaSubsampling::Yuv444")
+	ZEND_ARG_OBJ_INFO_WITH_DEFAULT_VALUE(0, metadata, Gd\\Metadata, 1, "null")
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Gd_Heif_Codec___construct, 0, 0, 0)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Gd_Heif_Info___construct, 0, 0, 7)
+	ZEND_ARG_TYPE_INFO(0, width, IS_LONG, 0)
+	ZEND_ARG_TYPE_INFO(0, height, IS_LONG, 0)
+	ZEND_ARG_TYPE_INFO(0, topLevelImageCount, IS_LONG, 0)
+	ZEND_ARG_TYPE_INFO(0, hasAlpha, _IS_BOOL, 0)
+	ZEND_ARG_TYPE_INFO(0, bitDepth, IS_LONG, 0)
+	ZEND_ARG_TYPE_INFO(0, isAnimation, _IS_BOOL, 0)
+	ZEND_ARG_OBJ_INFO(0, metadata, Gd\\Metadata, 0)
 ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Gd_Heif_Reader___construct, 0, 0, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Gd_Heif_Reader_fromFile, 0, 1, Gd\\Heif\\Reader, 0)
+	ZEND_ARG_TYPE_INFO(0, path, IS_STRING, 0)
+	ZEND_ARG_OBJ_INFO_WITH_DEFAULT_VALUE(0, options, Gd\\Heif\\ReadOptions, 0, "new Gd\\Heif\\ReadOptions()")
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Gd_Heif_Reader_fromString, 0, 1, Gd\\Heif\\Reader, 0)
+	ZEND_ARG_TYPE_INFO(0, bytes, IS_STRING, 0)
+	ZEND_ARG_OBJ_INFO_WITH_DEFAULT_VALUE(0, options, Gd\\Heif\\ReadOptions, 0, "new Gd\\Heif\\ReadOptions()")
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Gd_Heif_Reader_fromStream, 0, 1, Gd\\Heif\\Reader, 0)
+	ZEND_ARG_INFO(0, stream)
+	ZEND_ARG_OBJ_INFO_WITH_DEFAULT_VALUE(0, options, Gd\\Heif\\ReadOptions, 0, "new Gd\\Heif\\ReadOptions()")
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Gd_Heif_Reader_info, 0, 0, Gd\\Heif\\Info, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Gd_Heif_Reader_read, 0, 0, GdImage, 0)
+ZEND_END_ARG_INFO()
+
+#define arginfo_class_Gd_Heif_Codec___construct arginfo_class_Gd_Heif_Reader___construct
 
 ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Gd_Heif_Codec_fromFile, 0, 1, GdImage, 0)
 	ZEND_ARG_TYPE_INFO(0, path, IS_STRING, 0)
@@ -53,6 +87,13 @@ ZEND_END_ARG_INFO()
 #if defined(HAVE_GD_HEIF)
 ZEND_METHOD(Gd_Heif_ReadOptions, __construct);
 ZEND_METHOD(Gd_Heif_WriteOptions, __construct);
+ZEND_METHOD(Gd_Heif_Info, __construct);
+ZEND_METHOD(Gd_Heif_Reader, __construct);
+ZEND_METHOD(Gd_Heif_Reader, fromFile);
+ZEND_METHOD(Gd_Heif_Reader, fromString);
+ZEND_METHOD(Gd_Heif_Reader, fromStream);
+ZEND_METHOD(Gd_Heif_Reader, info);
+ZEND_METHOD(Gd_Heif_Reader, read);
 ZEND_METHOD(Gd_Heif_Codec, __construct);
 ZEND_METHOD(Gd_Heif_Codec, fromFile);
 ZEND_METHOD(Gd_Heif_Codec, fromString);
@@ -72,6 +113,25 @@ static const zend_function_entry class_Gd_Heif_ReadOptions_methods[] = {
 #if defined(HAVE_GD_HEIF)
 static const zend_function_entry class_Gd_Heif_WriteOptions_methods[] = {
 	ZEND_ME(Gd_Heif_WriteOptions, __construct, arginfo_class_Gd_Heif_WriteOptions___construct, ZEND_ACC_PUBLIC)
+	ZEND_FE_END
+};
+#endif
+
+#if defined(HAVE_GD_HEIF)
+static const zend_function_entry class_Gd_Heif_Info_methods[] = {
+	ZEND_ME(Gd_Heif_Info, __construct, arginfo_class_Gd_Heif_Info___construct, ZEND_ACC_PUBLIC)
+	ZEND_FE_END
+};
+#endif
+
+#if defined(HAVE_GD_HEIF)
+static const zend_function_entry class_Gd_Heif_Reader_methods[] = {
+	ZEND_ME(Gd_Heif_Reader, __construct, arginfo_class_Gd_Heif_Reader___construct, ZEND_ACC_PRIVATE)
+	ZEND_ME(Gd_Heif_Reader, fromFile, arginfo_class_Gd_Heif_Reader_fromFile, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Gd_Heif_Reader, fromString, arginfo_class_Gd_Heif_Reader_fromString, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Gd_Heif_Reader, fromStream, arginfo_class_Gd_Heif_Reader_fromStream, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Gd_Heif_Reader, info, arginfo_class_Gd_Heif_Reader_info, ZEND_ACC_PUBLIC)
+	ZEND_ME(Gd_Heif_Reader, read, arginfo_class_Gd_Heif_Reader_read, ZEND_ACC_PUBLIC)
 	ZEND_FE_END
 };
 #endif
@@ -169,6 +229,80 @@ static zend_class_entry *register_class_Gd_Heif_WriteOptions(zend_class_entry *c
 	zend_string *property_chromaSubsampling_class_Gd_Heif_ChromaSubsampling = zend_string_init("Gd\\Heif\\ChromaSubsampling", sizeof("Gd\\Heif\\ChromaSubsampling")-1, 1);
 	zend_declare_typed_property(class_entry, property_chromaSubsampling_name, &property_chromaSubsampling_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_chromaSubsampling_class_Gd_Heif_ChromaSubsampling, 0, 0));
 	zend_string_release_ex(property_chromaSubsampling_name, true);
+
+	zval property_metadata_default_value;
+	ZVAL_UNDEF(&property_metadata_default_value);
+	zend_string *property_metadata_name = zend_string_init("metadata", sizeof("metadata") - 1, true);
+	zend_string *property_metadata_class_Gd_Metadata = zend_string_init("Gd\\Metadata", sizeof("Gd\\Metadata")-1, 1);
+	zend_declare_typed_property(class_entry, property_metadata_name, &property_metadata_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_metadata_class_Gd_Metadata, 0, MAY_BE_NULL));
+	zend_string_release_ex(property_metadata_name, true);
+
+	return class_entry;
+}
+#endif
+
+#if defined(HAVE_GD_HEIF)
+static zend_class_entry *register_class_Gd_Heif_Info(void)
+{
+	zend_class_entry ce, *class_entry;
+
+	INIT_NS_CLASS_ENTRY(ce, "Gd\\Heif", "Info", class_Gd_Heif_Info_methods);
+	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL|ZEND_ACC_NO_DYNAMIC_PROPERTIES|ZEND_ACC_READONLY_CLASS);
+
+	zval property_width_default_value;
+	ZVAL_UNDEF(&property_width_default_value);
+	zend_string *property_width_name = zend_string_init("width", sizeof("width") - 1, true);
+	zend_declare_typed_property(class_entry, property_width_name, &property_width_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_LONG));
+	zend_string_release_ex(property_width_name, true);
+
+	zval property_height_default_value;
+	ZVAL_UNDEF(&property_height_default_value);
+	zend_string *property_height_name = zend_string_init("height", sizeof("height") - 1, true);
+	zend_declare_typed_property(class_entry, property_height_name, &property_height_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_LONG));
+	zend_string_release_ex(property_height_name, true);
+
+	zval property_topLevelImageCount_default_value;
+	ZVAL_UNDEF(&property_topLevelImageCount_default_value);
+	zend_string *property_topLevelImageCount_name = zend_string_init("topLevelImageCount", sizeof("topLevelImageCount") - 1, true);
+	zend_declare_typed_property(class_entry, property_topLevelImageCount_name, &property_topLevelImageCount_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_LONG));
+	zend_string_release_ex(property_topLevelImageCount_name, true);
+
+	zval property_hasAlpha_default_value;
+	ZVAL_UNDEF(&property_hasAlpha_default_value);
+	zend_string *property_hasAlpha_name = zend_string_init("hasAlpha", sizeof("hasAlpha") - 1, true);
+	zend_declare_typed_property(class_entry, property_hasAlpha_name, &property_hasAlpha_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_BOOL));
+	zend_string_release_ex(property_hasAlpha_name, true);
+
+	zval property_bitDepth_default_value;
+	ZVAL_UNDEF(&property_bitDepth_default_value);
+	zend_string *property_bitDepth_name = zend_string_init("bitDepth", sizeof("bitDepth") - 1, true);
+	zend_declare_typed_property(class_entry, property_bitDepth_name, &property_bitDepth_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_LONG));
+	zend_string_release_ex(property_bitDepth_name, true);
+
+	zval property_isAnimation_default_value;
+	ZVAL_UNDEF(&property_isAnimation_default_value);
+	zend_string *property_isAnimation_name = zend_string_init("isAnimation", sizeof("isAnimation") - 1, true);
+	zend_declare_typed_property(class_entry, property_isAnimation_name, &property_isAnimation_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_BOOL));
+	zend_string_release_ex(property_isAnimation_name, true);
+
+	zval property_metadata_default_value;
+	ZVAL_UNDEF(&property_metadata_default_value);
+	zend_string *property_metadata_name = zend_string_init("metadata", sizeof("metadata") - 1, true);
+	zend_string *property_metadata_class_Gd_Metadata = zend_string_init("Gd\\Metadata", sizeof("Gd\\Metadata")-1, 1);
+	zend_declare_typed_property(class_entry, property_metadata_name, &property_metadata_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_metadata_class_Gd_Metadata, 0, 0));
+	zend_string_release_ex(property_metadata_name, true);
+
+	return class_entry;
+}
+#endif
+
+#if defined(HAVE_GD_HEIF)
+static zend_class_entry *register_class_Gd_Heif_Reader(void)
+{
+	zend_class_entry ce, *class_entry;
+
+	INIT_NS_CLASS_ENTRY(ce, "Gd\\Heif", "Reader", class_Gd_Heif_Reader_methods);
+	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL|ZEND_ACC_NO_DYNAMIC_PROPERTIES|ZEND_ACC_NOT_SERIALIZABLE);
 
 	return class_entry;
 }

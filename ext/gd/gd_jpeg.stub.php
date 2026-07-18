@@ -58,10 +58,7 @@ namespace Gd\Jpeg {
         public ?DensityUnit $densityUnit;
         public ?int $xDensity;
         public ?int $yDensity;
-        public bool $hasExif;
-        public bool $hasXmp;
-        public bool $hasIcc;
-        public bool $hasIptc;
+        public \Gd\Metadata $metadata;
 
         public function __construct(
             int $width,
@@ -75,10 +72,7 @@ namespace Gd\Jpeg {
             ?DensityUnit $densityUnit,
             ?int $xDensity,
             ?int $yDensity,
-            bool $hasExif,
-            bool $hasXmp,
-            bool $hasIcc,
-            bool $hasIptc,
+            \Gd\Metadata $metadata,
         ) {}
     }
 
@@ -104,19 +98,13 @@ namespace Gd\Jpeg {
         public int $quality;
         public bool $progressive;
         public bool $forceNoSubsampling;
-        public ?string $exif;
-        public ?string $xmp;
-        public ?string $icc;
-        public ?string $iptc;
+        public ?\Gd\Metadata $metadata;
 
         public function __construct(
             int $quality = -1,
             bool $progressive = false,
             bool $forceNoSubsampling = false,
-            ?string $exif = null,
-            ?string $xmp = null,
-            ?string $icc = null,
-            ?string $iptc = null,
+            ?\Gd\Metadata $metadata = null,
         ) {}
     }
 

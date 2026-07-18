@@ -18,6 +18,7 @@
 #include <string.h>
 
 #include "gd.h"
+#include "gd_avif_metadata.h"
 #include "gd_errors.h"
 #include "gd_intern.h"
 #include "gdhelpers.h"
@@ -480,6 +481,11 @@ static avifBool _gdImageAvifCtx(gdImagePtr im, gdIOCtx *outfile, const gdAvifWri
     avifIm->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_SRGB;
     avifIm->matrixCoefficients =
         lossless ? AVIF_MATRIX_COEFFICIENTS_IDENTITY : AVIF_MATRIX_COEFFICIENTS_BT709;
+
+    if (gdAvifApplyMetadata(avifIm, options->metadata) != GD_META_OK) {
+        gd_error("avif error - Applying metadata failed\n");
+        goto cleanup;
+    }
 
     avifRGBImageSetDefaults(&rgb, avifIm);
     // this allocates memory, and sets rgb.rowBytes and rgb.pixels.

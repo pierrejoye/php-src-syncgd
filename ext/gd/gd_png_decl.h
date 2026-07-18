@@ -1,8 +1,8 @@
 /* This is a generated file, edit gd_png.stub.php instead.
- * Stub hash: d77727e39e3f4a2dc6f35623485f70a8983344ff */
+ * Stub hash: 0c954796d295e130169be68c95a773b28f939a96 */
 
-#ifndef ZEND_GD_PNG_DECL_d77727e39e3f4a2dc6f35623485f70a8983344ff_H
-#define ZEND_GD_PNG_DECL_d77727e39e3f4a2dc6f35623485f70a8983344ff_H
+#ifndef ZEND_GD_PNG_DECL_0c954796d295e130169be68c95a773b28f939a96_H
+#define ZEND_GD_PNG_DECL_0c954796d295e130169be68c95a773b28f939a96_H
 
 #if defined(HAVE_GD_PNG_CODEC)
 typedef enum zend_enum_Gd_Png_ColorType {
@@ -48,4 +48,4 @@ typedef enum zend_enum_Gd_Png_CompressionStrategy {
 } zend_enum_Gd_Png_CompressionStrategy;
 #endif
 
-#endif /* ZEND_GD_PNG_DECL_d77727e39e3f4a2dc6f35623485f70a8983344ff_H */
+#endif /* ZEND_GD_PNG_DECL_0c954796d295e130169be68c95a773b28f939a96_H */

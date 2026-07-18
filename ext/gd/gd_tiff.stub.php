@@ -52,6 +52,7 @@ namespace Gd\Tiff {
         public ResolutionUnit $resolutionUnit;
         public ?float $xResolution;
         public ?float $yResolution;
+        public ?\Gd\Metadata $metadata;
 
         public function __construct(
             Compression $compression = Compression::Deflate,
@@ -60,6 +61,7 @@ namespace Gd\Tiff {
             ResolutionUnit $resolutionUnit = ResolutionUnit::Inch,
             ?float $xResolution = null,
             ?float $yResolution = null,
+            ?\Gd\Metadata $metadata = null,
         ) {}
     }
 
@@ -164,6 +166,7 @@ namespace Gd\Tiff {
         public ?float $xResolution;
         public ?float $yResolution;
         public ?ResolutionUnit $resolutionUnit;
+        public \Gd\Metadata $metadata;
 
         public function __construct(
             int $width,
@@ -179,6 +182,7 @@ namespace Gd\Tiff {
             ?float $xResolution,
             ?float $yResolution,
             ?ResolutionUnit $resolutionUnit,
+            \Gd\Metadata $metadata,
         ) {}
     }
 

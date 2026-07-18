@@ -68,6 +68,31 @@ try {
     echo "caught " . get_class($e) . "\n";
 }
 
+// Test 6: Header probe rejects a bad end marker
+echo "Test 6: Reader info with bad end marker... ";
+try {
+    Gd\Qoi\Reader::fromString("qoif" . pack('N', 1) . pack('N', 1) . "\x04\x00" . str_repeat("\0", 8));
+    echo "FAILED - no exception thrown\n";
+} catch (Gd\Codec\CodecException $e) {
+    echo "caught CodecException\n";
+}
+
+// Test 7: A valid header with no pixel chunk fails and poisons the reader
+echo "Test 7: Reader failed state after decode failure... ";
+$truncated = "qoif" . pack('N', 1) . pack('N', 1) . "\x04\x00" . str_repeat("\0", 7) . "\x01";
+$reader = Gd\Qoi\Reader::fromString($truncated);
+try {
+    $reader->read();
+    echo "FAILED - no exception thrown\n";
+} catch (Gd\Codec\CodecException $e) {
+    try {
+        $reader->read();
+        echo "FAILED - failed reader was reusable\n";
+    } catch (Gd\Codec\CodecException $e) {
+        echo "caught CodecException\n";
+    }
+}
+
 echo "All error handling tests completed!\n";
 ?>
 --EXPECT--
@@ -76,4 +101,6 @@ Test 2: fromFile with non-existent file... caught CodecException
 Test 3: toFile to invalid path... caught CodecException
 Test 4: fromStream with closed stream... caught TypeError
 Test 5: fromString with empty data... caught CodecException
+Test 6: Reader info with bad end marker... caught CodecException
+Test 7: Reader failed state after decode failure... caught CodecException
 All error handling tests completed!

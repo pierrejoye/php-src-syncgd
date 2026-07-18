@@ -1,5 +1,5 @@
 /* This is a generated file, edit gd_png.stub.php instead.
- * Stub hash: d77727e39e3f4a2dc6f35623485f70a8983344ff
+ * Stub hash: 0c954796d295e130169be68c95a773b28f939a96
  * Has decl header: yes */
 
 #if defined(HAVE_GD_PNG_CODEC)
@@ -8,9 +8,10 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Gd_Png_WriteOptions___construct, 0, 0, 0)
 	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, filters, IS_ARRAY, 0, "[]")
 	ZEND_ARG_OBJ_INFO_WITH_DEFAULT_VALUE(0, compressionStrategy, Gd\\Png\\CompressionStrategy, 0, "Gd\\Png\\CompressionStrategy::Default")
 	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, comments, IS_ARRAY, 0, "[]")
+	ZEND_ARG_OBJ_INFO_WITH_DEFAULT_VALUE(0, metadata, Gd\\Metadata, 1, "null")
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Gd_Png_Info___construct, 0, 0, 17)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Gd_Png_Info___construct, 0, 0, 18)
 	ZEND_ARG_TYPE_INFO(0, width, IS_LONG, 0)
 	ZEND_ARG_TYPE_INFO(0, height, IS_LONG, 0)
 	ZEND_ARG_TYPE_INFO(0, bitDepth, IS_LONG, 0)
@@ -27,6 +28,7 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Gd_Png_Info___construct, 0, 0, 17)
 	ZEND_ARG_TYPE_INFO(0, resolutionY, IS_LONG, 1)
 	ZEND_ARG_OBJ_INFO(0, physicalUnit, Gd\\Png\\PhysicalUnit, 1)
 	ZEND_ARG_TYPE_INFO(0, comments, IS_ARRAY, 0)
+	ZEND_ARG_OBJ_INFO(0, metadata, Gd\\Metadata, 0)
 	ZEND_ARG_TYPE_INFO(0, decodedTrueColor, _IS_BOOL, 0)
 ZEND_END_ARG_INFO()
 
@@ -139,16 +141,6 @@ static const zend_function_entry class_Gd_Png_Codec_methods[] = {
 	ZEND_FE_END
 };
 #endif
-
-static zend_class_entry *register_class_Gd_Codec_CodecException(zend_class_entry *class_entry_RuntimeException)
-{
-	zend_class_entry ce, *class_entry;
-
-	INIT_NS_CLASS_ENTRY(ce, "Gd\\Codec", "CodecException", NULL);
-	class_entry = zend_register_internal_class_with_flags(&ce, class_entry_RuntimeException, ZEND_ACC_NO_DYNAMIC_PROPERTIES);
-
-	return class_entry;
-}
 
 #if defined(HAVE_GD_PNG_CODEC)
 static zend_class_entry *register_class_Gd_Png_ColorType(void)
@@ -285,6 +277,13 @@ static zend_class_entry *register_class_Gd_Png_WriteOptions(zend_class_entry *cl
 	zend_declare_typed_property(class_entry, property_comments_name, &property_comments_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_ARRAY));
 	zend_string_release_ex(property_comments_name, true);
 
+	zval property_metadata_default_value;
+	ZVAL_UNDEF(&property_metadata_default_value);
+	zend_string *property_metadata_name = zend_string_init("metadata", sizeof("metadata") - 1, true);
+	zend_string *property_metadata_class_Gd_Metadata = zend_string_init("Gd\\Metadata", sizeof("Gd\\Metadata")-1, 1);
+	zend_declare_typed_property(class_entry, property_metadata_name, &property_metadata_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_metadata_class_Gd_Metadata, 0, MAY_BE_NULL));
+	zend_string_release_ex(property_metadata_name, true);
+
 	return class_entry;
 }
 #endif
@@ -395,6 +394,13 @@ static zend_class_entry *register_class_Gd_Png_Info(void)
 	zend_string *property_comments_name = zend_string_init("comments", sizeof("comments") - 1, true);
 	zend_declare_typed_property(class_entry, property_comments_name, &property_comments_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_ARRAY));
 	zend_string_release_ex(property_comments_name, true);
+
+	zval property_metadata_default_value;
+	ZVAL_UNDEF(&property_metadata_default_value);
+	zend_string *property_metadata_name = zend_string_init("metadata", sizeof("metadata") - 1, true);
+	zend_string *property_metadata_class_Gd_Metadata = zend_string_init("Gd\\Metadata", sizeof("Gd\\Metadata")-1, 1);
+	zend_declare_typed_property(class_entry, property_metadata_name, &property_metadata_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_metadata_class_Gd_Metadata, 0, 0));
+	zend_string_release_ex(property_metadata_name, true);
 
 	zval property_decodedTrueColor_default_value;
 	ZVAL_UNDEF(&property_decodedTrueColor_default_value);

@@ -1,5 +1,5 @@
 /* This is a generated file, edit gd.stub.php instead.
- * Stub hash: 7681d9b68950036a4b98e9e5bf4bd0a5202ca1d6 */
+ * Stub hash: 143818a293847488b37115473e48ddfa62f587a7 */
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_gd_info, 0, 0, IS_ARRAY, 0)
 ZEND_END_ARG_INFO()
@@ -606,7 +606,6 @@ ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_GdImage_composeFrom, 0, 1, 
 	ZEND_ARG_OBJ_INFO_WITH_DEFAULT_VALUE(0, sourceRegion, Gd\\Rect, 1, "null")
 	ZEND_ARG_OBJ_INFO_WITH_DEFAULT_VALUE(0, clip, Gd\\Rect, 1, "null")
 ZEND_END_ARG_INFO()
-#endif
 
 ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_GdImage_getContext, 0, 0, Gd\\Context, 0)
 ZEND_END_ARG_INFO()
@@ -616,6 +615,7 @@ ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_GdImage_perceptualDiff, 0, 
 	ZEND_ARG_TYPE_INFO(0, threshold, IS_DOUBLE, 0)
 	ZEND_ARG_OBJ_INFO_WITH_DEFAULT_VALUE(0, options, Gd\\PerceptualDiffOptions, 0, "new Gd\\PerceptualDiffOptions()")
 ZEND_END_ARG_INFO()
+#endif
 
 ZEND_FUNCTION(gd_info);
 ZEND_FUNCTION(imageloadfont);
@@ -754,9 +754,9 @@ ZEND_METHOD(GdImage, autoCrop);
 #if defined(HAVE_GD_BUNDLED)
 ZEND_METHOD(GdImage, transform);
 ZEND_METHOD(GdImage, composeFrom);
-#endif
 ZEND_METHOD(GdImage, getContext);
 ZEND_METHOD(GdImage, perceptualDiff);
+#endif
 
 static const zend_function_entry ext_functions[] = {
 	ZEND_FE(gd_info, arginfo_gd_info)
@@ -902,9 +902,9 @@ static const zend_function_entry class_GdImage_methods[] = {
 #if defined(HAVE_GD_BUNDLED)
 	ZEND_ME(GdImage, transform, arginfo_class_GdImage_transform, ZEND_ACC_PUBLIC)
 	ZEND_ME(GdImage, composeFrom, arginfo_class_GdImage_composeFrom, ZEND_ACC_PUBLIC)
-#endif
 	ZEND_ME(GdImage, getContext, arginfo_class_GdImage_getContext, ZEND_ACC_PUBLIC)
 	ZEND_ME(GdImage, perceptualDiff, arginfo_class_GdImage_perceptualDiff, ZEND_ACC_PUBLIC)
+#endif
 	ZEND_FE_END
 };
 

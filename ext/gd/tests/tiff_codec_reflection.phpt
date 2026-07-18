@@ -37,7 +37,7 @@ foreach (['toFile', 'toStream', 'toMemory', 'addPage', 'finish'] as $name) {
 }
 ?>
 --EXPECT--
-object(Gd\Tiff\WriteOptions)#1 (6) {
+object(Gd\Tiff\WriteOptions)#1 (7) {
   ["compression"]=>
   enum(Gd\Tiff\Compression::Deflate)
   ["colorSpace"]=>
@@ -49,6 +49,8 @@ object(Gd\Tiff\WriteOptions)#1 (6) {
   ["xResolution"]=>
   NULL
   ["yResolution"]=>
+  NULL
+  ["metadata"]=>
   NULL
 }
 array(3) {

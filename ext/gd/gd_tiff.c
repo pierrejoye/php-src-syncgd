@@ -20,6 +20,7 @@
 #include "php_gd.h"
 #include "gd_codec_write.h"
 #include "gd_tiff.h"
+#include "gd_metadata.h"
 #include "ext/spl/spl_exceptions.h"
 
 #ifdef HAVE_GD_BUNDLED
@@ -142,7 +143,7 @@ static void php_gd_tiff_update_nullable_double(zend_class_entry *ce, zend_object
 	}
 }
 
-static void php_gd_tiff_create_info(zval *result, const gdTiffInfo *info)
+static void php_gd_tiff_create_info(zval *result, const gdTiffInfo *info, gdImageMetadata *metadata)
 {
 	zval value;
 
@@ -163,6 +164,9 @@ static void php_gd_tiff_create_info(zval *result, const gdTiffInfo *info)
 	php_gd_tiff_update_nullable_double(php_gd_tiff_info_ce, Z_OBJ_P(result), ZEND_STRL("yResolution"), info->yResolution);
 	php_gd_tiff_read_resolution_unit(&value, info->resolutionUnit);
 	zend_update_property(php_gd_tiff_info_ce, Z_OBJ_P(result), ZEND_STRL("resolutionUnit"), &value);
+	php_gd_metadata_create_zval(&value, metadata);
+	zend_update_property(php_gd_tiff_info_ce, Z_OBJ_P(result), ZEND_STRL("metadata"), &value);
+	zval_ptr_dtor(&value);
 }
 
 static void php_gd_tiff_create_page(zval *result, gdImagePtr image, const gdTiffPageInfo *info)
@@ -226,6 +230,7 @@ static void php_gd_tiff_reader_free(zend_object *object)
 static bool php_gd_tiff_initialize_reader(zval *result, gdTiffReadPtr tiff)
 {
 	gdTiffInfo info;
+	gdImageMetadata *metadata;
 	php_gd_tiff_reader_object *reader;
 
 	if (tiff == NULL || !gdTiffReadGetInfo(tiff, &info)) {
@@ -235,10 +240,17 @@ static bool php_gd_tiff_initialize_reader(zval *result, gdTiffReadPtr tiff)
 		php_gd_tiff_throw("Failed to open TIFF input");
 		return false;
 	}
+	metadata = gdImageMetadataCreate();
+	if (metadata == NULL || !gdTiffReadGetMetadata(tiff, metadata)) {
+		gdImageMetadataFree(metadata);
+		gdTiffReadClose(tiff);
+		php_gd_tiff_throw("Failed to read TIFF metadata");
+		return false;
+	}
 	object_init_ex(result, php_gd_tiff_reader_ce);
 	reader = Z_GD_TIFF_READER_P(result);
 	reader->reader = tiff;
-	php_gd_tiff_create_info(&reader->info, &info);
+	php_gd_tiff_create_info(&reader->info, &info, metadata);
 	return true;
 }
 
@@ -246,12 +258,12 @@ PHP_METHOD(Gd_Tiff_Info, __construct)
 {
 	zend_long width, height, page_count, bits_per_sample, samples_per_pixel;
 	zend_long compression_tag, photometric_tag;
-	zval *compression = NULL, *photometric = NULL, *resolution_unit = NULL;
+	zval *compression = NULL, *photometric = NULL, *resolution_unit = NULL, *metadata = NULL;
 	bool min_is_white = false;
 	double x_resolution = 0, y_resolution = 0;
 	bool x_is_null = true, y_is_null = true;
 
-	ZEND_PARSE_PARAMETERS_START(13, 13)
+	ZEND_PARSE_PARAMETERS_START(14, 14)
 		Z_PARAM_LONG(width) Z_PARAM_LONG(height) Z_PARAM_LONG(page_count)
 		Z_PARAM_LONG(bits_per_sample) Z_PARAM_LONG(samples_per_pixel)
 		Z_PARAM_LONG(compression_tag)
@@ -262,6 +274,7 @@ PHP_METHOD(Gd_Tiff_Info, __construct)
 		Z_PARAM_DOUBLE_OR_NULL(x_resolution, x_is_null)
 		Z_PARAM_DOUBLE_OR_NULL(y_resolution, y_is_null)
 		Z_PARAM_OBJECT_OF_CLASS_OR_NULL(resolution_unit, php_gd_tiff_resolution_unit_ce)
+		Z_PARAM_OBJECT_OF_CLASS(metadata, php_gd_metadata_ce)
 	ZEND_PARSE_PARAMETERS_END();
 
 	zend_update_property_long(php_gd_tiff_info_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("width"), width);
@@ -454,6 +467,7 @@ typedef struct {
 	double y_resolution;
 	bool has_x_resolution;
 	bool has_y_resolution;
+	zval metadata;
 	zend_long page_count;
 	bool finalized;
 	zend_object std;
@@ -545,6 +559,7 @@ static zend_object *php_gd_tiff_writer_create(zend_class_entry *class_entry)
 	writer->y_resolution = 0;
 	writer->has_x_resolution = false;
 	writer->has_y_resolution = false;
+	ZVAL_UNDEF(&writer->metadata);
 	writer->page_count = 0;
 	writer->finalized = false;
 
@@ -560,6 +575,9 @@ static void php_gd_tiff_writer_free(zend_object *object)
 	php_gd_tiff_writer_object *writer = php_gd_tiff_writer_from_object(object);
 
 	php_gd_tiff_writer_close(writer);
+	if (!Z_ISUNDEF(writer->metadata)) {
+		zval_ptr_dtor(&writer->metadata);
+	}
 	zend_object_std_dtor(&writer->std);
 }
 
@@ -590,6 +608,10 @@ static void php_gd_tiff_configure_writer(php_gd_tiff_writer_object *writer, zval
 		writer->y_resolution = Z_DVAL_P(value);
 		writer->has_y_resolution = true;
 	}
+	value = zend_read_property(php_gd_tiff_write_options_ce, Z_OBJ_P(options_zv), ZEND_STRL("metadata"), true, &rv);
+	if (Z_TYPE_P(value) == IS_OBJECT) {
+		ZVAL_COPY(&writer->metadata, value);
+	}
 }
 
 static void php_gd_tiff_create_writer(zval *return_value, gdIOCtx *ctx,
@@ -615,8 +637,9 @@ PHP_METHOD(Gd_Tiff_WriteOptions, __construct)
 	bool x_resolution_is_null = true;
 	bool y_resolution_is_null = true;
 	zval default_value;
+	zval *metadata = NULL;
 
-	ZEND_PARSE_PARAMETERS_START(0, 6)
+	ZEND_PARSE_PARAMETERS_START(0, 7)
 		Z_PARAM_OPTIONAL
 		Z_PARAM_OBJECT_OF_CLASS(compression, php_gd_tiff_compression_ce)
 		Z_PARAM_OBJECT_OF_CLASS(color_space, php_gd_tiff_color_space_ce)
@@ -624,6 +647,7 @@ PHP_METHOD(Gd_Tiff_WriteOptions, __construct)
 		Z_PARAM_OBJECT_OF_CLASS(resolution_unit, php_gd_tiff_resolution_unit_ce)
 		Z_PARAM_DOUBLE_OR_NULL(x_resolution, x_resolution_is_null)
 		Z_PARAM_DOUBLE_OR_NULL(y_resolution, y_resolution_is_null)
+		Z_PARAM_OBJECT_OF_CLASS_OR_NULL(metadata, php_gd_metadata_ce)
 	ZEND_PARSE_PARAMETERS_END();
 
 	if (!x_resolution_is_null && (x_resolution <= 0 || !zend_finite(x_resolution))) {
@@ -661,6 +685,7 @@ PHP_METHOD(Gd_Tiff_WriteOptions, __construct)
 	} else {
 		zend_update_property_double(php_gd_tiff_write_options_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("yResolution"), y_resolution);
 	}
+	if (metadata) zend_update_property(php_gd_tiff_write_options_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("metadata"), metadata); else zend_update_property_null(php_gd_tiff_write_options_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("metadata"));
 }
 
 PHP_METHOD(Gd_Tiff_Writer, __construct)
@@ -755,6 +780,7 @@ PHP_METHOD(Gd_Tiff_Writer, addPage)
 		options.resolutionUnit = writer->resolution_unit;
 		options.xResolution = writer->has_x_resolution ? (float) writer->x_resolution : (float) image->res_x;
 		options.yResolution = writer->has_y_resolution ? (float) writer->y_resolution : (float) image->res_y;
+		options.metadata = Z_ISUNDEF(writer->metadata) ? NULL : php_gd_metadata_from_zval(&writer->metadata);
 
 		if (writer->destination == PHP_GD_TIFF_DESTINATION_MEMORY) {
 			writer->writer = gdTiffWriteOpenPtr(&options);
@@ -842,6 +868,10 @@ static void php_gd_tiff_build_single_write_options(gdImagePtr image, zval *optio
 	value = zend_read_property(php_gd_tiff_write_options_ce, Z_OBJ_P(options_zv), ZEND_STRL("yResolution"), true, &rv);
 	if (Z_TYPE_P(value) != IS_NULL) {
 		options->yResolution = (float) Z_DVAL_P(value);
+	}
+	value = zend_read_property(php_gd_tiff_write_options_ce, Z_OBJ_P(options_zv), ZEND_STRL("metadata"), true, &rv);
+	if (Z_TYPE_P(value) == IS_OBJECT) {
+		options->metadata = php_gd_metadata_from_zval(value);
 	}
 }
 

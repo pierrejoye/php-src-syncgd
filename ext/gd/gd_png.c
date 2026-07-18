@@ -19,6 +19,7 @@
 #include "zend_exceptions.h"
 #include "php_gd.h"
 #include "gd_codec_write.h"
+#include "gd_metadata.h"
 #include "gd_png.h"
 #include "ext/spl/spl_exceptions.h"
 #include <limits.h>
@@ -201,7 +202,7 @@ static void php_gd_png_metadata_comments(zval *comments, const gdImageMetadata *
 	}
 }
 
-static void php_gd_png_create_info(zval *result, const gdPngInfo *info)
+static void php_gd_png_create_info(zval *result, gdPngInfo *info)
 {
 	zval value;
 	zval comments;
@@ -252,6 +253,10 @@ static void php_gd_png_create_info(zval *result, const gdPngInfo *info)
 	php_gd_png_metadata_comments(&comments, info->metadata);
 	zend_update_property(php_gd_png_info_ce, Z_OBJ_P(result), ZEND_STRL("comments"), &comments);
 	zval_ptr_dtor(&comments);
+	php_gd_metadata_create_zval(&value, info->metadata);
+	info->metadata = NULL;
+	zend_update_property(php_gd_png_info_ce, Z_OBJ_P(result), ZEND_STRL("metadata"), &value);
+	zval_ptr_dtor(&value);
 	zend_update_property_bool(php_gd_png_info_ce, Z_OBJ_P(result), ZEND_STRL("decodedTrueColor"), info->decoded_truecolor != 0);
 }
 
@@ -335,40 +340,49 @@ static bool php_gd_png_validate_comments(zval *comments, uint32_t arg_num)
 	return true;
 }
 
-static gdImageMetadata *php_gd_png_create_metadata_from_comments(zval *comments_zv)
+static gdImageMetadata *php_gd_png_create_metadata_for_write(zval *options_zv)
 {
+	zval rv;
+	zval *comments;
+	zval *metadata_zv;
 	gdImageMetadata *metadata;
 	zend_string *key;
 	zval *value;
 
-	if (comments_zv == NULL || zend_hash_num_elements(Z_ARRVAL_P(comments_zv)) == 0) {
+	if (options_zv == NULL) {
 		return NULL;
 	}
-
-	metadata = gdImageMetadataCreate();
+	comments = zend_read_property(php_gd_png_write_options_ce, Z_OBJ_P(options_zv), ZEND_STRL("comments"), true, &rv);
+	metadata_zv = zend_read_property(php_gd_png_write_options_ce, Z_OBJ_P(options_zv), ZEND_STRL("metadata"), true, &rv);
+	if (Z_TYPE_P(metadata_zv) == IS_OBJECT) {
+		metadata = php_gd_metadata_copy(php_gd_metadata_from_zval(metadata_zv));
+	} else {
+		metadata = gdImageMetadataCreate();
+	}
 	if (metadata == NULL) {
 		return NULL;
 	}
+	if (zend_hash_num_elements(Z_ARRVAL_P(comments)) == 0) {
+		return metadata;
+	}
 
-	ZEND_HASH_FOREACH_STR_KEY_VAL(Z_ARRVAL_P(comments_zv), key, value) {
-		zend_string *payload;
-		zend_string *metadata_key;
-		int status;
-
-		payload = zend_string_alloc(ZSTR_LEN(key) + 1 + Z_STRLEN_P(value), 0);
-		memcpy(ZSTR_VAL(payload), ZSTR_VAL(key), ZSTR_LEN(key));
-		ZSTR_VAL(payload)[ZSTR_LEN(key)] = '\0';
-		memcpy(ZSTR_VAL(payload) + ZSTR_LEN(key) + 1, Z_STRVAL_P(value), Z_STRLEN_P(value));
-
-		metadata_key = strpprintf(0, "png:text:%s", ZSTR_VAL(key));
-		status = gdImageMetadataSetProfile(metadata, ZSTR_VAL(metadata_key),
-			(const unsigned char *) ZSTR_VAL(payload), ZSTR_LEN(payload));
-		zend_string_release(metadata_key);
-		zend_string_release(payload);
-		if (status != GD_META_OK) {
-			gdImageMetadataFree(metadata);
-			return NULL;
+	ZEND_HASH_FOREACH_STR_KEY_VAL(Z_ARRVAL_P(comments), key, value) {
+		zend_string *metadata_key = strpprintf(0, "png:text:%s", ZSTR_VAL(key));
+		if (gdImageMetadataGetProfile(metadata, ZSTR_VAL(metadata_key), NULL) == NULL) {
+			zend_string *payload = zend_string_alloc(ZSTR_LEN(key) + 1 + Z_STRLEN_P(value), 0);
+			int status;
+			memcpy(ZSTR_VAL(payload), ZSTR_VAL(key), ZSTR_LEN(key));
+			ZSTR_VAL(payload)[ZSTR_LEN(key)] = '\0';
+			memcpy(ZSTR_VAL(payload) + ZSTR_LEN(key) + 1, Z_STRVAL_P(value), Z_STRLEN_P(value));
+			status = gdImageMetadataSetProfile(metadata, ZSTR_VAL(metadata_key), (const unsigned char *) ZSTR_VAL(payload), ZSTR_LEN(payload));
+			zend_string_release(payload);
+			if (status != GD_META_OK) {
+				zend_string_release(metadata_key);
+				gdImageMetadataFree(metadata);
+				return NULL;
+			}
 		}
+		zend_string_release(metadata_key);
 	} ZEND_HASH_FOREACH_END();
 
 	return metadata;
@@ -396,6 +410,10 @@ static void php_gd_png_build_options(zval *options_zv, gdPngWriteOptions *option
 
 	value = zend_read_property(php_gd_png_write_options_ce, Z_OBJ_P(options_zv), ZEND_STRL("compressionStrategy"), true, &rv);
 	options->compression_strategy = php_gd_png_compression_strategy(value);
+	value = zend_read_property(php_gd_png_write_options_ce, Z_OBJ_P(options_zv), ZEND_STRL("metadata"), true, &rv);
+	if (Z_TYPE_P(value) == IS_OBJECT) {
+		options->metadata = php_gd_metadata_from_zval(value);
+	}
 }
 
 PHP_METHOD(Gd_Png_WriteOptions, __construct)
@@ -404,17 +422,19 @@ PHP_METHOD(Gd_Png_WriteOptions, __construct)
 	zval *filters = NULL;
 	zval *compression_strategy = NULL;
 	zval *comments = NULL;
+	zval *metadata = NULL;
 	zval filters_zv;
 	zval comments_zv;
 	zval default_strategy_zv;
 	zval *filter;
 
-	ZEND_PARSE_PARAMETERS_START(0, 4)
+	ZEND_PARSE_PARAMETERS_START(0, 5)
 		Z_PARAM_OPTIONAL
 		Z_PARAM_LONG(compression_level)
 		Z_PARAM_ARRAY(filters)
 		Z_PARAM_OBJECT_OF_CLASS(compression_strategy, php_gd_png_compression_strategy_ce)
 		Z_PARAM_ARRAY(comments)
+		Z_PARAM_OBJECT_OF_CLASS_OR_NULL(metadata, php_gd_metadata_ce)
 	ZEND_PARSE_PARAMETERS_END();
 
 	if (compression_level < -1 || compression_level > 9) {
@@ -454,6 +474,7 @@ PHP_METHOD(Gd_Png_WriteOptions, __construct)
 	}
 	zend_update_property(php_gd_png_write_options_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("comments"), &comments_zv);
 	zval_ptr_dtor(&comments_zv);
+	if (metadata) zend_update_property(php_gd_png_write_options_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("metadata"), metadata); else zend_update_property_null(php_gd_png_write_options_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("metadata"));
 }
 
 PHP_METHOD(Gd_Png_Codec, __construct)
@@ -551,8 +572,9 @@ PHP_METHOD(Gd_Png_Info, __construct)
 	bool palette_entries_is_null = true, x_pixels_per_unit_is_null = true, y_pixels_per_unit_is_null = true;
 	bool resolution_x_is_null = true, resolution_y_is_null = true;
 	zval *comments;
+	zval *metadata;
 
-	ZEND_PARSE_PARAMETERS_START(17, 17)
+	ZEND_PARSE_PARAMETERS_START(18, 18)
 		Z_PARAM_LONG(width)
 		Z_PARAM_LONG(height)
 		Z_PARAM_LONG(bit_depth)
@@ -569,6 +591,7 @@ PHP_METHOD(Gd_Png_Info, __construct)
 		Z_PARAM_LONG_OR_NULL(resolution_y, resolution_y_is_null)
 		Z_PARAM_OBJECT_OF_CLASS_OR_NULL(physical_unit, php_gd_png_physical_unit_ce)
 		Z_PARAM_ARRAY(comments)
+		Z_PARAM_OBJECT_OF_CLASS(metadata, php_gd_metadata_ce)
 		Z_PARAM_BOOL(decoded_truecolor)
 	ZEND_PARSE_PARAMETERS_END();
 
@@ -588,6 +611,7 @@ PHP_METHOD(Gd_Png_Info, __construct)
 	if (resolution_y_is_null) zend_update_property_null(php_gd_png_info_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("resolutionY")); else zend_update_property_long(php_gd_png_info_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("resolutionY"), resolution_y);
 	if (physical_unit) zend_update_property(php_gd_png_info_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("physicalUnit"), physical_unit); else zend_update_property_null(php_gd_png_info_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("physicalUnit"));
 	zend_update_property(php_gd_png_info_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("comments"), comments);
+	zend_update_property(php_gd_png_info_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("metadata"), metadata);
 	zend_update_property_bool(php_gd_png_info_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("decodedTrueColor"), decoded_truecolor);
 }
 
@@ -641,7 +665,6 @@ static bool php_gd_png_create_info_from_bytes(zval *info_zv, zend_string *bytes)
 		return false;
 	}
 	php_gd_png_create_info(info_zv, &info);
-	gdImageMetadataFree(metadata);
 	return true;
 }
 
@@ -794,7 +817,7 @@ static void php_gd_png_write_to_context(INTERNAL_FUNCTION_PARAMETERS, bool requi
 	if (options_zv != NULL) {
 		zval rv;
 		zval *comments = zend_read_property(php_gd_png_write_options_ce, Z_OBJ_P(options_zv), ZEND_STRL("comments"), true, &rv);
-		metadata = php_gd_png_create_metadata_from_comments(comments);
+		metadata = php_gd_png_create_metadata_for_write(options_zv);
 		if (metadata == NULL && zend_hash_num_elements(Z_ARRVAL_P(comments)) > 0) {
 			ctx->gd_free(ctx);
 			php_gd_png_throw("Failed to create PNG metadata");
@@ -843,7 +866,7 @@ PHP_METHOD(Gd_Png_Codec, toString)
 	if (options_zv != NULL) {
 		zval rv;
 		zval *comments = zend_read_property(php_gd_png_write_options_ce, Z_OBJ_P(options_zv), ZEND_STRL("comments"), true, &rv);
-		metadata = php_gd_png_create_metadata_from_comments(comments);
+		metadata = php_gd_png_create_metadata_for_write(options_zv);
 		if (metadata == NULL && zend_hash_num_elements(Z_ARRVAL_P(comments)) > 0) {
 			php_gd_png_throw("Failed to create PNG metadata");
 			RETURN_THROWS();

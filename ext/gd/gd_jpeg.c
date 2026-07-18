@@ -20,6 +20,7 @@
 #include "php_gd.h"
 #include "gd_codec_write.h"
 #include "gd_jpeg.h"
+#include "gd_metadata.h"
 #include "ext/spl/spl_exceptions.h"
 #include <limits.h>
 #ifdef HAVE_GD_BUNDLED
@@ -203,7 +204,7 @@ static void php_gd_jpeg_density_unit(zval *result, int density_unit)
 	ZVAL_OBJ(result, zend_enum_get_case_by_id(php_gd_jpeg_density_unit_ce, case_id));
 }
 
-static void php_gd_jpeg_create_info(zval *result, const gdJpegInfo *info)
+static void php_gd_jpeg_create_info(zval *result, const gdJpegInfo *info, gdImageMetadata *metadata)
 {
 	zval value;
 
@@ -229,69 +230,33 @@ static void php_gd_jpeg_create_info(zval *result, const gdJpegInfo *info)
 	} else {
 		zend_update_property_null(php_gd_jpeg_info_ce, Z_OBJ_P(result), ZEND_STRL("yDensity"));
 	}
-	zend_update_property_bool(php_gd_jpeg_info_ce, Z_OBJ_P(result), ZEND_STRL("hasExif"), info->has_exif != 0);
-	zend_update_property_bool(php_gd_jpeg_info_ce, Z_OBJ_P(result), ZEND_STRL("hasXmp"), info->has_xmp != 0);
-	zend_update_property_bool(php_gd_jpeg_info_ce, Z_OBJ_P(result), ZEND_STRL("hasIcc"), info->has_icc != 0);
-	zend_update_property_bool(php_gd_jpeg_info_ce, Z_OBJ_P(result), ZEND_STRL("hasIptc"), info->has_iptc != 0);
+	php_gd_metadata_create_zval(&value, metadata);
+	zend_update_property(php_gd_jpeg_info_ce, Z_OBJ_P(result), ZEND_STRL("metadata"), &value);
+	zval_ptr_dtor(&value);
 }
 
 static bool php_gd_jpeg_create_info_from_bytes(zval *info_zv, zend_string *bytes)
 {
 	gdJpegInfo info;
+	gdImageMetadata *metadata;
 
 	gdJpegInfoInit(&info);
 	if (gdJpegGetInfoPtr((int) ZSTR_LEN(bytes), ZSTR_VAL(bytes), &info) != 0) {
 		php_gd_jpeg_throw("Failed to read JPEG info");
 		return false;
 	}
-	php_gd_jpeg_create_info(info_zv, &info);
-	return true;
-}
-
-static int php_gd_jpeg_set_metadata_profile(gdImageMetadata *metadata, const char *key, zval *value)
-{
-	if (Z_TYPE_P(value) == IS_NULL) {
-		return GD_META_OK;
-	}
-	return gdImageMetadataSetProfile(metadata, key, (const unsigned char *) Z_STRVAL_P(value), Z_STRLEN_P(value));
-}
-
-static gdImageMetadata *php_gd_jpeg_create_metadata(zval *options_zv)
-{
-	gdImageMetadata *metadata;
-	zval rv;
-	zval *value;
-	int status;
-
-	if (options_zv == NULL) {
-		return NULL;
-	}
-
 	metadata = gdImageMetadataCreate();
 	if (metadata == NULL) {
-		return NULL;
+		php_gd_jpeg_throw("Failed to create JPEG metadata");
+		return false;
 	}
-
-	value = zend_read_property(php_gd_jpeg_write_options_ce, Z_OBJ_P(options_zv), ZEND_STRL("exif"), true, &rv);
-	status = php_gd_jpeg_set_metadata_profile(metadata, "exif", value);
-	if (status == GD_META_OK) {
-		value = zend_read_property(php_gd_jpeg_write_options_ce, Z_OBJ_P(options_zv), ZEND_STRL("xmp"), true, &rv);
-		status = php_gd_jpeg_set_metadata_profile(metadata, "xmp", value);
-	}
-	if (status == GD_META_OK) {
-		value = zend_read_property(php_gd_jpeg_write_options_ce, Z_OBJ_P(options_zv), ZEND_STRL("icc"), true, &rv);
-		status = php_gd_jpeg_set_metadata_profile(metadata, "icc", value);
-	}
-	if (status == GD_META_OK) {
-		value = zend_read_property(php_gd_jpeg_write_options_ce, Z_OBJ_P(options_zv), ZEND_STRL("iptc"), true, &rv);
-		status = php_gd_jpeg_set_metadata_profile(metadata, "iptc", value);
-	}
-	if (status != GD_META_OK || gdImageMetadataGetProfileCount(metadata) == 0) {
+	if (gdJpegGetMetadataPtr((int) ZSTR_LEN(bytes), ZSTR_VAL(bytes), metadata) != 0) {
 		gdImageMetadataFree(metadata);
-		return NULL;
+		php_gd_jpeg_throw("Failed to read JPEG metadata");
+		return false;
 	}
-
-	return metadata;
+	php_gd_jpeg_create_info(info_zv, &info, metadata);
+	return true;
 }
 
 static void php_gd_jpeg_build_options(zval *options_zv, gdJpegWriteOptions *options)
@@ -310,6 +275,10 @@ static void php_gd_jpeg_build_options(zval *options_zv, gdJpegWriteOptions *opti
 	options->progressive = zend_is_true(value);
 	value = zend_read_property(php_gd_jpeg_write_options_ce, Z_OBJ_P(options_zv), ZEND_STRL("forceNoSubsampling"), true, &rv);
 	options->force_no_subsampling = zend_is_true(value);
+	value = zend_read_property(php_gd_jpeg_write_options_ce, Z_OBJ_P(options_zv), ZEND_STRL("metadata"), true, &rv);
+	if (Z_TYPE_P(value) == IS_OBJECT) {
+		options->metadata = php_gd_metadata_from_zval(value);
+	}
 }
 
 PHP_METHOD(Gd_Jpeg_ReadOptions, __construct)
@@ -351,17 +320,14 @@ PHP_METHOD(Gd_Jpeg_WriteOptions, __construct)
 {
 	zend_long quality = -1;
 	bool progressive = false, force_no_subsampling = false;
-	zend_string *exif = NULL, *xmp = NULL, *icc = NULL, *iptc = NULL;
+	zval *metadata = NULL;
 
-	ZEND_PARSE_PARAMETERS_START(0, 7)
+	ZEND_PARSE_PARAMETERS_START(0, 4)
 		Z_PARAM_OPTIONAL
 		Z_PARAM_LONG(quality)
 		Z_PARAM_BOOL(progressive)
 		Z_PARAM_BOOL(force_no_subsampling)
-		Z_PARAM_STR_OR_NULL(exif)
-		Z_PARAM_STR_OR_NULL(xmp)
-		Z_PARAM_STR_OR_NULL(icc)
-		Z_PARAM_STR_OR_NULL(iptc)
+		Z_PARAM_OBJECT_OF_CLASS_OR_NULL(metadata, php_gd_metadata_ce)
 	ZEND_PARSE_PARAMETERS_END();
 
 	if (quality < -1 || quality > 100) {
@@ -372,21 +338,19 @@ PHP_METHOD(Gd_Jpeg_WriteOptions, __construct)
 	zend_update_property_long(php_gd_jpeg_write_options_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("quality"), quality);
 	zend_update_property_bool(php_gd_jpeg_write_options_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("progressive"), progressive);
 	zend_update_property_bool(php_gd_jpeg_write_options_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("forceNoSubsampling"), force_no_subsampling);
-	if (exif) zend_update_property_str(php_gd_jpeg_write_options_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("exif"), exif); else zend_update_property_null(php_gd_jpeg_write_options_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("exif"));
-	if (xmp) zend_update_property_str(php_gd_jpeg_write_options_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("xmp"), xmp); else zend_update_property_null(php_gd_jpeg_write_options_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("xmp"));
-	if (icc) zend_update_property_str(php_gd_jpeg_write_options_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("icc"), icc); else zend_update_property_null(php_gd_jpeg_write_options_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("icc"));
-	if (iptc) zend_update_property_str(php_gd_jpeg_write_options_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("iptc"), iptc); else zend_update_property_null(php_gd_jpeg_write_options_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("iptc"));
+	if (metadata) zend_update_property(php_gd_jpeg_write_options_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("metadata"), metadata); else zend_update_property_null(php_gd_jpeg_write_options_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("metadata"));
 }
 
 PHP_METHOD(Gd_Jpeg_Info, __construct)
 {
 	zend_long width, height, bits_per_sample, components, color_space_tag, density_unit_tag;
 	zval *color_space = NULL, *density_unit = NULL;
-	bool progressive, has_exif, has_xmp, has_icc, has_iptc;
+	bool progressive;
 	zend_long x_density = 0, y_density = 0;
 	bool x_density_is_null = true, y_density_is_null = true;
+	zval *metadata;
 
-	ZEND_PARSE_PARAMETERS_START(15, 15)
+	ZEND_PARSE_PARAMETERS_START(12, 12)
 		Z_PARAM_LONG(width)
 		Z_PARAM_LONG(height)
 		Z_PARAM_LONG(bits_per_sample)
@@ -398,10 +362,7 @@ PHP_METHOD(Gd_Jpeg_Info, __construct)
 		Z_PARAM_OBJECT_OF_CLASS_OR_NULL(density_unit, php_gd_jpeg_density_unit_ce)
 		Z_PARAM_LONG_OR_NULL(x_density, x_density_is_null)
 		Z_PARAM_LONG_OR_NULL(y_density, y_density_is_null)
-		Z_PARAM_BOOL(has_exif)
-		Z_PARAM_BOOL(has_xmp)
-		Z_PARAM_BOOL(has_icc)
-		Z_PARAM_BOOL(has_iptc)
+		Z_PARAM_OBJECT_OF_CLASS(metadata, php_gd_metadata_ce)
 	ZEND_PARSE_PARAMETERS_END();
 
 	zend_update_property_long(php_gd_jpeg_info_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("width"), width);
@@ -415,10 +376,7 @@ PHP_METHOD(Gd_Jpeg_Info, __construct)
 	if (density_unit) zend_update_property(php_gd_jpeg_info_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("densityUnit"), density_unit); else zend_update_property_null(php_gd_jpeg_info_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("densityUnit"));
 	if (x_density_is_null) zend_update_property_null(php_gd_jpeg_info_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("xDensity")); else zend_update_property_long(php_gd_jpeg_info_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("xDensity"), x_density);
 	if (y_density_is_null) zend_update_property_null(php_gd_jpeg_info_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("yDensity")); else zend_update_property_long(php_gd_jpeg_info_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("yDensity"), y_density);
-	zend_update_property_bool(php_gd_jpeg_info_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("hasExif"), has_exif);
-	zend_update_property_bool(php_gd_jpeg_info_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("hasXmp"), has_xmp);
-	zend_update_property_bool(php_gd_jpeg_info_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("hasIcc"), has_icc);
-	zend_update_property_bool(php_gd_jpeg_info_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("hasIptc"), has_iptc);
+	zend_update_property(php_gd_jpeg_info_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("metadata"), metadata);
 }
 
 PHP_METHOD(Gd_Jpeg_Reader, __construct)
@@ -701,7 +659,6 @@ static void php_gd_jpeg_write_to_context(INTERNAL_FUNCTION_PARAMETERS, bool requ
 	zval *destination;
 	zval *options_zv = NULL;
 	gdJpegWriteOptions options;
-	gdImageMetadata *metadata = NULL;
 	gdIOCtx *ctx;
 	int result;
 
@@ -725,25 +682,8 @@ static void php_gd_jpeg_write_to_context(INTERNAL_FUNCTION_PARAMETERS, bool requ
 	}
 
 	php_gd_jpeg_build_options(options_zv, &options);
-	metadata = php_gd_jpeg_create_metadata(options_zv);
-	if (options_zv != NULL) {
-		zval rv;
-		zval *exif = zend_read_property(php_gd_jpeg_write_options_ce, Z_OBJ_P(options_zv), ZEND_STRL("exif"), true, &rv);
-		zval *xmp = zend_read_property(php_gd_jpeg_write_options_ce, Z_OBJ_P(options_zv), ZEND_STRL("xmp"), true, &rv);
-		zval *icc = zend_read_property(php_gd_jpeg_write_options_ce, Z_OBJ_P(options_zv), ZEND_STRL("icc"), true, &rv);
-		zval *iptc = zend_read_property(php_gd_jpeg_write_options_ce, Z_OBJ_P(options_zv), ZEND_STRL("iptc"), true, &rv);
-		if (metadata == NULL && (Z_TYPE_P(exif) != IS_NULL || Z_TYPE_P(xmp) != IS_NULL || Z_TYPE_P(icc) != IS_NULL || Z_TYPE_P(iptc) != IS_NULL)) {
-			ctx->gd_free(ctx);
-			php_gd_jpeg_throw("Failed to create JPEG metadata");
-			RETURN_THROWS();
-		}
-		options.metadata = metadata;
-	}
 	result = gdImageJpegCtxWithOptions(php_gd_libgdimageptr_from_zval_p(image_zv), ctx, &options);
 	ctx->gd_free(ctx);
-	if (metadata != NULL) {
-		gdImageMetadataFree(metadata);
-	}
 
 	if (result != 0) {
 		php_gd_jpeg_throw("Failed to encode JPEG image");
@@ -766,7 +706,6 @@ PHP_METHOD(Gd_Jpeg_Codec, toString)
 	zval *image_zv;
 	zval *options_zv = NULL;
 	gdJpegWriteOptions options;
-	gdImageMetadata *metadata = NULL;
 	int size = 0;
 	void *data;
 
@@ -777,23 +716,7 @@ PHP_METHOD(Gd_Jpeg_Codec, toString)
 	ZEND_PARSE_PARAMETERS_END();
 
 	php_gd_jpeg_build_options(options_zv, &options);
-	metadata = php_gd_jpeg_create_metadata(options_zv);
-	if (options_zv != NULL) {
-		zval rv;
-		zval *exif = zend_read_property(php_gd_jpeg_write_options_ce, Z_OBJ_P(options_zv), ZEND_STRL("exif"), true, &rv);
-		zval *xmp = zend_read_property(php_gd_jpeg_write_options_ce, Z_OBJ_P(options_zv), ZEND_STRL("xmp"), true, &rv);
-		zval *icc = zend_read_property(php_gd_jpeg_write_options_ce, Z_OBJ_P(options_zv), ZEND_STRL("icc"), true, &rv);
-		zval *iptc = zend_read_property(php_gd_jpeg_write_options_ce, Z_OBJ_P(options_zv), ZEND_STRL("iptc"), true, &rv);
-		if (metadata == NULL && (Z_TYPE_P(exif) != IS_NULL || Z_TYPE_P(xmp) != IS_NULL || Z_TYPE_P(icc) != IS_NULL || Z_TYPE_P(iptc) != IS_NULL)) {
-			php_gd_jpeg_throw("Failed to create JPEG metadata");
-			RETURN_THROWS();
-		}
-		options.metadata = metadata;
-	}
 	data = gdImageJpegPtrWithOptions(php_gd_libgdimageptr_from_zval_p(image_zv), &size, &options);
-	if (metadata != NULL) {
-		gdImageMetadataFree(metadata);
-	}
 	if (data == NULL) {
 		php_gd_jpeg_throw("Failed to encode JPEG image");
 		RETURN_THROWS();

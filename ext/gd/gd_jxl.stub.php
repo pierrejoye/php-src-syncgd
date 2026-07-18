@@ -20,11 +20,13 @@ namespace Gd\Jxl {
         public bool $lossless;
         public float $distance;
         public int $effort;
+        public ?\Gd\Metadata $metadata;
 
         public function __construct(
             bool $lossless = false,
             float $distance = 1.0,
             int $effort = 7,
+            ?\Gd\Metadata $metadata = null,
         ) {}
     }
 
@@ -58,7 +60,7 @@ namespace Gd\Jxl {
     }
 #endif
 
-#ifdef HAVE_GD_JXL_ANIM_READ_API
+#if defined(HAVE_GD_JXL_CODEC) || defined(HAVE_GD_JXL_ANIM_READ_API)
     /** @strict-properties */
     final readonly class Info
     {
@@ -66,15 +68,19 @@ namespace Gd\Jxl {
         public int $height;
         public bool $animated;
         public int $loopCount;
+        public ?\Gd\Metadata $metadata;
 
         public function __construct(
             int $width,
             int $height,
             bool $animated,
             int $loopCount,
+            ?\Gd\Metadata $metadata = null,
         ) {}
     }
+#endif
 
+#ifdef HAVE_GD_JXL_ANIM_READ_API
     /** @strict-properties */
     final readonly class Frame
     {
@@ -107,6 +113,26 @@ namespace Gd\Jxl {
 
         public function info(): Info {}
         public function next(): ?Frame {}
+    }
+#endif
+
+#ifdef HAVE_GD_JXL_CODEC
+    /**
+     * @strict-properties
+     * @not-serializable
+     */
+    final class Reader
+    {
+        private function __construct() {}
+
+        public static function fromFile(string $path): \Gd\Jxl\Reader {}
+        public static function fromString(string $bytes): \Gd\Jxl\Reader {}
+
+        /** @param resource $stream */
+        public static function fromStream($stream): \Gd\Jxl\Reader {}
+
+        public function info(): Info {}
+        public function read(): \GdImage {}
     }
 #endif
 

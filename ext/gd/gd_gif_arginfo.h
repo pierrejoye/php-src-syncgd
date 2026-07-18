@@ -1,11 +1,13 @@
 /* This is a generated file, edit gd_gif.stub.php instead.
- * Stub hash: 67e52d18718af25288c64b1db8f871f3e0f14e3b
+ * Stub hash: b612bb080a22516e6ca4a67810f98d3f86d49d34
  * Has decl header: yes */
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Gd_Gif_WriteOptions___construct, 0, 0, 0)
+	ZEND_ARG_OBJ_INFO_WITH_DEFAULT_VALUE(0, metadata, Gd\\Metadata, 1, "null")
 ZEND_END_ARG_INFO()
 
-#define arginfo_class_Gd_Gif_Codec___construct arginfo_class_Gd_Gif_WriteOptions___construct
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Gd_Gif_Codec___construct, 0, 0, 0)
+ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Gd_Gif_Codec_fromFile, 0, 1, GdImage, 0)
 	ZEND_ARG_TYPE_INFO(0, path, IS_STRING, 0)
@@ -36,15 +38,43 @@ ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Gd_Gif_Codec_toString, 0, 
 	ZEND_ARG_OBJ_INFO_WITH_DEFAULT_VALUE(0, options, Gd\\Gif\\WriteOptions, 0, "new Gd\\Gif\\WriteOptions()")
 ZEND_END_ARG_INFO()
 
-#if defined(HAVE_GD_GIF_ANIM_READ_API)
-ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Gd_Gif_Info___construct, 0, 0, 5)
+#if defined(HAVE_GD_BUNDLED) || defined(HAVE_GD_GIF_ANIM_READ_API) && defined(HAVE_GD_BUNDLED)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Gd_Gif_Info___construct, 0, 0, 8)
+	ZEND_ARG_TYPE_INFO(0, version, IS_STRING, 0)
 	ZEND_ARG_TYPE_INFO(0, width, IS_LONG, 0)
 	ZEND_ARG_TYPE_INFO(0, height, IS_LONG, 0)
 	ZEND_ARG_TYPE_INFO(0, backgroundIndex, IS_LONG, 0)
 	ZEND_ARG_TYPE_INFO(0, globalColorTable, _IS_BOOL, 0)
-	ZEND_ARG_TYPE_INFO(0, loopCount, IS_LONG, 0)
+	ZEND_ARG_TYPE_INFO(0, colorResolution, IS_LONG, 0)
+	ZEND_ARG_TYPE_INFO(0, pixelAspectRatio, IS_DOUBLE, 0)
+	ZEND_ARG_TYPE_INFO(0, loopCount, IS_LONG, 1)
+ZEND_END_ARG_INFO()
+#endif
+
+#if defined(HAVE_GD_BUNDLED)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Gd_Gif_Reader___construct, 0, 0, 0)
 ZEND_END_ARG_INFO()
 
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Gd_Gif_Reader_fromFile, 0, 1, Gd\\Gif\\Reader, 0)
+	ZEND_ARG_TYPE_INFO(0, path, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Gd_Gif_Reader_fromString, 0, 1, Gd\\Gif\\Reader, 0)
+	ZEND_ARG_TYPE_INFO(0, bytes, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Gd_Gif_Reader_fromStream, 0, 1, Gd\\Gif\\Reader, 0)
+	ZEND_ARG_INFO(0, stream)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Gd_Gif_Reader_info, 0, 0, Gd\\Gif\\Info, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Gd_Gif_Reader_read, 0, 0, GdImage, 0)
+ZEND_END_ARG_INFO()
+#endif
+
+#if defined(HAVE_GD_GIF_ANIM_READ_API)
 ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Gd_Gif_Frame___construct, 0, 0, 12)
 	ZEND_ARG_OBJ_INFO(0, image, GdImage, 0)
 	ZEND_ARG_TYPE_INFO(0, frameIndex, IS_LONG, 0)
@@ -141,8 +171,18 @@ ZEND_METHOD(Gd_Gif_Codec, fromStream);
 ZEND_METHOD(Gd_Gif_Codec, toFile);
 ZEND_METHOD(Gd_Gif_Codec, toStream);
 ZEND_METHOD(Gd_Gif_Codec, toString);
-#if defined(HAVE_GD_GIF_ANIM_READ_API)
+#if defined(HAVE_GD_BUNDLED) || defined(HAVE_GD_GIF_ANIM_READ_API) && defined(HAVE_GD_BUNDLED)
 ZEND_METHOD(Gd_Gif_Info, __construct);
+#endif
+#if defined(HAVE_GD_BUNDLED)
+ZEND_METHOD(Gd_Gif_Reader, __construct);
+ZEND_METHOD(Gd_Gif_Reader, fromFile);
+ZEND_METHOD(Gd_Gif_Reader, fromString);
+ZEND_METHOD(Gd_Gif_Reader, fromStream);
+ZEND_METHOD(Gd_Gif_Reader, info);
+ZEND_METHOD(Gd_Gif_Reader, read);
+#endif
+#if defined(HAVE_GD_GIF_ANIM_READ_API)
 ZEND_METHOD(Gd_Gif_Frame, __construct);
 ZEND_METHOD(Gd_Gif_AnimReader, __construct);
 ZEND_METHOD(Gd_Gif_AnimReader, fromFile);
@@ -180,9 +220,21 @@ static const zend_function_entry class_Gd_Gif_Codec_methods[] = {
 	ZEND_FE_END
 };
 
-#if defined(HAVE_GD_GIF_ANIM_READ_API)
+#if defined(HAVE_GD_BUNDLED) || defined(HAVE_GD_GIF_ANIM_READ_API) && defined(HAVE_GD_BUNDLED)
 static const zend_function_entry class_Gd_Gif_Info_methods[] = {
 	ZEND_ME(Gd_Gif_Info, __construct, arginfo_class_Gd_Gif_Info___construct, ZEND_ACC_PUBLIC)
+	ZEND_FE_END
+};
+#endif
+
+#if defined(HAVE_GD_BUNDLED)
+static const zend_function_entry class_Gd_Gif_Reader_methods[] = {
+	ZEND_ME(Gd_Gif_Reader, __construct, arginfo_class_Gd_Gif_Reader___construct, ZEND_ACC_PRIVATE)
+	ZEND_ME(Gd_Gif_Reader, fromFile, arginfo_class_Gd_Gif_Reader_fromFile, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Gd_Gif_Reader, fromString, arginfo_class_Gd_Gif_Reader_fromString, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Gd_Gif_Reader, fromStream, arginfo_class_Gd_Gif_Reader_fromStream, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Gd_Gif_Reader, info, arginfo_class_Gd_Gif_Reader_info, ZEND_ACC_PUBLIC)
+	ZEND_ME(Gd_Gif_Reader, read, arginfo_class_Gd_Gif_Reader_read, ZEND_ACC_PUBLIC)
 	ZEND_FE_END
 };
 #endif
@@ -236,6 +288,13 @@ static zend_class_entry *register_class_Gd_Gif_WriteOptions(zend_class_entry *cl
 	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL|ZEND_ACC_NO_DYNAMIC_PROPERTIES|ZEND_ACC_READONLY_CLASS);
 	zend_class_implements(class_entry, 1, class_entry_Gd_Codec_WriteOptions);
 
+	zval property_metadata_default_value;
+	ZVAL_UNDEF(&property_metadata_default_value);
+	zend_string *property_metadata_name = zend_string_init("metadata", sizeof("metadata") - 1, true);
+	zend_string *property_metadata_class_Gd_Metadata = zend_string_init("Gd\\Metadata", sizeof("Gd\\Metadata")-1, 1);
+	zend_declare_typed_property(class_entry, property_metadata_name, &property_metadata_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_metadata_class_Gd_Metadata, 0, MAY_BE_NULL));
+	zend_string_release_ex(property_metadata_name, true);
+
 	return class_entry;
 }
 
@@ -274,13 +333,19 @@ static zend_class_entry *register_class_Gd_Gif_DisposalMethod(void)
 }
 #endif
 
-#if defined(HAVE_GD_GIF_ANIM_READ_API)
+#if defined(HAVE_GD_BUNDLED) || defined(HAVE_GD_GIF_ANIM_READ_API) && defined(HAVE_GD_BUNDLED)
 static zend_class_entry *register_class_Gd_Gif_Info(void)
 {
 	zend_class_entry ce, *class_entry;
 
 	INIT_NS_CLASS_ENTRY(ce, "Gd\\Gif", "Info", class_Gd_Gif_Info_methods);
 	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL|ZEND_ACC_NO_DYNAMIC_PROPERTIES|ZEND_ACC_READONLY_CLASS);
+
+	zval property_version_default_value;
+	ZVAL_UNDEF(&property_version_default_value);
+	zend_string *property_version_name = zend_string_init("version", sizeof("version") - 1, true);
+	zend_declare_typed_property(class_entry, property_version_name, &property_version_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release_ex(property_version_name, true);
 
 	zval property_width_default_value;
 	ZVAL_UNDEF(&property_width_default_value);
@@ -306,11 +371,35 @@ static zend_class_entry *register_class_Gd_Gif_Info(void)
 	zend_declare_typed_property(class_entry, property_globalColorTable_name, &property_globalColorTable_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_BOOL));
 	zend_string_release_ex(property_globalColorTable_name, true);
 
+	zval property_colorResolution_default_value;
+	ZVAL_UNDEF(&property_colorResolution_default_value);
+	zend_string *property_colorResolution_name = zend_string_init("colorResolution", sizeof("colorResolution") - 1, true);
+	zend_declare_typed_property(class_entry, property_colorResolution_name, &property_colorResolution_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_LONG));
+	zend_string_release_ex(property_colorResolution_name, true);
+
+	zval property_pixelAspectRatio_default_value;
+	ZVAL_UNDEF(&property_pixelAspectRatio_default_value);
+	zend_string *property_pixelAspectRatio_name = zend_string_init("pixelAspectRatio", sizeof("pixelAspectRatio") - 1, true);
+	zend_declare_typed_property(class_entry, property_pixelAspectRatio_name, &property_pixelAspectRatio_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_DOUBLE));
+	zend_string_release_ex(property_pixelAspectRatio_name, true);
+
 	zval property_loopCount_default_value;
 	ZVAL_UNDEF(&property_loopCount_default_value);
 	zend_string *property_loopCount_name = zend_string_init("loopCount", sizeof("loopCount") - 1, true);
-	zend_declare_typed_property(class_entry, property_loopCount_name, &property_loopCount_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_LONG));
+	zend_declare_typed_property(class_entry, property_loopCount_name, &property_loopCount_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_LONG|MAY_BE_NULL));
 	zend_string_release_ex(property_loopCount_name, true);
+
+	return class_entry;
+}
+#endif
+
+#if defined(HAVE_GD_BUNDLED)
+static zend_class_entry *register_class_Gd_Gif_Reader(void)
+{
+	zend_class_entry ce, *class_entry;
+
+	INIT_NS_CLASS_ENTRY(ce, "Gd\\Gif", "Reader", class_Gd_Gif_Reader_methods);
+	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL|ZEND_ACC_NO_DYNAMIC_PROPERTIES|ZEND_ACC_NOT_SERIALIZABLE);
 
 	return class_entry;
 }

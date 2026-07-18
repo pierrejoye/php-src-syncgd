@@ -1,10 +1,11 @@
 /* This is a generated file, edit gd_webp.stub.php instead.
- * Stub hash: 4b9004d289b6733150671b5b7b476e9a5b8dfb56
+ * Stub hash: 37625afafcb78d26a06be42441e0df4853fb1123
  * Has decl header: yes */
 
 #if defined(HAVE_GD_WEBP)
 ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Gd_Webp_WriteOptions___construct, 0, 0, 0)
 	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, quality, IS_LONG, 0, "-1")
+	ZEND_ARG_OBJ_INFO_WITH_DEFAULT_VALUE(0, metadata, Gd\\Metadata, 1, "null")
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Gd_Webp_Codec___construct, 0, 0, 0)
@@ -40,16 +41,42 @@ ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Gd_Webp_Codec_toString, 0,
 ZEND_END_ARG_INFO()
 #endif
 
-#if defined(HAVE_GD_WEBP_ANIM_READ_API)
-ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Gd_Webp_Info___construct, 0, 0, 6)
+#if defined(HAVE_GD_BUNDLED) || defined(HAVE_GD_WEBP_ANIM_READ_API)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Gd_Webp_Info___construct, 0, 0, 7)
 	ZEND_ARG_TYPE_INFO(0, width, IS_LONG, 0)
 	ZEND_ARG_TYPE_INFO(0, height, IS_LONG, 0)
 	ZEND_ARG_TYPE_INFO(0, frameCount, IS_LONG, 0)
 	ZEND_ARG_TYPE_INFO(0, loopCount, IS_LONG, 0)
 	ZEND_ARG_TYPE_INFO(0, backgroundColor, IS_LONG, 0)
 	ZEND_ARG_TYPE_INFO(0, formatFlags, IS_LONG, 0)
+	ZEND_ARG_OBJ_INFO(0, metadata, Gd\\Metadata, 0)
+ZEND_END_ARG_INFO()
+#endif
+
+#if defined(HAVE_GD_BUNDLED)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Gd_Webp_Reader___construct, 0, 0, 0)
 ZEND_END_ARG_INFO()
 
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Gd_Webp_Reader_fromFile, 0, 1, Gd\\Webp\\Reader, 0)
+	ZEND_ARG_TYPE_INFO(0, path, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Gd_Webp_Reader_fromString, 0, 1, Gd\\Webp\\Reader, 0)
+	ZEND_ARG_TYPE_INFO(0, bytes, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Gd_Webp_Reader_fromStream, 0, 1, Gd\\Webp\\Reader, 0)
+	ZEND_ARG_INFO(0, stream)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Gd_Webp_Reader_info, 0, 0, Gd\\Webp\\Info, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Gd_Webp_Reader_read, 0, 0, GdImage, 0)
+ZEND_END_ARG_INFO()
+#endif
+
+#if defined(HAVE_GD_WEBP_ANIM_READ_API)
 ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Gd_Webp_Frame___construct, 0, 0, 14)
 	ZEND_ARG_OBJ_INFO(0, image, GdImage, 0)
 	ZEND_ARG_TYPE_INFO(0, frameIndex, IS_LONG, 0)
@@ -152,8 +179,18 @@ ZEND_METHOD(Gd_Webp_Codec, toFile);
 ZEND_METHOD(Gd_Webp_Codec, toStream);
 ZEND_METHOD(Gd_Webp_Codec, toString);
 #endif
-#if defined(HAVE_GD_WEBP_ANIM_READ_API)
+#if defined(HAVE_GD_BUNDLED) || defined(HAVE_GD_WEBP_ANIM_READ_API)
 ZEND_METHOD(Gd_Webp_Info, __construct);
+#endif
+#if defined(HAVE_GD_BUNDLED)
+ZEND_METHOD(Gd_Webp_Reader, __construct);
+ZEND_METHOD(Gd_Webp_Reader, fromFile);
+ZEND_METHOD(Gd_Webp_Reader, fromString);
+ZEND_METHOD(Gd_Webp_Reader, fromStream);
+ZEND_METHOD(Gd_Webp_Reader, info);
+ZEND_METHOD(Gd_Webp_Reader, read);
+#endif
+#if defined(HAVE_GD_WEBP_ANIM_READ_API)
 ZEND_METHOD(Gd_Webp_Frame, __construct);
 ZEND_METHOD(Gd_Webp_AnimReader, __construct);
 ZEND_METHOD(Gd_Webp_AnimReader, fromFile);
@@ -195,9 +232,21 @@ static const zend_function_entry class_Gd_Webp_Codec_methods[] = {
 };
 #endif
 
-#if defined(HAVE_GD_WEBP_ANIM_READ_API)
+#if defined(HAVE_GD_BUNDLED) || defined(HAVE_GD_WEBP_ANIM_READ_API)
 static const zend_function_entry class_Gd_Webp_Info_methods[] = {
 	ZEND_ME(Gd_Webp_Info, __construct, arginfo_class_Gd_Webp_Info___construct, ZEND_ACC_PUBLIC)
+	ZEND_FE_END
+};
+#endif
+
+#if defined(HAVE_GD_BUNDLED)
+static const zend_function_entry class_Gd_Webp_Reader_methods[] = {
+	ZEND_ME(Gd_Webp_Reader, __construct, arginfo_class_Gd_Webp_Reader___construct, ZEND_ACC_PRIVATE)
+	ZEND_ME(Gd_Webp_Reader, fromFile, arginfo_class_Gd_Webp_Reader_fromFile, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Gd_Webp_Reader, fromString, arginfo_class_Gd_Webp_Reader_fromString, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Gd_Webp_Reader, fromStream, arginfo_class_Gd_Webp_Reader_fromStream, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Gd_Webp_Reader, info, arginfo_class_Gd_Webp_Reader_info, ZEND_ACC_PUBLIC)
+	ZEND_ME(Gd_Webp_Reader, read, arginfo_class_Gd_Webp_Reader_read, ZEND_ACC_PUBLIC)
 	ZEND_FE_END
 };
 #endif
@@ -258,6 +307,13 @@ static zend_class_entry *register_class_Gd_Webp_WriteOptions(zend_class_entry *c
 	zend_declare_typed_property(class_entry, property_quality_name, &property_quality_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_LONG));
 	zend_string_release_ex(property_quality_name, true);
 
+	zval property_metadata_default_value;
+	ZVAL_UNDEF(&property_metadata_default_value);
+	zend_string *property_metadata_name = zend_string_init("metadata", sizeof("metadata") - 1, true);
+	zend_string *property_metadata_class_Gd_Metadata = zend_string_init("Gd\\Metadata", sizeof("Gd\\Metadata")-1, 1);
+	zend_declare_typed_property(class_entry, property_metadata_name, &property_metadata_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_metadata_class_Gd_Metadata, 0, MAY_BE_NULL));
+	zend_string_release_ex(property_metadata_name, true);
+
 	return class_entry;
 }
 #endif
@@ -308,7 +364,7 @@ static zend_class_entry *register_class_Gd_Webp_BlendMethod(void)
 }
 #endif
 
-#if defined(HAVE_GD_WEBP_ANIM_READ_API)
+#if defined(HAVE_GD_BUNDLED) || defined(HAVE_GD_WEBP_ANIM_READ_API)
 static zend_class_entry *register_class_Gd_Webp_Info(void)
 {
 	zend_class_entry ce, *class_entry;
@@ -351,6 +407,25 @@ static zend_class_entry *register_class_Gd_Webp_Info(void)
 	zend_string *property_formatFlags_name = zend_string_init("formatFlags", sizeof("formatFlags") - 1, true);
 	zend_declare_typed_property(class_entry, property_formatFlags_name, &property_formatFlags_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_LONG));
 	zend_string_release_ex(property_formatFlags_name, true);
+
+	zval property_metadata_default_value;
+	ZVAL_UNDEF(&property_metadata_default_value);
+	zend_string *property_metadata_name = zend_string_init("metadata", sizeof("metadata") - 1, true);
+	zend_string *property_metadata_class_Gd_Metadata = zend_string_init("Gd\\Metadata", sizeof("Gd\\Metadata")-1, 1);
+	zend_declare_typed_property(class_entry, property_metadata_name, &property_metadata_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_metadata_class_Gd_Metadata, 0, 0));
+	zend_string_release_ex(property_metadata_name, true);
+
+	return class_entry;
+}
+#endif
+
+#if defined(HAVE_GD_BUNDLED)
+static zend_class_entry *register_class_Gd_Webp_Reader(void)
+{
+	zend_class_entry ce, *class_entry;
+
+	INIT_NS_CLASS_ENTRY(ce, "Gd\\Webp", "Reader", class_Gd_Webp_Reader_methods);
+	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL|ZEND_ACC_NO_DYNAMIC_PROPERTIES|ZEND_ACC_NOT_SERIALIZABLE);
 
 	return class_entry;
 }

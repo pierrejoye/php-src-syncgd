@@ -1,9 +1,9 @@
 /* This is a generated file, edit gd_jpeg.stub.php instead.
- * Stub hash: e1f318fce28ca4b0b42490ce59ee099431b54893
+ * Stub hash: 6c0b4ad81d522ed34e3a531143cc9a96439afb52
  * Has decl header: yes */
 
 #if defined(HAVE_GD_JPEG_CODEC)
-ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Gd_Jpeg_Info___construct, 0, 0, 15)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Gd_Jpeg_Info___construct, 0, 0, 12)
 	ZEND_ARG_TYPE_INFO(0, width, IS_LONG, 0)
 	ZEND_ARG_TYPE_INFO(0, height, IS_LONG, 0)
 	ZEND_ARG_TYPE_INFO(0, bitsPerSample, IS_LONG, 0)
@@ -15,10 +15,7 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Gd_Jpeg_Info___construct, 0, 0, 15)
 	ZEND_ARG_OBJ_INFO(0, densityUnit, Gd\\Jpeg\\DensityUnit, 1)
 	ZEND_ARG_TYPE_INFO(0, xDensity, IS_LONG, 1)
 	ZEND_ARG_TYPE_INFO(0, yDensity, IS_LONG, 1)
-	ZEND_ARG_TYPE_INFO(0, hasExif, _IS_BOOL, 0)
-	ZEND_ARG_TYPE_INFO(0, hasXmp, _IS_BOOL, 0)
-	ZEND_ARG_TYPE_INFO(0, hasIcc, _IS_BOOL, 0)
-	ZEND_ARG_TYPE_INFO(0, hasIptc, _IS_BOOL, 0)
+	ZEND_ARG_OBJ_INFO(0, metadata, Gd\\Metadata, 0)
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Gd_Jpeg_ReadOptions___construct, 0, 0, 0)
@@ -32,10 +29,7 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Gd_Jpeg_WriteOptions___construct, 0, 0, 0)
 	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, quality, IS_LONG, 0, "-1")
 	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, progressive, _IS_BOOL, 0, "false")
 	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, forceNoSubsampling, _IS_BOOL, 0, "false")
-	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, exif, IS_STRING, 1, "null")
-	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, xmp, IS_STRING, 1, "null")
-	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, icc, IS_STRING, 1, "null")
-	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, iptc, IS_STRING, 1, "null")
+	ZEND_ARG_OBJ_INFO_WITH_DEFAULT_VALUE(0, metadata, Gd\\Metadata, 1, "null")
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Gd_Jpeg_Reader___construct, 0, 0, 0)
@@ -317,29 +311,12 @@ static zend_class_entry *register_class_Gd_Jpeg_Info(void)
 	zend_declare_typed_property(class_entry, property_yDensity_name, &property_yDensity_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_LONG|MAY_BE_NULL));
 	zend_string_release_ex(property_yDensity_name, true);
 
-	zval property_hasExif_default_value;
-	ZVAL_UNDEF(&property_hasExif_default_value);
-	zend_string *property_hasExif_name = zend_string_init("hasExif", sizeof("hasExif") - 1, true);
-	zend_declare_typed_property(class_entry, property_hasExif_name, &property_hasExif_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_BOOL));
-	zend_string_release_ex(property_hasExif_name, true);
-
-	zval property_hasXmp_default_value;
-	ZVAL_UNDEF(&property_hasXmp_default_value);
-	zend_string *property_hasXmp_name = zend_string_init("hasXmp", sizeof("hasXmp") - 1, true);
-	zend_declare_typed_property(class_entry, property_hasXmp_name, &property_hasXmp_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_BOOL));
-	zend_string_release_ex(property_hasXmp_name, true);
-
-	zval property_hasIcc_default_value;
-	ZVAL_UNDEF(&property_hasIcc_default_value);
-	zend_string *property_hasIcc_name = zend_string_init("hasIcc", sizeof("hasIcc") - 1, true);
-	zend_declare_typed_property(class_entry, property_hasIcc_name, &property_hasIcc_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_BOOL));
-	zend_string_release_ex(property_hasIcc_name, true);
-
-	zval property_hasIptc_default_value;
-	ZVAL_UNDEF(&property_hasIptc_default_value);
-	zend_string *property_hasIptc_name = zend_string_init("hasIptc", sizeof("hasIptc") - 1, true);
-	zend_declare_typed_property(class_entry, property_hasIptc_name, &property_hasIptc_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_BOOL));
-	zend_string_release_ex(property_hasIptc_name, true);
+	zval property_metadata_default_value;
+	ZVAL_UNDEF(&property_metadata_default_value);
+	zend_string *property_metadata_name = zend_string_init("metadata", sizeof("metadata") - 1, true);
+	zend_string *property_metadata_class_Gd_Metadata = zend_string_init("Gd\\Metadata", sizeof("Gd\\Metadata")-1, 1);
+	zend_declare_typed_property(class_entry, property_metadata_name, &property_metadata_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_metadata_class_Gd_Metadata, 0, 0));
+	zend_string_release_ex(property_metadata_name, true);
 
 	return class_entry;
 }
@@ -409,29 +386,12 @@ static zend_class_entry *register_class_Gd_Jpeg_WriteOptions(zend_class_entry *c
 	zend_declare_typed_property(class_entry, property_forceNoSubsampling_name, &property_forceNoSubsampling_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_BOOL));
 	zend_string_release_ex(property_forceNoSubsampling_name, true);
 
-	zval property_exif_default_value;
-	ZVAL_UNDEF(&property_exif_default_value);
-	zend_string *property_exif_name = zend_string_init("exif", sizeof("exif") - 1, true);
-	zend_declare_typed_property(class_entry, property_exif_name, &property_exif_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING|MAY_BE_NULL));
-	zend_string_release_ex(property_exif_name, true);
-
-	zval property_xmp_default_value;
-	ZVAL_UNDEF(&property_xmp_default_value);
-	zend_string *property_xmp_name = zend_string_init("xmp", sizeof("xmp") - 1, true);
-	zend_declare_typed_property(class_entry, property_xmp_name, &property_xmp_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING|MAY_BE_NULL));
-	zend_string_release_ex(property_xmp_name, true);
-
-	zval property_icc_default_value;
-	ZVAL_UNDEF(&property_icc_default_value);
-	zend_string *property_icc_name = zend_string_init("icc", sizeof("icc") - 1, true);
-	zend_declare_typed_property(class_entry, property_icc_name, &property_icc_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING|MAY_BE_NULL));
-	zend_string_release_ex(property_icc_name, true);
-
-	zval property_iptc_default_value;
-	ZVAL_UNDEF(&property_iptc_default_value);
-	zend_string *property_iptc_name = zend_string_init("iptc", sizeof("iptc") - 1, true);
-	zend_declare_typed_property(class_entry, property_iptc_name, &property_iptc_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING|MAY_BE_NULL));
-	zend_string_release_ex(property_iptc_name, true);
+	zval property_metadata_default_value;
+	ZVAL_UNDEF(&property_metadata_default_value);
+	zend_string *property_metadata_name = zend_string_init("metadata", sizeof("metadata") - 1, true);
+	zend_string *property_metadata_class_Gd_Metadata = zend_string_init("Gd\\Metadata", sizeof("Gd\\Metadata")-1, 1);
+	zend_declare_typed_property(class_entry, property_metadata_name, &property_metadata_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_metadata_class_Gd_Metadata, 0, MAY_BE_NULL));
+	zend_string_release_ex(property_metadata_name, true);
 
 	return class_entry;
 }

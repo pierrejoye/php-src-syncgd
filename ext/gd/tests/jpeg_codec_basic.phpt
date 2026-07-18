@@ -28,17 +28,19 @@ $im = imagecreatetruecolor(4, 3);
 imageresolution($im, 123, 234);
 imagefill($im, 0, 0, 0x336699);
 
-$xmp = "http://ns.adobe.com/xap/1.0/\0<x:xmpmeta/>";
-$iptc = "Photoshop 3.0\08BIM";
+$xmp = "<x:xmpmeta/>";
+$iptc = "\x1c\x02\x05\0\x04test";
+$metadata = Gd\Metadata::create()
+    ->with('exif', "Exif\0\0abc")
+    ->with('xmp', $xmp)
+    ->with('icc', 'icc-profile')
+    ->with('iptc', $iptc);
 
 $bytes = Codec::toString($im, new WriteOptions(
     quality: 90,
     progressive: true,
     forceNoSubsampling: true,
-    exif: "Exif\0\0abc",
-    xmp: $xmp,
-    icc: "icc-profile",
-    iptc: $iptc,
+    metadata: $metadata,
 ));
 
 var_dump(str_starts_with($bytes, "\xff\xd8"));
@@ -49,7 +51,23 @@ var_dump($info->width, $info->height, $info->bitsPerSample, $info->components);
 var_dump($info->colorSpaceTag, $info->colorSpace === ColorSpace::YCbCr);
 var_dump($info->progressive);
 var_dump($info->densityUnitTag, $info->densityUnit === DensityUnit::Dpi, $info->xDensity, $info->yDensity);
-var_dump($info->hasExif, $info->hasXmp, $info->hasIcc, $info->hasIptc);
+var_dump($info->metadata->has('exif'), $info->metadata->has('xmp'), $info->metadata->has('icc'), $info->metadata->has('iptc'));
+
+function check_metadata(string $bytes): void {
+    $metadata = Reader::fromString($bytes)->info()->metadata;
+    var_dump($metadata->has('exif'), $metadata->has('xmp'), !$metadata->has('icc'), $metadata->has('iptc'));
+}
+
+$metadataFile = __DIR__ . '/jpeg_codec_metadata_tmp.jpg';
+Codec::toFile($im, $metadataFile, new WriteOptions(metadata: $metadata));
+check_metadata(file_get_contents($metadataFile));
+
+$metadataStream = fopen('php://temp', 'w+b');
+Codec::toStream($im, $metadataStream, new WriteOptions(metadata: $metadata));
+rewind($metadataStream);
+check_metadata(stream_get_contents($metadataStream));
+fclose($metadataStream);
+@unlink($metadataFile);
 
 $decoded = $reader->read();
 var_dump($decoded instanceof GdImage, imagesx($decoded), imagesy($decoded));
@@ -72,7 +90,10 @@ show_exception(fn() => Reader::fromString(''));
 show_exception(fn() => @Reader::fromString('not jpeg'));
 show_exception(fn() => @Codec::fromString('not jpeg'));
 show_exception(fn() => new WriteOptions(quality: 101));
-show_exception(fn() => @Codec::toString($im, new WriteOptions(icc: str_repeat('x', 65519 * 255 + 1))));
+$iccOutput = Codec::toString($im, new WriteOptions(
+    metadata: Gd\Metadata::create()->with('icc', str_repeat('x', 65519 * 255 + 1)),
+));
+var_dump(!Reader::fromString($iccOutput)->info()->metadata->has('icc'));
 
 $defaultWrite = new WriteOptions();
 $defaultRead = new ReadOptions();
@@ -81,6 +102,7 @@ var_dump(ColorSpace::YCbCr->value, DensityUnit::Dpi->value);
 var_dump($defaultWrite->quality, $defaultWrite->progressive, $defaultWrite->forceNoSubsampling);
 var_dump($defaultRead->ignoreWarnings);
 var_dump($readerReflection->isFinal(), $readerReflection->isInstantiable());
+var_dump(property_exists(WriteOptions::class, 'exif'), property_exists(WriteOptions::class, 'xmp'), property_exists(WriteOptions::class, 'icc'), property_exists(WriteOptions::class, 'iptc'));
 
 @unlink($tmp);
 ?>
@@ -99,6 +121,14 @@ int(123)
 int(234)
 bool(true)
 bool(true)
+bool(false)
+bool(true)
+bool(true)
+bool(true)
+bool(true)
+bool(true)
+bool(true)
+bool(true)
 bool(true)
 bool(true)
 bool(true)
@@ -115,7 +145,7 @@ ValueError: Gd\Jpeg\Reader::fromString(): Argument #1 ($bytes) must not be empty
 Gd\Codec\CodecException: Failed to read JPEG info
 Gd\Codec\CodecException: Failed to decode JPEG image
 ValueError: Gd\Jpeg\WriteOptions::__construct(): Argument #1 ($quality) must be between -1 and 100
-Gd\Codec\CodecException: Failed to encode JPEG image
+bool(true)
 int(3)
 int(1)
 int(-1)
@@ -123,4 +153,8 @@ bool(false)
 bool(false)
 bool(true)
 bool(true)
+bool(false)
+bool(false)
+bool(false)
+bool(false)
 bool(false)

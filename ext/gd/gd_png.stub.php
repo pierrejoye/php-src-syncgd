@@ -60,6 +60,7 @@ namespace Gd\Png {
         public array $filters;
         public CompressionStrategy $compressionStrategy;
         public array $comments;
+        public ?\Gd\Metadata $metadata;
 
         /**
          * @param list<Filter> $filters
@@ -70,6 +71,7 @@ namespace Gd\Png {
             array $filters = [],
             CompressionStrategy $compressionStrategy = CompressionStrategy::Default,
             array $comments = [],
+            ?\Gd\Metadata $metadata = null,
         ) {}
     }
 
@@ -92,6 +94,7 @@ namespace Gd\Png {
         public ?int $resolutionY;
         public ?PhysicalUnit $physicalUnit;
         public array $comments;
+        public \Gd\Metadata $metadata;
         public bool $decodedTrueColor;
 
         /** @param array<string, string> $comments */
@@ -112,6 +115,7 @@ namespace Gd\Png {
             ?int $resolutionY,
             ?PhysicalUnit $physicalUnit,
             array $comments,
+            \Gd\Metadata $metadata,
             bool $decodedTrueColor,
         ) {}
     }

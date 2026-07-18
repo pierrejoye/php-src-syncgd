@@ -19,6 +19,7 @@
 #include "php_gd.h"
 #include "gd_codec_write.h"
 #include "gd_jxl.h"
+#include "gd_metadata.h"
 #include "ext/spl/spl_exceptions.h"
 #include <stdint.h>
 
@@ -103,45 +104,64 @@ static bool php_gd_jxl_validate_encode_options(bool lossless, double distance, z
 #ifdef HAVE_GD_JXL_CODEC
 static zend_class_entry *php_gd_jxl_write_options_ce;
 
-static void php_gd_jxl_read_write_options(zval *options_zv, bool *lossless, double *distance, int *effort)
+static void php_gd_jxl_read_write_options(zval *options_zv, gdJxlWriteOptions *options)
 {
 	zval rv;
 	zval *value;
 
-	*lossless = false;
-	*distance = 1.0;
-	*effort = 7;
+	gdJxlWriteOptionsInit(options);
 	if (options_zv == NULL) {
 		return;
 	}
 
 	value = zend_read_property(php_gd_jxl_write_options_ce, Z_OBJ_P(options_zv), ZEND_STRL("lossless"), true, &rv);
-	*lossless = Z_TYPE_P(value) == IS_TRUE;
+	options->lossless = Z_TYPE_P(value) == IS_TRUE;
 	value = zend_read_property(php_gd_jxl_write_options_ce, Z_OBJ_P(options_zv), ZEND_STRL("distance"), true, &rv);
-	*distance = Z_DVAL_P(value);
+	options->distance = (float) Z_DVAL_P(value);
 	value = zend_read_property(php_gd_jxl_write_options_ce, Z_OBJ_P(options_zv), ZEND_STRL("effort"), true, &rv);
-	*effort = (int) Z_LVAL_P(value);
+	options->effort = (int) Z_LVAL_P(value);
+	value = zend_read_property(php_gd_jxl_write_options_ce, Z_OBJ_P(options_zv), ZEND_STRL("metadata"), true, &rv);
+	if (Z_TYPE_P(value) == IS_OBJECT) {
+		options->metadata = php_gd_metadata_from_zval(value);
+	}
 }
 
 static gdImagePtr php_gd_jxl_decode_bytes(zend_string *bytes)
 {
+	gdJxlReadOptions options;
+	gdJxlInfo info;
+	gdJxlReadPtr reader;
+	gdImagePtr image = NULL;
+	int result;
+
 	if (ZSTR_LEN(bytes) > INT_MAX) {
 		zend_argument_value_error(1, "must not exceed %d bytes", INT_MAX);
 		return NULL;
 	}
-	return gdImageCreateFromJxlPtr((int) ZSTR_LEN(bytes), ZSTR_VAL(bytes));
+	gdJxlReadOptionsInit(&options);
+	reader = gdJxlReadOpenPtr((int) ZSTR_LEN(bytes), ZSTR_VAL(bytes), &options);
+	if (reader == NULL || !gdJxlReadGetInfo(reader, &info)) {
+		gdJxlReadClose(reader);
+		return NULL;
+	}
+	if (info.animated) {
+		gdJxlReadClose(reader);
+		php_gd_jxl_throw("JXL input contains animation; use Gd\\Jxl\\AnimReader");
+		return NULL;
+	}
+	result = gdJxlReadNextImage(reader, NULL, &image);
+	gdJxlReadClose(reader);
+	return result == 1 ? image : NULL;
 }
 
 static bool php_gd_jxl_encode_to_string(zval *image_zv, zval *options_zv, zend_string **bytes)
 {
-	bool lossless;
-	double distance;
-	int effort;
+	gdJxlWriteOptions options;
 	int size = 0;
 	void *data;
 
-	php_gd_jxl_read_write_options(options_zv, &lossless, &distance, &effort);
-	data = gdImageJxlPtrEx(php_gd_libgdimageptr_from_zval_p(image_zv), &size, lossless ? 1 : 0, (float) distance, effort);
+	php_gd_jxl_read_write_options(options_zv, &options);
+	data = gdImageJxlPtrWithOptions(php_gd_libgdimageptr_from_zval_p(image_zv), &size, &options);
 	if (data == NULL || size < 0) {
 		gdFree(data);
 		php_gd_jxl_throw("Failed to encode JXL image");
@@ -158,12 +178,14 @@ PHP_METHOD(Gd_Jxl_WriteOptions, __construct)
 	bool lossless = false;
 	double distance = 1.0;
 	zend_long effort = 7;
+	zval *metadata = NULL;
 
-	ZEND_PARSE_PARAMETERS_START(0, 3)
+	ZEND_PARSE_PARAMETERS_START(0, 4)
 		Z_PARAM_OPTIONAL
 		Z_PARAM_BOOL(lossless)
 		Z_PARAM_DOUBLE(distance)
 		Z_PARAM_LONG(effort)
+		Z_PARAM_OBJECT_OF_CLASS_OR_NULL(metadata, php_gd_metadata_ce)
 	ZEND_PARSE_PARAMETERS_END();
 
 	if (!php_gd_jxl_validate_encode_options(lossless, distance, effort, 2, 3)) {
@@ -173,6 +195,7 @@ PHP_METHOD(Gd_Jxl_WriteOptions, __construct)
 	zend_update_property_bool(php_gd_jxl_write_options_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("lossless"), lossless);
 	zend_update_property_double(php_gd_jxl_write_options_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("distance"), distance);
 	zend_update_property_long(php_gd_jxl_write_options_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("effort"), effort);
+	if (metadata) zend_update_property(php_gd_jxl_write_options_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("metadata"), metadata); else zend_update_property_null(php_gd_jxl_write_options_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("metadata"));
 }
 
 PHP_METHOD(Gd_Jxl_Codec, __construct)
@@ -332,8 +355,225 @@ PHP_METHOD(Gd_Jxl_Codec, toStream)
 }
 #endif
 
-#ifdef HAVE_GD_JXL_ANIM_READ_API
+#if defined(HAVE_GD_JXL_CODEC) || defined(HAVE_GD_JXL_ANIM_READ_API)
 static zend_class_entry *php_gd_jxl_info_ce;
+
+static void php_gd_jxl_create_info(zval *result, const gdJxlInfo *info, gdImageMetadata *metadata)
+{
+	object_init_ex(result, php_gd_jxl_info_ce);
+	zend_update_property_long(php_gd_jxl_info_ce, Z_OBJ_P(result), ZEND_STRL("width"), info->width);
+	zend_update_property_long(php_gd_jxl_info_ce, Z_OBJ_P(result), ZEND_STRL("height"), info->height);
+	zend_update_property_bool(php_gd_jxl_info_ce, Z_OBJ_P(result), ZEND_STRL("animated"), info->animated != 0);
+	zend_update_property_long(php_gd_jxl_info_ce, Z_OBJ_P(result), ZEND_STRL("loopCount"), info->loop_count);
+	if (metadata != NULL) {
+		zval metadata_zv;
+		php_gd_metadata_create_zval(&metadata_zv, metadata);
+		zend_update_property(php_gd_jxl_info_ce, Z_OBJ_P(result), ZEND_STRL("metadata"), &metadata_zv);
+		zval_ptr_dtor(&metadata_zv);
+	} else {
+		zend_update_property_null(php_gd_jxl_info_ce, Z_OBJ_P(result), ZEND_STRL("metadata"));
+	}
+}
+
+PHP_METHOD(Gd_Jxl_Info, __construct)
+{
+	zend_long width, height, loop_count;
+	bool animated;
+	zval *metadata = NULL;
+
+	ZEND_PARSE_PARAMETERS_START(4, 5)
+		Z_PARAM_LONG(width)
+		Z_PARAM_LONG(height)
+		Z_PARAM_BOOL(animated)
+		Z_PARAM_LONG(loop_count)
+		Z_PARAM_OPTIONAL
+		Z_PARAM_OBJECT_OF_CLASS_OR_NULL(metadata, php_gd_metadata_ce)
+	ZEND_PARSE_PARAMETERS_END();
+
+	zend_update_property_long(php_gd_jxl_info_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("width"), width);
+	zend_update_property_long(php_gd_jxl_info_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("height"), height);
+	zend_update_property_bool(php_gd_jxl_info_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("animated"), animated);
+	zend_update_property_long(php_gd_jxl_info_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("loopCount"), loop_count);
+	if (metadata) {
+		zend_update_property(php_gd_jxl_info_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("metadata"), metadata);
+	} else {
+		zend_update_property_null(php_gd_jxl_info_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("metadata"));
+	}
+}
+#endif
+
+#ifdef HAVE_GD_JXL_CODEC
+static zend_class_entry *php_gd_jxl_reader_ce;
+static zend_object_handlers php_gd_jxl_reader_handlers;
+
+typedef struct {
+	gdJxlReadPtr reader;
+	zval info;
+	bool read;
+	bool failed;
+	zend_object std;
+} php_gd_jxl_reader_object;
+
+static php_gd_jxl_reader_object *php_gd_jxl_reader_from_object(zend_object *object)
+{
+	return (php_gd_jxl_reader_object *) ((char *) object - offsetof(php_gd_jxl_reader_object, std));
+}
+
+#define Z_GD_JXL_READER_P(zv) php_gd_jxl_reader_from_object(Z_OBJ_P((zv)))
+
+static zend_object *php_gd_jxl_reader_create(zend_class_entry *class_entry)
+{
+	php_gd_jxl_reader_object *reader = zend_object_alloc(sizeof(*reader), class_entry);
+
+	reader->reader = NULL;
+	ZVAL_UNDEF(&reader->info);
+	reader->read = false;
+	reader->failed = false;
+	zend_object_std_init(&reader->std, class_entry);
+	object_properties_init(&reader->std, class_entry);
+	reader->std.handlers = &php_gd_jxl_reader_handlers;
+	return &reader->std;
+}
+
+static void php_gd_jxl_reader_free(zend_object *object)
+{
+	php_gd_jxl_reader_object *reader = php_gd_jxl_reader_from_object(object);
+
+	gdJxlReadClose(reader->reader);
+	if (!Z_ISUNDEF(reader->info)) {
+		zval_ptr_dtor(&reader->info);
+	}
+	zend_object_std_dtor(&reader->std);
+}
+
+static bool php_gd_jxl_initialize_still_reader(zval *result, zend_string *bytes)
+{
+	gdJxlReadOptions options;
+	gdJxlInfo info;
+	gdJxlReadPtr native_reader;
+	gdImageMetadata *metadata;
+	php_gd_jxl_reader_object *reader;
+
+	if (ZSTR_LEN(bytes) > INT_MAX) {
+		zend_argument_value_error(1, "must not exceed %d bytes", INT_MAX);
+		return false;
+	}
+	gdJxlReadOptionsInit(&options);
+	native_reader = gdJxlReadOpenPtr((int) ZSTR_LEN(bytes), ZSTR_VAL(bytes), &options);
+	if (native_reader == NULL || !gdJxlReadGetInfo(native_reader, &info)) {
+		gdJxlReadClose(native_reader);
+		php_gd_jxl_throw("Failed to open JXL input");
+		return false;
+	}
+	metadata = NULL;
+	if (!info.animated) {
+		metadata = gdImageMetadataCreate();
+		if (metadata == NULL || gdJxlReadGetMetadata(native_reader, metadata) != GD_META_OK) {
+			gdImageMetadataFree(metadata);
+			gdJxlReadClose(native_reader);
+			php_gd_jxl_throw("Failed to read JXL metadata");
+			return false;
+		}
+	}
+
+	object_init_ex(result, php_gd_jxl_reader_ce);
+	reader = Z_GD_JXL_READER_P(result);
+	reader->reader = native_reader;
+	php_gd_jxl_create_info(&reader->info, &info, metadata);
+	return true;
+}
+
+PHP_METHOD(Gd_Jxl_Reader, __construct)
+{
+	ZEND_PARSE_PARAMETERS_NONE();
+}
+
+PHP_METHOD(Gd_Jxl_Reader, fromString)
+{
+	zend_string *bytes;
+	ZEND_PARSE_PARAMETERS_START(1, 1)
+		Z_PARAM_STR(bytes)
+	ZEND_PARSE_PARAMETERS_END();
+	if (!php_gd_jxl_initialize_still_reader(return_value, bytes)) {
+		RETURN_THROWS();
+	}
+}
+
+PHP_METHOD(Gd_Jxl_Reader, fromFile)
+{
+	zend_string *path, *bytes;
+	ZEND_PARSE_PARAMETERS_START(1, 1)
+		Z_PARAM_PATH_STR(path)
+	ZEND_PARSE_PARAMETERS_END();
+	if (!php_gd_jxl_read_file_bytes(path, &bytes)) {
+		RETURN_THROWS();
+	}
+	if (!php_gd_jxl_initialize_still_reader(return_value, bytes)) {
+		zend_string_release_ex(bytes, 0);
+		RETURN_THROWS();
+	}
+	zend_string_release_ex(bytes, 0);
+}
+
+PHP_METHOD(Gd_Jxl_Reader, fromStream)
+{
+	zval *stream_zv;
+	zend_string *bytes;
+	ZEND_PARSE_PARAMETERS_START(1, 1)
+		Z_PARAM_ZVAL(stream_zv)
+	ZEND_PARSE_PARAMETERS_END();
+	if (!php_gd_jxl_read_stream_bytes(stream_zv, &bytes)) {
+		RETURN_THROWS();
+	}
+	if (!php_gd_jxl_initialize_still_reader(return_value, bytes)) {
+		zend_string_release_ex(bytes, 0);
+		RETURN_THROWS();
+	}
+	zend_string_release_ex(bytes, 0);
+}
+
+PHP_METHOD(Gd_Jxl_Reader, info)
+{
+	php_gd_jxl_reader_object *reader = Z_GD_JXL_READER_P(ZEND_THIS);
+	ZEND_PARSE_PARAMETERS_NONE();
+	RETURN_OBJ_COPY(Z_OBJ(reader->info));
+}
+
+PHP_METHOD(Gd_Jxl_Reader, read)
+{
+	php_gd_jxl_reader_object *reader = Z_GD_JXL_READER_P(ZEND_THIS);
+	gdImagePtr image = NULL;
+	zval rv;
+	zval *animated;
+	int result;
+
+	ZEND_PARSE_PARAMETERS_NONE();
+	if (reader->failed) {
+		php_gd_jxl_throw("JXL reader is in a failed state");
+		RETURN_THROWS();
+	}
+	if (reader->read) {
+		php_gd_jxl_throw("JXL reader has already been read");
+		RETURN_THROWS();
+	}
+	reader->read = true;
+	animated = zend_read_property(php_gd_jxl_info_ce, Z_OBJ(reader->info), ZEND_STRL("animated"), true, &rv);
+	if (Z_TYPE_P(animated) == IS_TRUE) {
+		reader->failed = true;
+		php_gd_jxl_throw("JXL input contains animation; use Gd\\Jxl\\AnimReader");
+		RETURN_THROWS();
+	}
+	result = gdJxlReadNextImage(reader->reader, NULL, &image);
+	if (result != 1 || image == NULL) {
+		reader->failed = true;
+		php_gd_jxl_throw("Failed to decode JXL image");
+		RETURN_THROWS();
+	}
+	php_gd_assign_libgdimageptr_as_extgdimage(return_value, image);
+}
+#endif
+
+#ifdef HAVE_GD_JXL_ANIM_READ_API
 static zend_class_entry *php_gd_jxl_frame_ce;
 static zend_class_entry *php_gd_jxl_anim_reader_ce;
 static zend_object_handlers php_gd_jxl_anim_reader_handlers;
@@ -354,15 +594,6 @@ static php_gd_jxl_anim_reader_object *php_gd_jxl_anim_reader_from_object(zend_ob
 }
 
 #define Z_GD_JXL_ANIM_READER_P(zv) php_gd_jxl_anim_reader_from_object(Z_OBJ_P((zv)))
-
-static void php_gd_jxl_create_info(zval *result, const gdJxlInfo *info)
-{
-	object_init_ex(result, php_gd_jxl_info_ce);
-	zend_update_property_long(php_gd_jxl_info_ce, Z_OBJ_P(result), ZEND_STRL("width"), info->width);
-	zend_update_property_long(php_gd_jxl_info_ce, Z_OBJ_P(result), ZEND_STRL("height"), info->height);
-	zend_update_property_bool(php_gd_jxl_info_ce, Z_OBJ_P(result), ZEND_STRL("animated"), info->animated != 0);
-	zend_update_property_long(php_gd_jxl_info_ce, Z_OBJ_P(result), ZEND_STRL("loopCount"), info->loop_count);
-}
 
 static void php_gd_jxl_create_frame(zval *result, gdImagePtr image, zend_long frame_index,
 		zend_long delay_ms, zend_long timestamp_ms)
@@ -433,26 +664,8 @@ static bool php_gd_jxl_initialize_reader(zval *result, zend_string *bytes)
 	object_init_ex(result, php_gd_jxl_anim_reader_ce);
 	reader = Z_GD_JXL_ANIM_READER_P(result);
 	reader->reader = jxl;
-	php_gd_jxl_create_info(&reader->info, &info);
+	php_gd_jxl_create_info(&reader->info, &info, NULL);
 	return true;
-}
-
-PHP_METHOD(Gd_Jxl_Info, __construct)
-{
-	zend_long width, height, loop_count;
-	bool animated;
-
-	ZEND_PARSE_PARAMETERS_START(4, 4)
-		Z_PARAM_LONG(width)
-		Z_PARAM_LONG(height)
-		Z_PARAM_BOOL(animated)
-		Z_PARAM_LONG(loop_count)
-	ZEND_PARSE_PARAMETERS_END();
-
-	zend_update_property_long(php_gd_jxl_info_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("width"), width);
-	zend_update_property_long(php_gd_jxl_info_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("height"), height);
-	zend_update_property_bool(php_gd_jxl_info_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("animated"), animated);
-	zend_update_property_long(php_gd_jxl_info_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("loopCount"), loop_count);
 }
 
 PHP_METHOD(Gd_Jxl_Frame, __construct)
@@ -808,7 +1021,7 @@ PHP_METHOD(Gd_Jxl_AnimWriter, addFrame)
 		RETURN_THROWS();
 	}
 	if (writer->frame_count == 0) {
-		gdJxlWriteOptions options;
+		gdJxlAnimWriteOptions options;
 
 		if (writer->canvas_width <= 0) {
 			writer->canvas_width = image->sx;
@@ -816,7 +1029,7 @@ PHP_METHOD(Gd_Jxl_AnimWriter, addFrame)
 		if (writer->canvas_height <= 0) {
 			writer->canvas_height = image->sy;
 		}
-		gdJxlWriteOptionsInit(&options);
+		gdJxlAnimWriteOptionsInit(&options);
 		options.canvasWidth = writer->canvas_width;
 		options.canvasHeight = writer->canvas_height;
 		options.lossless = writer->lossless ? 1 : 0;
@@ -894,13 +1107,22 @@ void php_gd_jxl_minit(void)
 
 	php_gd_jxl_write_options_ce = register_class_Gd_Jxl_WriteOptions(php_gd_get_codec_write_options_ce());
 	codec_ce = register_class_Gd_Jxl_Codec();
+	php_gd_jxl_info_ce = register_class_Gd_Jxl_Info();
+	php_gd_jxl_reader_ce = register_class_Gd_Jxl_Reader();
+	php_gd_jxl_reader_ce->create_object = php_gd_jxl_reader_create;
+	memcpy(&php_gd_jxl_reader_handlers, &std_object_handlers, sizeof(zend_object_handlers));
+	php_gd_jxl_reader_handlers.offset = offsetof(php_gd_jxl_reader_object, std);
+	php_gd_jxl_reader_handlers.free_obj = php_gd_jxl_reader_free;
+	php_gd_jxl_reader_handlers.clone_obj = NULL;
 	php_gd_register_codec_write(php_gd_jxl_write_options_ce, codec_ce);
 	php_gd_register_codec_format("Jxl", php_gd_jxl_write_options_ce);
 	php_gd_register_codec_extension("jxl", php_gd_jxl_write_options_ce);
 #endif
 
 #ifdef HAVE_GD_JXL_ANIM_READ_API
+	#ifndef HAVE_GD_JXL_CODEC
 	php_gd_jxl_info_ce = register_class_Gd_Jxl_Info();
+	#endif
 	php_gd_jxl_frame_ce = register_class_Gd_Jxl_Frame();
 	php_gd_jxl_anim_reader_ce = register_class_Gd_Jxl_AnimReader();
 	php_gd_jxl_anim_reader_ce->create_object = php_gd_jxl_anim_reader_create;

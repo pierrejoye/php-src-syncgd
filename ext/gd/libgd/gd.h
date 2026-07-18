@@ -645,17 +645,6 @@ BGD_DECLARE(gdImagePtr) gdImageCreateFromPng(FILE *fd);
 BGD_DECLARE(gdImagePtr) gdImageCreateFromPngCtx(gdIOCtxPtr in);
 
 /**
- * @brief Create an image from a PNG gdIOCtx and collect metadata.
- *
- * @param in Pointer to the gdIOCtx input context.
- * @param metadata Pointer to a gdImageMetadata structure to collect metadata.
- *
- * @return Returns a gdImagePtr on success, or NULL on failure.
- */
-BGD_DECLARE(gdImagePtr)
-gdImageCreateFromPngCtxWithMetadata(gdIOCtxPtr in, gdImageMetadata *metadata);
-
-/**
  * @brief Create an image from a PNG memory buffer.
  *
  * @param size Size of the PNG memory buffer in bytes.
@@ -664,18 +653,6 @@ gdImageCreateFromPngCtxWithMetadata(gdIOCtxPtr in, gdImageMetadata *metadata);
  * @return Returns a gdImagePtr on success, or NULL on failure.
  */
 BGD_DECLARE(gdImagePtr) gdImageCreateFromPngPtr(int size, void *data);
-
-/**
- * @brief Create an image from a PNG memory buffer and collect metadata.
- *
- * @param size Size of the PNG memory buffer in bytes.
- * @param data Pointer to the PNG memory buffer.
- * @param metadata Pointer to a gdImageMetadata structure to collect metadata.
- *
- * @return Returns a gdImagePtr on success, or NULL on failure.
- */
-BGD_DECLARE(gdImagePtr)
-gdImageCreateFromPngPtrWithMetadata(int size, void *data, gdImageMetadata *metadata);
 
 /**
  * @brief Write an image as PNG data to a stdio file.
@@ -715,28 +692,6 @@ BGD_DECLARE(void) gdImagePngEx(gdImagePtr im, FILE *out, int level);
  */
 BGD_DECLARE(void) gdImagePngCtxEx(gdImagePtr im, gdIOCtxPtr out, int level);
 
-/**
- * @brief Write an image as PNG data to a gdIOCtx with metadata.
- *
- * @param im The image to write.
- * @param out The gdIOCtx to write the PNG data to.
- * @param metadata Pointer to metadata to include in the PNG data.
- */
-BGD_DECLARE(void)
-gdImagePngCtxWithMetadata(gdImagePtr im, gdIOCtxPtr out, const gdImageMetadata *metadata);
-
-/**
- * @brief Write an image as PNG data to a gdIOCtx with compression level and metadata.
- *
- * @param im The image to write.
- * @param out The gdIOCtx to write the PNG data to.
- * @param level Compression level: 0 for no compression, 1-9 for zlib levels, or -1 for the default.
- * @param metadata Pointer to metadata to include in the PNG data.
- */
-BGD_DECLARE(void)
-gdImagePngCtxExWithMetadata(gdImagePtr im, gdIOCtxPtr out, int level,
-                            const gdImageMetadata *metadata);
-
 /* Best to free this memory with gdFree(), not free() */
 /**
  * @brief Write an image as PNG data to a newly allocated memory buffer.
@@ -758,43 +713,6 @@ BGD_DECLARE(void *) gdImagePngPtr(gdImagePtr im, int *size);
  * @return A pointer to the newly allocated PNG data, or NULL on failure.
  */
 BGD_DECLARE(void *) gdImagePngPtrEx(gdImagePtr im, int *size, int level);
-
-/**
- * @brief Write an image as PNG data to a memory buffer with metadata.
- *
- * @param im The image to write.
- * @param size Pointer to an integer that receives the returned buffer size.
- * @param metadata Pointer to metadata to include in the PNG data.
- *
- * @return A pointer to the newly allocated PNG data, or NULL on failure.
- */
-BGD_DECLARE(void *)
-gdImagePngPtrWithMetadata(gdImagePtr im, int *size, const gdImageMetadata *metadata);
-
-/**
- * @brief Write an image as PNG data to a memory buffer with compression level and metadata.
- *
- * @param im The image to write.
- * @param size Pointer to an integer that receives the returned buffer size.
- * @param level Compression level: 0 for no compression, 1-9 for zlib levels, or -1 for the default.
- * @param metadata Pointer to metadata to include in the PNG data.
- *
- * @return A pointer to the newly allocated PNG data, or NULL on failure.
- */
-BGD_DECLARE(void *)
-gdImagePngPtrExWithMetadata(gdImagePtr im, int *size, int level, const gdImageMetadata *metadata);
-
-/**
- * @brief Inject metadata into an existing PNG memory buffer.
- *
- * @param data Pointer to the PNG memory buffer pointer; may be replaced on success.
- * @param size Pointer to the PNG memory buffer size in bytes.
- * @param metadata Pointer to metadata to inject.
- *
- * @return Returns GD_META_OK on success, or a GD_META_ERR_* value on failure.
- */
-BGD_DECLARE(int)
-gdImageMetadataInjectPng(void **data, int *size, const gdImageMetadata *metadata);
 
 /** Let libpng choose PNG row filters automatically. */
 #define GD_PNG_FILTER_AUTO 0U
@@ -1012,17 +930,6 @@ BGD_DECLARE(gdImagePtr) gdImageCreateFromQoi(FILE *fd);
 BGD_DECLARE(gdImagePtr) gdImageCreateFromQoiCtx(gdIOCtxPtr in);
 
 /**
- * @brief Create an image from a QOI gdIOCtx.
- *
- * @param in Pointer to the gdIOCtx input context.
- * @param metadata Reserved metadata output parameter; QOI metadata is currently ignored.
- *
- * @return Returns a gdImagePtr on success, or NULL on failure.
- */
-BGD_DECLARE(gdImagePtr)
-gdImageCreateFromQoiCtxWithMetadata(gdIOCtxPtr in, gdImageMetadata *metadata);
-
-/**
  * @brief Create an image from a QOI memory buffer.
  *
  * @param size Size of the QOI memory buffer in bytes.
@@ -1032,17 +939,33 @@ gdImageCreateFromQoiCtxWithMetadata(gdIOCtxPtr in, gdImageMetadata *metadata);
  */
 BGD_DECLARE(gdImagePtr) gdImageCreateFromQoiPtr(int size, void *data);
 
-/**
- * @brief Create an image from a QOI memory buffer.
- *
- * @param size Size of the QOI memory buffer in bytes.
- * @param data Pointer to the QOI memory buffer.
- * @param metadata Reserved metadata output parameter; QOI metadata is currently ignored.
- *
- * @return Returns a gdImagePtr on success, or NULL on failure.
- */
-BGD_DECLARE(gdImagePtr)
-gdImageCreateFromQoiPtrWithMetadata(int size, void *data, gdImageMetadata *metadata);
+typedef struct {
+    unsigned int width;
+    unsigned int height;
+    int channels;
+    int colorspace;
+} gdQoiInfo;
+
+BGD_DECLARE(void) gdQoiInfoInit(gdQoiInfo *info);
+BGD_DECLARE(int) gdQoiGetInfo(FILE *infile, gdQoiInfo *info);
+BGD_DECLARE(int) gdQoiGetInfoCtx(gdIOCtxPtr infile, gdQoiInfo *info);
+BGD_DECLARE(int) gdQoiGetInfoPtr(int size, const void *data, gdQoiInfo *info);
+
+typedef struct {
+    int colorspace;
+    const gdImageMetadata *metadata; /**< Optional metadata, ignored by QOI. */
+} gdQoiWriteOptions;
+
+BGD_DECLARE(void) gdQoiWriteOptionsInit(gdQoiWriteOptions *options);
+
+BGD_DECLARE(int)
+gdImageQoiWithOptions(gdImagePtr im, FILE *out, const gdQoiWriteOptions *options);
+
+BGD_DECLARE(int)
+gdImageQoiCtxWithOptions(gdImagePtr im, gdIOCtxPtr out, const gdQoiWriteOptions *options);
+
+BGD_DECLARE(void *)
+gdImageQoiPtrWithOptions(gdImagePtr im, int *size, const gdQoiWriteOptions *options);
 
 /**
  * @brief Write an image as QOI data to a newly allocated memory buffer.
@@ -1074,34 +997,6 @@ BGD_DECLARE(void *) gdImageQoiPtrEx(gdImagePtr im, int *size, int colorspace);
  *
  * @return A pointer to the newly allocated QOI data, or NULL on failure.
  */
-BGD_DECLARE(void *)
-gdImageQoiPtrWithMetadata(gdImagePtr im, int *size, const gdImageMetadata *metadata);
-
-/**
- * @brief Write an image as QOI data to a memory buffer with an explicit colorspace flag.
- *
- * @param im The image to write.
- * @param size Pointer to an integer that receives the returned buffer size.
- * @param colorspace The QOI colorspace flag, either GD_QOI_SRGB or GD_QOI_LINEAR.
- * @param metadata Reserved metadata input parameter; QOI metadata is currently ignored.
- *
- * @return A pointer to the newly allocated QOI data, or NULL on failure.
- */
-BGD_DECLARE(void *)
-gdImageQoiPtrExWithMetadata(gdImagePtr im, int *size, int colorspace,
-                            const gdImageMetadata *metadata);
-
-/**
- * @brief Accept metadata injection for QOI buffers.
- *
- * @param data Pointer to the QOI memory buffer pointer.
- * @param size Pointer to the QOI memory buffer size in bytes.
- * @param metadata Reserved metadata input parameter; QOI metadata is currently ignored.
- *
- * @return Returns GD_META_OK.
- */
-BGD_DECLARE(int) gdImageMetadataInjectQoi(void **data, int *size, const gdImageMetadata *metadata);
-
 /**
  * @brief Write an image as QOI data to a stdio file.
  *
@@ -1119,16 +1014,6 @@ BGD_DECLARE(void) gdImageQoi(gdImagePtr im, FILE *out);
 BGD_DECLARE(void) gdImageQoiCtx(gdImagePtr im, gdIOCtxPtr out);
 
 /**
- * @brief Write an image as QOI data to a gdIOCtx.
- *
- * @param im The image to write.
- * @param out The gdIOCtx to write the QOI data to.
- * @param metadata Reserved metadata input parameter; QOI metadata is currently ignored.
- */
-BGD_DECLARE(void)
-gdImageQoiCtxWithMetadata(gdImagePtr im, gdIOCtxPtr out, const gdImageMetadata *metadata);
-
-/**
  * @brief QOI colorspace flags written to the QOI header.
  */
 enum {
@@ -1138,8 +1023,6 @@ enum {
 
 BGD_DECLARE(void) gdImageQoi(gdImagePtr im, FILE *out);
 BGD_DECLARE(void) gdImageQoiCtx(gdImagePtr im, gdIOCtxPtr out);
-BGD_DECLARE(void)
-gdImageQoiCtxWithMetadata(gdImagePtr im, gdIOCtxPtr out, const gdImageMetadata *metadata);
 
 /**
  * @brief Write an image as QOI data to a stdio file with an explicit colorspace flag.
@@ -1160,17 +1043,6 @@ BGD_DECLARE(void) gdImageQoiEx(gdImagePtr im, FILE *out, int colorspace);
 BGD_DECLARE(void)
 gdImageQoiCtxEx(gdImagePtr im, gdIOCtxPtr out, int colorspace);
 
-/**
- * @brief Write an image as QOI data to a gdIOCtx with an explicit colorspace flag.
- *
- * @param im The image to write.
- * @param out The gdIOCtx to write the QOI data to.
- * @param colorspace The QOI colorspace flag, either GD_QOI_SRGB or GD_QOI_LINEAR.
- * @param metadata Reserved metadata input parameter; QOI metadata is currently ignored.
- */
-BGD_DECLARE(void)
-gdImageQoiCtxExWithMetadata(gdImagePtr im, gdIOCtxPtr out, int colorspace,
-                            const gdImageMetadata *metadata);
 /** @} */
 
 /**
@@ -1309,11 +1181,15 @@ typedef struct gdGifReadStruct *gdGifReadPtr;
  * @brief Basic information read from a GIF stream.
  */
 typedef struct {
+    char version[4];       /**< GIF version, excluding the terminating NUL. */
     int width;            /**< Logical screen width in pixels. */
     int height;           /**< Logical screen height in pixels. */
     int backgroundIndex;  /**< GIF logical screen background color index. */
     int globalColorTable; /**< Non-zero if the GIF has a global color table. */
+    int colorResolution;  /**< GIF color resolution in bits per primary color. */
+    double pixelAspectRatio; /**< GIF pixel aspect ratio, or 1.0 when unspecified. */
     int loopCount;        /**< Netscape loop count, 0 for infinite, or 1 when absent. */
+    int loopCountPresent;  /**< Non-zero if a Netscape loop count was present. */
 } gdGifInfo;
 
 /**
@@ -1408,6 +1284,25 @@ BGD_DECLARE(void) gdGifReadClose(gdGifReadPtr gif);
  * @return Returns 1 on success, or 0 on failure.
  */
 BGD_DECLARE(int) gdGifReadGetInfo(gdGifReadPtr gif, gdGifInfo *info);
+
+/**
+ * @brief Read logical screen and loop information from a GIF stdio file.
+ *
+ * The input stream position is restored before returning.
+ */
+BGD_DECLARE(int) gdGifGetInfo(FILE *file, gdGifInfo *info);
+
+/**
+ * @brief Read logical screen and loop information from a seekable gdIOCtx.
+ *
+ * The input context position is restored before returning.
+ */
+BGD_DECLARE(int) gdGifGetInfoCtx(gdIOCtxPtr input, gdGifInfo *info);
+
+/**
+ * @brief Read logical screen and loop information from a GIF memory buffer.
+ */
+BGD_DECLARE(int) gdGifGetInfoPtr(int size, const void *data, gdGifInfo *info);
 
 /**
  * @brief Read the next raw GIF frame.
@@ -1769,10 +1664,6 @@ typedef struct {
     int density_unit;     /**< One of the GD_JPEG_DENSITY_UNIT_* constants. */
     int x_density;        /**< Horizontal density, or -1 if not available. */
     int y_density;        /**< Vertical density, or -1 if not available. */
-    int has_exif;         /**< Non-zero if EXIF metadata is present. */
-    int has_xmp;          /**< Non-zero if XMP metadata is present. */
-    int has_icc;          /**< Non-zero if ICC profile metadata is present. */
-    int has_iptc;         /**< Non-zero if IPTC metadata is present. */
 } gdJpegInfo;
 
 /**
@@ -1850,6 +1741,10 @@ BGD_DECLARE(int) gdJpegGetInfoCtx(gdIOCtxPtr infile, gdJpegInfo *info);
  */
 BGD_DECLARE(int) gdJpegGetInfoPtr(int size, const void *data, gdJpegInfo *info);
 
+BGD_DECLARE(int) gdJpegGetMetadata(FILE *infile, gdImageMetadata *metadata);
+BGD_DECLARE(int) gdJpegGetMetadataCtx(gdIOCtxPtr infile, gdImageMetadata *metadata);
+BGD_DECLARE(int) gdJpegGetMetadataPtr(int size, const void *data, gdImageMetadata *metadata);
+
 /**
  * @brief Create an image from a JPEG stdio file.
  * 
@@ -1898,8 +1793,6 @@ gdImageCreateFromJpegCtxEx(gdIOCtxPtr infile, int ignore_warning);
  * 
  * @return Returns a gdImagePtr on success, or NULL on failure.
  */
-BGD_DECLARE(gdImagePtr)
-gdImageCreateFromJpegCtxWithMetadata(gdIOCtxPtr infile, gdImageMetadata *metadata);
 
 /**
  * @brief Create an image from a JPEG gdIOCtx with warning control and metadata collection.
@@ -1910,9 +1803,6 @@ gdImageCreateFromJpegCtxWithMetadata(gdIOCtxPtr infile, gdImageMetadata *metadat
  * 
  * @return Returns a gdImagePtr on success, or NULL on failure.
  */
-BGD_DECLARE(gdImagePtr)
-gdImageCreateFromJpegCtxExWithMetadata(gdIOCtxPtr infile, int ignore_warning,
-                                       gdImageMetadata *metadata);
 /**
  * @brief Create an image from a JPEG gdIOCtx using read options.
  * 
@@ -1957,6 +1847,8 @@ gdImageCreateFromJpegPtrEx(int size, void *data, int ignore_warning);
 BGD_DECLARE(gdImagePtr)
 gdImageCreateFromJpegPtrWithOptions(int size, void *data, const gdJpegReadOptions *options);
 
+/** Create a JPEG image from memory using read options and collect metadata. */
+
 /**
  * @brief Create an image from a JPEG memory buffer and collect metadata.
  * 
@@ -1966,8 +1858,6 @@ gdImageCreateFromJpegPtrWithOptions(int size, void *data, const gdJpegReadOption
  * 
  * @return Returns a gdImagePtr on success, or NULL on failure.
  */
-BGD_DECLARE(gdImagePtr)
-gdImageCreateFromJpegPtrWithMetadata(int size, void *data, gdImageMetadata *metadata);
 
 /**
  * @brief Create an image from a JPEG memory buffer with warning control and metadata collection.
@@ -1979,9 +1869,6 @@ gdImageCreateFromJpegPtrWithMetadata(int size, void *data, gdImageMetadata *meta
  * 
  * @return Returns a gdImagePtr on success, or NULL on failure.
  */
-BGD_DECLARE(gdImagePtr)
-gdImageCreateFromJpegPtrExWithMetadata(int size, void *data, int ignore_warning,
-                                       gdImageMetadata *metadata);
 /**
  * @brief Return a string describing the linked JPEG library version.
  * 
@@ -2007,7 +1894,7 @@ BGD_DECLARE(const char *) gdJpegGetVersionString();
  *        gdWebpWritePtr writer;
  *        gdWebpInfo info;
  *        gdWebpFrameInfo frameInfo;
- *        gdWebpWriteOptions options;
+ *        gdWebpAnimWriteOptions options;
  *        gdImagePtr image;
  *        int result;
  *
@@ -2027,7 +1914,7 @@ BGD_DECLARE(const char *) gdJpegGetVersionString();
  *          exit(1);
  *        }
  *
- *        gdWebpWriteOptionsInit(&options);
+ *        gdWebpAnimWriteOptionsInit(&options);
  *        options.canvasWidth = info.width;
  *        options.canvasHeight = info.height;
  *        options.loopCount = info.loopCount;
@@ -2107,7 +1994,7 @@ BGD_DECLARE(gdImagePtr) gdImageCreateFromWebpCtx(gdIOCtxPtr infile);
 
 /** @} */
 
-/** @name WebP Multi-Image/Animation Types And Constants */
+/** @name WebP Types And Constants */
 /** @{ */
 
 /**
@@ -2164,6 +2051,14 @@ typedef struct {
 } gdWebpReadOptions;
 
 /**
+ * @brief WebP still-image writer options.
+ */
+typedef struct {
+    int quality;                     /**< Encoding quality, -1 for default, 0-100 for lossy, or gdWebpLossless. */
+    const gdImageMetadata *metadata; /**< Optional metadata to embed in the WebP container. */
+} gdWebpWriteOptions;
+
+/**
  * @brief WebP animation writer options.
  */
 typedef struct {
@@ -2178,7 +2073,7 @@ typedef struct {
     int kmin;            /**< Minimum distance between key frames, or 0 for libwebp default. */
     int kmax;            /**< Maximum distance between key frames, or 0 for libwebp default. */
     int allowMixed;      /**< Non-zero to allow mixed lossy and lossless frames. */
-} gdWebpWriteOptions;
+} gdWebpAnimWriteOptions;
 
 /**
  * @brief Initialize WebP multi-image/animation read options with gd defaults.
@@ -2192,6 +2087,15 @@ typedef struct {
 BGD_DECLARE(void) gdWebpReadOptionsInit(gdWebpReadOptions *options);
 
 /**
+ * @brief Initialize WebP still-image write options with gd defaults.
+ *
+ * The default writer uses libwebp's default quality and writes no metadata.
+ *
+ * @param options Pointer to the write options structure to initialize.
+ */
+BGD_DECLARE(void) gdWebpWriteOptionsInit(gdWebpWriteOptions *options);
+
+/**
  * @brief Initialize WebP multi-image/animation write options with gd defaults.
  *
  * The default writer infers the canvas size from the first frame, writes lossy
@@ -2200,7 +2104,7 @@ BGD_DECLARE(void) gdWebpReadOptionsInit(gdWebpReadOptions *options);
  *
  * @param options Pointer to the write options structure to initialize.
  */
-BGD_DECLARE(void) gdWebpWriteOptionsInit(gdWebpWriteOptions *options);
+BGD_DECLARE(void) gdWebpAnimWriteOptionsInit(gdWebpAnimWriteOptions *options);
 
 /**
  * @brief WebP frame disposal methods.
@@ -2311,14 +2215,23 @@ gdWebpReadOpenPtr(int size, void *data, const gdWebpReadOptions *options);
 BGD_DECLARE(void) gdWebpReadClose(gdWebpReadPtr webp);
 
 /**
- * @brief Get WebP container information from an animation reader.
+ * @brief Get WebP container information from a WebP reader.
  *
- * @param webp WebP reader handle opened with raw-frame mode.
+ * @param webp WebP reader handle.
  * @param info Pointer to a gdWebpInfo structure to receive container information.
  *
  * @return Returns 1 on success, or 0 on failure.
  */
 BGD_DECLARE(int) gdWebpReadGetInfo(gdWebpReadPtr webp, gdWebpInfo *info);
+
+/**
+ * @brief Extract opaque EXIF, XMP, and ICC metadata from a WebP reader.
+ *
+ * @param webp The WebP reader.
+ * @param metadata Metadata object to populate.
+ * @return GD_META_OK on success, or a GD_META_ERR_* value on failure.
+ */
+BGD_DECLARE(int) gdWebpReadGetMetadata(gdWebpReadPtr webp, gdImageMetadata *metadata);
 
 /**
  * @brief Read the next raw WebP animation frame rectangle.
@@ -2327,7 +2240,7 @@ BGD_DECLARE(int) gdWebpReadGetInfo(gdWebpReadPtr webp, gdWebpInfo *info);
  * caller-owned truecolor image that must be destroyed with @ref gdImageDestroy.
  * Passing NULL for frame advances the reader without returning the image.
  *
- * @param webp WebP reader handle opened with coalesced mode.
+ * @param webp WebP reader handle opened with raw-frame mode.
  * @param info Pointer to a gdWebpFrameInfo structure to receive frame information, or NULL.
  * @param frame Pointer to receive the caller-owned frame image, or NULL.
  *
@@ -2370,7 +2283,7 @@ gdWebpReadNextImage(gdWebpReadPtr webp, gdWebpFrameInfo *info, gdImagePtr *image
  * @return Returns a WebP writer handle on success, or NULL on failure.
  */
 BGD_DECLARE(gdWebpWritePtr)
-gdWebpWriteOpen(FILE *outFile, const gdWebpWriteOptions *options);
+gdWebpWriteOpen(FILE *outFile, const gdWebpAnimWriteOptions *options);
 
 /**
  * @brief Open a WebP animation writer for a gdIOCtx.
@@ -2385,7 +2298,7 @@ gdWebpWriteOpen(FILE *outFile, const gdWebpWriteOptions *options);
  * @return Returns a WebP writer handle on success, or NULL on failure.
  */
 BGD_DECLARE(gdWebpWritePtr)
-gdWebpWriteOpenCtx(gdIOCtxPtr out, const gdWebpWriteOptions *options);
+gdWebpWriteOpenCtx(gdIOCtxPtr out, const gdWebpAnimWriteOptions *options);
 
 /**
  * @brief Open a WebP animation writer that returns a memory buffer.
@@ -2397,7 +2310,7 @@ gdWebpWriteOpenCtx(gdIOCtxPtr out, const gdWebpWriteOptions *options);
  * @return Returns a WebP memory writer handle on success, or NULL on failure.
  */
 BGD_DECLARE(gdWebpWritePtr)
-gdWebpWriteOpenPtr(const gdWebpWriteOptions *options);
+gdWebpWriteOpenPtr(const gdWebpAnimWriteOptions *options);
 
 /**
  * @brief Add an image to a WebP animation writer.
@@ -2452,7 +2365,7 @@ BGD_DECLARE(void *) gdWebpWritePtrFinish(gdWebpWritePtr webp, int *size);
  *
  * @code{.c}
  *        gdImagePtr first, second, image;
- *        gdJxlWriteOptions write_options;
+ *        gdJxlAnimWriteOptions write_options;
  *        gdJxlWritePtr writer;
  *        gdJxlReadPtr reader;
  *        void *data;
@@ -2467,7 +2380,7 @@ BGD_DECLARE(void *) gdWebpWritePtrFinish(gdWebpWritePtr webp, int *size);
  *        gdImageFilledRectangle(first, 0, 0, 31, 23, gdTrueColor(255, 0, 0));
  *        gdImageFilledRectangle(second, 0, 0, 31, 23, gdTrueColor(0, 0, 255));
  *
- *        gdJxlWriteOptionsInit(&write_options);
+ *        gdJxlAnimWriteOptionsInit(&write_options);
  *        write_options.lossless = 1;
  *        write_options.loopCount = 0;
  *        writer = gdJxlWriteOpenPtr(&write_options);
@@ -2625,9 +2538,30 @@ BGD_DECLARE(void) gdImageJxlCtx(gdImagePtr im, gdIOCtxPtr outfile);
 BGD_DECLARE(void)
 gdImageJxlCtxEx(gdImagePtr im, gdIOCtxPtr outfile, int lossless, float distance, int effort);
 
+/**
+ * @brief JPEG XL still-image writer options.
+ */
+typedef struct {
+    int lossless;                         /**< Non-zero for lossless encoding. */
+    float distance;                       /**< Lossy distance, from 0 through 25. */
+    int effort;                           /**< Encoder effort, from 1 through 9. */
+    const gdImageMetadata *metadata;      /**< Optional EXIF/XMP metadata. */
+} gdJxlWriteOptions;
+
+BGD_DECLARE(void) gdJxlWriteOptionsInit(gdJxlWriteOptions *options);
+
+BGD_DECLARE(int)
+gdImageJxlWithOptions(gdImagePtr im, FILE *outFile, const gdJxlWriteOptions *options);
+
+BGD_DECLARE(int)
+gdImageJxlCtxWithOptions(gdImagePtr im, gdIOCtxPtr outfile, const gdJxlWriteOptions *options);
+
+BGD_DECLARE(void *)
+gdImageJxlPtrWithOptions(gdImagePtr im, int *size, const gdJxlWriteOptions *options);
+
 /** @} */
 
-/** @name JPEG XL Multi-Image/Animation Types And Constants */
+/** @name JPEG XL File Information And Animation Types */
 /** @{ */
 
 /**
@@ -2648,7 +2582,10 @@ typedef struct gdJxlRead *gdJxlReadPtr;
 typedef struct gdJxlWrite *gdJxlWritePtr;
 
 /**
- * @brief JPEG XL image or animation information.
+ * @brief JPEG XL top-level file information.
+ *
+ * This describes the complete JPEG XL file, including whether it contains
+ * animation. It is not an animation-only structure.
  */
 typedef struct {
     int width;      /**< Canvas width in pixels. */
@@ -2689,7 +2626,7 @@ typedef struct {
 } gdJxlReadOptions;
 
 /**
- * @brief JPEG XL multi-image/animation writer options.
+ * @brief JPEG XL animation writer options.
  */
 typedef struct {
     int canvasWidth;    /**< Canvas width in pixels, or 0 to use the first image width. */
@@ -2698,7 +2635,7 @@ typedef struct {
     float distance;     /**< Lossy encoding distance when lossless is zero. */
     int effort;         /**< Encoder effort setting. */
     int loopCount;      /**< Animation loop count, or 0 for infinite looping. */
-} gdJxlWriteOptions;
+} gdJxlAnimWriteOptions;
 
 /**
  * @brief Initialize JPEG XL multi-image/animation read options with gd defaults.
@@ -2720,7 +2657,7 @@ BGD_DECLARE(void) gdJxlReadOptionsInit(gdJxlReadOptions *options);
  *
  * @param options Pointer to the write options structure to initialize.
  */
-BGD_DECLARE(void) gdJxlWriteOptionsInit(gdJxlWriteOptions *options);
+BGD_DECLARE(void) gdJxlAnimWriteOptionsInit(gdJxlAnimWriteOptions *options);
 
 /** @} */
 
@@ -2785,6 +2722,13 @@ gdJxlReadOpenPtr(int size, void *data, const gdJxlReadOptions *options);
 BGD_DECLARE(int) gdJxlReadGetInfo(gdJxlReadPtr reader, gdJxlInfo *info);
 
 /**
+ * @brief Extract supported still-image metadata from a JPEG XL reader.
+ *
+ * The caller owns the metadata object. Animation metadata is not exposed.
+ */
+BGD_DECLARE(int) gdJxlReadGetMetadata(gdJxlReadPtr reader, gdImageMetadata *metadata);
+
+/**
  * @brief Read the next coalesced JPEG XL image.
  *
  * This function is used with coalesced readers. When image is not NULL and the
@@ -2839,7 +2783,7 @@ BGD_DECLARE(void) gdJxlReadClose(gdJxlReadPtr reader);
  *
  * @return Returns a JPEG XL writer handle on success, or NULL on failure.
  */
-BGD_DECLARE(gdJxlWritePtr) gdJxlWriteOpen(FILE *outFile, const gdJxlWriteOptions *options);
+BGD_DECLARE(gdJxlWritePtr) gdJxlWriteOpen(FILE *outFile, const gdJxlAnimWriteOptions *options);
 
 /**
  * @brief Open a JPEG XL multi-image/animation writer for a gdIOCtx.
@@ -2853,7 +2797,7 @@ BGD_DECLARE(gdJxlWritePtr) gdJxlWriteOpen(FILE *outFile, const gdJxlWriteOptions
  *
  * @return Returns a JPEG XL writer handle on success, or NULL on failure.
  */
-BGD_DECLARE(gdJxlWritePtr) gdJxlWriteOpenCtx(gdIOCtxPtr outCtx, const gdJxlWriteOptions *options);
+BGD_DECLARE(gdJxlWritePtr) gdJxlWriteOpenCtx(gdIOCtxPtr outCtx, const gdJxlAnimWriteOptions *options);
 
 /**
  * @brief Open a JPEG XL multi-image/animation writer that returns a memory buffer.
@@ -2865,7 +2809,7 @@ BGD_DECLARE(gdJxlWritePtr) gdJxlWriteOpenCtx(gdIOCtxPtr outCtx, const gdJxlWrite
  *
  * @return Returns a JPEG XL memory writer handle on success, or NULL on failure.
  */
-BGD_DECLARE(gdJxlWritePtr) gdJxlWriteOpenPtr(const gdJxlWriteOptions *options);
+BGD_DECLARE(gdJxlWritePtr) gdJxlWriteOpenPtr(const gdJxlAnimWriteOptions *options);
 
 /**
  * @brief Add a full-canvas image to a JPEG XL multi-image/animation writer.
@@ -2985,7 +2929,22 @@ typedef struct {
     int lossless;       /**< Nonzero to request lossless encoding. */
     gdHeifCodec codec;  /**< HEIF codec to use for output. */
     gdHeifChroma chroma; /**< Chroma-subsampling string for output. */
+    const gdImageMetadata *metadata; /**< Optional metadata to embed in the HEIF file. */
 } gdHeifWriteOptions;
+
+/** @brief Information extracted from the primary HEIF image and container. */
+typedef struct {
+    int width;
+    int height;
+    int top_level_image_count;
+    int has_alpha;
+    int bit_depth;
+    int is_animation;
+} gdHeifInfo;
+
+BGD_DECLARE(int)
+gdHeifReadMetadataFromPtr(int size, const void *data, gdHeifInfo *info,
+                          gdImageMetadata *metadata);
 
 /**
  * @brief Initialize HEIF read options with gd defaults.
@@ -3053,6 +3012,12 @@ BGD_DECLARE(gdImagePtr) gdImageCreateFromHeifPtr(int size, void *data);
  */
 BGD_DECLARE(gdImagePtr)
 gdImageCreateFromHeifPtrWithOptions(int size, void *data, const gdHeifReadOptions *options);
+
+/** Create a truecolor image from HEIF data and collect metadata. */
+BGD_DECLARE(gdImagePtr)
+gdImageCreateFromHeifPtrWithOptionsAndMetadata(int size, void *data,
+                                                const gdHeifReadOptions *options,
+                                                gdImageMetadata *metadata);
 
 /**
  * @brief Create a truecolor image from HEIF data in an IO context.
@@ -3268,13 +3233,40 @@ enum {
     GD_AVIF_CHROMA_SUBSAMPLING_YUV444 = 2  /**< Use 4:4:4 chroma subsampling. */
 };
 
+/** AVIF YUV pixel formats reported by gdAvifInfo::yuv_format. */
+enum {
+    GD_AVIF_PIXEL_FORMAT_NONE = 0,
+    GD_AVIF_PIXEL_FORMAT_YUV444 = 1,
+    GD_AVIF_PIXEL_FORMAT_YUV422 = 2,
+    GD_AVIF_PIXEL_FORMAT_YUV420 = 3,
+    GD_AVIF_PIXEL_FORMAT_YUV400 = 4
+};
+
 /** @brief AVIF encoder options used by gdImageAvifPtrWithOptions(). */
 typedef struct {
     int quality;            /**< Compression quality from 0 to 100, or -1 for the default. */
     int speed;              /**< Encoder speed; lower values are slower and may improve compression. */
     int lossless;           /**< Nonzero to request lossless encoding. */
     int chroma_subsampling; /**< One of the GD_AVIF_CHROMA_SUBSAMPLING_* values. */
+    const gdImageMetadata *metadata; /**< Optional EXIF/XMP metadata to embed. */
 } gdAvifWriteOptions;
+
+/** @brief Basic information extracted from the primary AVIF image. */
+typedef struct {
+    int width;
+    int height;
+    int is_animation;
+    int is_progressive;
+    int frame_count;
+    double duration;
+    int has_alpha;
+    int bit_depth;
+    int yuv_format;
+} gdAvifInfo;
+
+BGD_DECLARE(int)
+gdAvifReadMetadataFromPtr(int size, const void *data, gdAvifInfo *info,
+                          gdImageMetadata *metadata);
 
 /**
  * @brief Initialize AVIF write options with gd defaults.
@@ -3637,6 +3629,9 @@ BGD_DECLARE(void) gdTiffReadClose(gdTiffReadPtr tiff);
  */
 BGD_DECLARE(int) gdTiffReadGetInfo(gdTiffReadPtr tiff, gdTiffInfo *info);
 
+/** Collect opaque metadata from the first TIFF directory. */
+BGD_DECLARE(int) gdTiffReadGetMetadata(gdTiffReadPtr tiff, gdImageMetadata *metadata);
+
 /**
  * @brief Read the next TIFF page image.
  *
@@ -3744,6 +3739,7 @@ typedef struct {
     float xResolution;   /**< Horizontal resolution to store in the TIFF file. */
     float yResolution;   /**< Vertical resolution to store in the TIFF file. */
     gdTiffAlphaType alphaType;         /**< Alpha sample type. */
+    const gdImageMetadata *metadata;   /**< Opaque TIFF tag metadata. */
 } gdTiffWriteOptions;
 
 /**
@@ -4058,6 +4054,36 @@ BGD_DECLARE(gdImagePtr) gdImageCreateFromBmpPtr(int size, void *data);
  * @return A newly allocated image, or NULL on error.
  */
 BGD_DECLARE(gdImagePtr) gdImageCreateFromBmpCtx(gdIOCtxPtr infile);
+
+/** Descriptive facts read from a BMP file header. */
+typedef struct {
+	int file_size;
+	int pixel_offset;
+	int header_size;
+	int header_type;
+	int width;
+	int height;
+	int top_down;
+	int planes;
+	int bits_per_pixel;
+	int compression;
+	int image_size;
+	int horizontal_resolution;
+	int vertical_resolution;
+	int colors_used;
+	int important_colors;
+	int palette_type;
+	int palette_entries;
+	unsigned int red_mask;
+	unsigned int green_mask;
+	unsigned int blue_mask;
+	unsigned int alpha_mask;
+} gdBmpInfo;
+
+BGD_DECLARE(void) gdBmpInfoInit(gdBmpInfo *info);
+BGD_DECLARE(int) gdBmpGetInfo(FILE *infile, gdBmpInfo *info);
+BGD_DECLARE(int) gdBmpGetInfoCtx(gdIOCtxPtr infile, gdBmpInfo *info);
+BGD_DECLARE(int) gdBmpGetInfoPtr(int size, const void *data, gdBmpInfo *info);
 
 /** @} */
 
@@ -4737,6 +4763,18 @@ BGD_DECLARE(void) gdImageBmpCtx(gdImagePtr im, gdIOCtxPtr out, int compression);
 /** Use RGB555 bit masks instead of RGB565 for 16 bpp output. */
 #define GD_BMP_FLAG_RGB555 (1 << 2)
 
+typedef struct {
+	int bits_per_pixel;
+	int compression;
+	int flags;
+	const gdImageMetadata *metadata; /**< Reserved and ignored for BMP. */
+} gdBmpWriteOptions;
+
+BGD_DECLARE(void) gdBmpWriteOptionsInit(gdBmpWriteOptions *options);
+BGD_DECLARE(int) gdImageBmpWithOptions(gdImagePtr im, FILE *outFile, const gdBmpWriteOptions *options);
+BGD_DECLARE(int) gdImageBmpCtxWithOptions(gdImagePtr im, gdIOCtxPtr out, const gdBmpWriteOptions *options);
+BGD_DECLARE(void *) gdImageBmpPtrWithOptions(gdImagePtr im, int *size, const gdBmpWriteOptions *options);
+
 /** @} */
 
 /** @name BMP Extended Writing */
@@ -5231,9 +5269,6 @@ BGD_DECLARE(void) gdImageJpegCtx(gdImagePtr im, gdIOCtxPtr out, int quality);
  * @param quality The JPEG quality (0-100).
  * @param metadata Pointer to a gdImageMetadata structure containing the metadata to include in the JPEG file.
  */
-BGD_DECLARE(void)
-gdImageJpegCtxWithMetadata(gdImagePtr im, gdIOCtxPtr out, int quality,
-                           const gdImageMetadata *metadata);
 /**
  * @brief Write an image as JPEG data to a stdio file using write options.
  * 
@@ -5279,9 +5314,6 @@ BGD_DECLARE(void *) gdImageJpegPtr(gdImagePtr im, int *size, int quality);
  * 
  * @return A pointer to the newly allocated buffer containing the JPEG data, or NULL on failure.
  */
-BGD_DECLARE(void *)
-gdImageJpegPtrWithMetadata(gdImagePtr im, int *size, int quality, const gdImageMetadata *metadata);
-
 /**
  * @brief Write an image as JPEG data to a memory buffer using write options.
  * 
@@ -5359,6 +5391,54 @@ BGD_DECLARE(void *) gdImageWebpPtr(gdImagePtr im, int *size);
  */
 BGD_DECLARE(void *)
 gdImageWebpPtrEx(gdImagePtr im, int *size, int quantization);
+
+/**
+ * @brief Write an image as WebP data to a stdio file using write options.
+ * @ingroup gdCodecWebp
+ *
+ * gdImageWebpWithOptions() does not close outFile. The image is borrowed for the
+ * duration of the call and must be a truecolor image.
+ *
+ * @param im The image to write.
+ * @param outFile Pointer to the output FILE stream.
+ * @param options Pointer to WebP write options, or NULL for defaults.
+ *
+ * @return Returns 0 on success, or 1 on failure.
+ */
+BGD_DECLARE(int)
+gdImageWebpWithOptions(gdImagePtr im, FILE *outFile, const gdWebpWriteOptions *options);
+
+/**
+ * @brief Write an image as WebP data to a gdIOCtx using write options.
+ * @ingroup gdCodecWebp
+ *
+ * gdImageWebpCtxWithOptions() does not close outfile. The image is borrowed for
+ * the duration of the call and must be a truecolor image.
+ *
+ * @param im The image to write.
+ * @param outfile Pointer to the gdIOCtx output context.
+ * @param options Pointer to WebP write options, or NULL for defaults.
+ *
+ * @return Returns 0 on success, or 1 on failure.
+ */
+BGD_DECLARE(int)
+gdImageWebpCtxWithOptions(gdImagePtr im, gdIOCtxPtr outfile, const gdWebpWriteOptions *options);
+
+/**
+ * @brief Write an image as WebP data to a newly allocated memory buffer using write options.
+ * @ingroup gdCodecWebp
+ *
+ * The image is borrowed for the duration of the call and must be a truecolor
+ * image. The returned buffer is caller-owned and must be freed with gdFree().
+ *
+ * @param im The image to write.
+ * @param size Pointer to an integer that receives the returned buffer size.
+ * @param options Pointer to WebP write options, or NULL for defaults.
+ *
+ * @return Returns a pointer to the newly allocated WebP buffer, or NULL on failure.
+ */
+BGD_DECLARE(void *)
+gdImageWebpPtrWithOptions(gdImagePtr im, int *size, const gdWebpWriteOptions *options);
 
 /**
  * @brief Write an image as WebP data to a gdIOCtx with a quality setting.

@@ -33,6 +33,12 @@ rewind($stream);
 $loaded = Gd\Qoi\Codec::fromStream($stream);
 var_dump($loaded instanceof GdImage);
 
+// Test 2b: Read scalar info from stream
+echo "Test 2b: infoStream... ";
+rewind($stream);
+$stream_info = Gd\Qoi\Reader::fromStream($stream)->info();
+var_dump($stream_info->width === 6 && $stream_info->height === 6 && $stream_info->channels === 4);
+
 // Test 3: Dimensions match
 echo "Test 3: Dimensions preserved... ";
 var_dump(imagesx($loaded) === 6 && imagesy($loaded) === 6);
@@ -67,6 +73,7 @@ echo "All stream operation tests passed!\n";
 --EXPECT--
 Test 1: toStream with SRGB... bool(true)
 Test 2: fromStream... bool(true)
+Test 2b: infoStream... bool(true)
 Test 3: Dimensions preserved... bool(true)
 Test 4: toStream with Linear... bool(true)
 Test 5: Different colorspaces produce different stream content... bool(true)

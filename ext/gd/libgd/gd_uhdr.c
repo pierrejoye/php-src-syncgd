@@ -175,7 +175,6 @@ static int gdUhdrCreateJpegMetadataFromBlock(uhdr_mem_block_t *block, int copy_e
                                              gdImageMetadata **out, gdUhdrErrorPtr err)
 {
     gdImageMetadata *src_metadata;
-    gdImagePtr decoded;
     int status;
 
     *out = NULL;
@@ -193,14 +192,11 @@ static int gdUhdrCreateJpegMetadataFromBlock(uhdr_mem_block_t *block, int copy_e
         return GD_UHDR_E_ENCODE;
     }
 
-    decoded = gdImageCreateFromJpegPtrWithMetadata((int)block->data_sz, block->data, src_metadata);
-    if (!decoded) {
+    if (gdJpegGetMetadataPtr((int)block->data_sz, block->data, src_metadata) != 0) {
         gdImageMetadataFree(src_metadata);
         gdUhdrSetError(err, GD_UHDR_E_DECODE, 0, "Failed to read JPEG metadata");
         return GD_UHDR_E_DECODE;
     }
-    gdImageDestroy(decoded);
-
     if (copy_exif) {
         status = gdUhdrCopyMetadataProfile(out, src_metadata, "exif", err);
         if (status != GD_UHDR_SUCCESS) {
@@ -425,12 +421,13 @@ static int gdUhdrEncodeJpegComponent(gdImagePtr image, int quality, const gdImag
 {
     void *jpeg;
     int jpeg_size = 0;
+    gdJpegWriteOptions options;
 
-    if (no_subsampling) {
-        jpeg = gdImageJpegPtrWithMetadataNoSubsampling(image, &jpeg_size, quality, metadata);
-    } else {
-        jpeg = gdImageJpegPtrWithMetadata(image, &jpeg_size, quality, metadata);
-    }
+    gdJpegWriteOptionsInit(&options);
+    options.quality = quality;
+    options.force_no_subsampling = no_subsampling;
+    options.metadata = metadata;
+    jpeg = gdImageJpegPtrWithOptions(image, &jpeg_size, &options);
     if (!jpeg || jpeg_size <= 0) {
         gdFree(jpeg);
         gdUhdrSetError(err, GD_UHDR_E_ENCODE, 0, "Failed to encode UltraHDR JPEG component");

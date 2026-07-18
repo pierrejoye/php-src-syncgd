@@ -30,6 +30,11 @@ echo "Test 2: fromFile... ";
 $loaded = Gd\Qoi\Codec::fromFile($tmp_file);
 var_dump($loaded instanceof GdImage);
 
+// Test 2b: Read scalar info from file
+echo "Test 2b: infoFile... ";
+$file_info = Gd\Qoi\Reader::fromFile($tmp_file)->info();
+var_dump($file_info->width === 8 && $file_info->height === 8 && $file_info->channels === 4);
+
 // Test 3: Dimensions match
 echo "Test 3: Dimensions preserved... ";
 var_dump(imagesx($loaded) === 8 && imagesy($loaded) === 8);
@@ -56,6 +61,7 @@ echo "All file operation tests passed!\n";
 --EXPECT--
 Test 1: toFile with SRGB... bool(true)
 Test 2: fromFile... bool(true)
+Test 2b: infoFile... bool(true)
 Test 3: Dimensions preserved... bool(true)
 Test 4: toFile/fromFile with Linear... bool(true)
 Test 5: Different colorspace produces different file content... bool(true)

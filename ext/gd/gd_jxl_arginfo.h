@@ -1,11 +1,12 @@
 /* This is a generated file, edit gd_jxl.stub.php instead.
- * Stub hash: cc279959f0605a27ecce66e75ede5dbef686c998 */
+ * Stub hash: a8e8750b9ab17f5cd99085c0b3f289eb2540e739 */
 
 #if defined(HAVE_GD_JXL_CODEC)
 ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Gd_Jxl_WriteOptions___construct, 0, 0, 0)
 	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, lossless, _IS_BOOL, 0, "false")
 	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, distance, IS_DOUBLE, 0, "1.0")
 	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, effort, IS_LONG, 0, "7")
+	ZEND_ARG_OBJ_INFO_WITH_DEFAULT_VALUE(0, metadata, Gd\\Metadata, 1, "null")
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Gd_Jxl_Codec___construct, 0, 0, 0)
@@ -41,14 +42,17 @@ ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Gd_Jxl_Codec_toString, 0, 
 ZEND_END_ARG_INFO()
 #endif
 
-#if defined(HAVE_GD_JXL_ANIM_READ_API)
+#if defined(HAVE_GD_JXL_CODEC) || defined(HAVE_GD_JXL_ANIM_READ_API)
 ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Gd_Jxl_Info___construct, 0, 0, 4)
 	ZEND_ARG_TYPE_INFO(0, width, IS_LONG, 0)
 	ZEND_ARG_TYPE_INFO(0, height, IS_LONG, 0)
 	ZEND_ARG_TYPE_INFO(0, animated, _IS_BOOL, 0)
 	ZEND_ARG_TYPE_INFO(0, loopCount, IS_LONG, 0)
+	ZEND_ARG_OBJ_INFO_WITH_DEFAULT_VALUE(0, metadata, Gd\\Metadata, 1, "null")
 ZEND_END_ARG_INFO()
+#endif
 
+#if defined(HAVE_GD_JXL_ANIM_READ_API)
 ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Gd_Jxl_Frame___construct, 0, 0, 4)
 	ZEND_ARG_OBJ_INFO(0, image, GdImage, 0)
 	ZEND_ARG_TYPE_INFO(0, frameIndex, IS_LONG, 0)
@@ -75,6 +79,28 @@ ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Gd_Jxl_AnimReader_info, 0, 
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Gd_Jxl_AnimReader_next, 0, 0, Gd\\Jxl\\Frame, 1)
+ZEND_END_ARG_INFO()
+#endif
+
+#if defined(HAVE_GD_JXL_CODEC)
+#define arginfo_class_Gd_Jxl_Reader___construct arginfo_class_Gd_Jxl_Codec___construct
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Gd_Jxl_Reader_fromFile, 0, 1, Gd\\Jxl\\Reader, 0)
+	ZEND_ARG_TYPE_INFO(0, path, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Gd_Jxl_Reader_fromString, 0, 1, Gd\\Jxl\\Reader, 0)
+	ZEND_ARG_TYPE_INFO(0, bytes, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Gd_Jxl_Reader_fromStream, 0, 1, Gd\\Jxl\\Reader, 0)
+	ZEND_ARG_INFO(0, stream)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Gd_Jxl_Reader_info, 0, 0, Gd\\Jxl\\Info, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Gd_Jxl_Reader_read, 0, 0, GdImage, 0)
 ZEND_END_ARG_INFO()
 #endif
 
@@ -124,8 +150,10 @@ ZEND_METHOD(Gd_Jxl_Codec, toFile);
 ZEND_METHOD(Gd_Jxl_Codec, toStream);
 ZEND_METHOD(Gd_Jxl_Codec, toString);
 #endif
-#if defined(HAVE_GD_JXL_ANIM_READ_API)
+#if defined(HAVE_GD_JXL_CODEC) || defined(HAVE_GD_JXL_ANIM_READ_API)
 ZEND_METHOD(Gd_Jxl_Info, __construct);
+#endif
+#if defined(HAVE_GD_JXL_ANIM_READ_API)
 ZEND_METHOD(Gd_Jxl_Frame, __construct);
 ZEND_METHOD(Gd_Jxl_AnimReader, __construct);
 ZEND_METHOD(Gd_Jxl_AnimReader, fromFile);
@@ -133,6 +161,14 @@ ZEND_METHOD(Gd_Jxl_AnimReader, fromString);
 ZEND_METHOD(Gd_Jxl_AnimReader, fromStream);
 ZEND_METHOD(Gd_Jxl_AnimReader, info);
 ZEND_METHOD(Gd_Jxl_AnimReader, next);
+#endif
+#if defined(HAVE_GD_JXL_CODEC)
+ZEND_METHOD(Gd_Jxl_Reader, __construct);
+ZEND_METHOD(Gd_Jxl_Reader, fromFile);
+ZEND_METHOD(Gd_Jxl_Reader, fromString);
+ZEND_METHOD(Gd_Jxl_Reader, fromStream);
+ZEND_METHOD(Gd_Jxl_Reader, info);
+ZEND_METHOD(Gd_Jxl_Reader, read);
 #endif
 #if defined(HAVE_GD_JXL_ANIM_WRITE_API)
 ZEND_METHOD(Gd_Jxl_AnimWriteOptions, __construct);
@@ -164,7 +200,7 @@ static const zend_function_entry class_Gd_Jxl_Codec_methods[] = {
 };
 #endif
 
-#if defined(HAVE_GD_JXL_ANIM_READ_API)
+#if defined(HAVE_GD_JXL_CODEC) || defined(HAVE_GD_JXL_ANIM_READ_API)
 static const zend_function_entry class_Gd_Jxl_Info_methods[] = {
 	ZEND_ME(Gd_Jxl_Info, __construct, arginfo_class_Gd_Jxl_Info___construct, ZEND_ACC_PUBLIC)
 	ZEND_FE_END
@@ -190,6 +226,18 @@ static const zend_function_entry class_Gd_Jxl_AnimReader_methods[] = {
 };
 #endif
 
+#if defined(HAVE_GD_JXL_CODEC)
+static const zend_function_entry class_Gd_Jxl_Reader_methods[] = {
+	ZEND_ME(Gd_Jxl_Reader, __construct, arginfo_class_Gd_Jxl_Reader___construct, ZEND_ACC_PRIVATE)
+	ZEND_ME(Gd_Jxl_Reader, fromFile, arginfo_class_Gd_Jxl_Reader_fromFile, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Gd_Jxl_Reader, fromString, arginfo_class_Gd_Jxl_Reader_fromString, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Gd_Jxl_Reader, fromStream, arginfo_class_Gd_Jxl_Reader_fromStream, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Gd_Jxl_Reader, info, arginfo_class_Gd_Jxl_Reader_info, ZEND_ACC_PUBLIC)
+	ZEND_ME(Gd_Jxl_Reader, read, arginfo_class_Gd_Jxl_Reader_read, ZEND_ACC_PUBLIC)
+	ZEND_FE_END
+};
+#endif
+
 #if defined(HAVE_GD_JXL_ANIM_WRITE_API)
 static const zend_function_entry class_Gd_Jxl_AnimWriteOptions_methods[] = {
 	ZEND_ME(Gd_Jxl_AnimWriteOptions, __construct, arginfo_class_Gd_Jxl_AnimWriteOptions___construct, ZEND_ACC_PUBLIC)
@@ -208,6 +256,16 @@ static const zend_function_entry class_Gd_Jxl_AnimWriter_methods[] = {
 	ZEND_FE_END
 };
 #endif
+
+static zend_class_entry *register_class_Gd_Codec_CodecException(zend_class_entry *class_entry_RuntimeException)
+{
+	zend_class_entry ce, *class_entry;
+
+	INIT_NS_CLASS_ENTRY(ce, "Gd\\Codec", "CodecException", NULL);
+	class_entry = zend_register_internal_class_with_flags(&ce, class_entry_RuntimeException, ZEND_ACC_NO_DYNAMIC_PROPERTIES);
+
+	return class_entry;
+}
 
 #if defined(HAVE_GD_JXL_CODEC)
 static zend_class_entry *register_class_Gd_Jxl_WriteOptions(zend_class_entry *class_entry_Gd_Codec_WriteOptions)
@@ -236,6 +294,13 @@ static zend_class_entry *register_class_Gd_Jxl_WriteOptions(zend_class_entry *cl
 	zend_declare_typed_property(class_entry, property_effort_name, &property_effort_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_LONG));
 	zend_string_release_ex(property_effort_name, true);
 
+	zval property_metadata_default_value;
+	ZVAL_UNDEF(&property_metadata_default_value);
+	zend_string *property_metadata_name = zend_string_init("metadata", sizeof("metadata") - 1, true);
+	zend_string *property_metadata_class_Gd_Metadata = zend_string_init("Gd\\Metadata", sizeof("Gd\\Metadata")-1, 1);
+	zend_declare_typed_property(class_entry, property_metadata_name, &property_metadata_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_metadata_class_Gd_Metadata, 0, MAY_BE_NULL));
+	zend_string_release_ex(property_metadata_name, true);
+
 	return class_entry;
 }
 #endif
@@ -252,7 +317,7 @@ static zend_class_entry *register_class_Gd_Jxl_Codec(void)
 }
 #endif
 
-#if defined(HAVE_GD_JXL_ANIM_READ_API)
+#if defined(HAVE_GD_JXL_CODEC) || defined(HAVE_GD_JXL_ANIM_READ_API)
 static zend_class_entry *register_class_Gd_Jxl_Info(void)
 {
 	zend_class_entry ce, *class_entry;
@@ -283,6 +348,13 @@ static zend_class_entry *register_class_Gd_Jxl_Info(void)
 	zend_string *property_loopCount_name = zend_string_init("loopCount", sizeof("loopCount") - 1, true);
 	zend_declare_typed_property(class_entry, property_loopCount_name, &property_loopCount_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_LONG));
 	zend_string_release_ex(property_loopCount_name, true);
+
+	zval property_metadata_default_value;
+	ZVAL_UNDEF(&property_metadata_default_value);
+	zend_string *property_metadata_name = zend_string_init("metadata", sizeof("metadata") - 1, true);
+	zend_string *property_metadata_class_Gd_Metadata = zend_string_init("Gd\\Metadata", sizeof("Gd\\Metadata")-1, 1);
+	zend_declare_typed_property(class_entry, property_metadata_name, &property_metadata_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_metadata_class_Gd_Metadata, 0, MAY_BE_NULL));
+	zend_string_release_ex(property_metadata_name, true);
 
 	return class_entry;
 }
@@ -331,6 +403,18 @@ static zend_class_entry *register_class_Gd_Jxl_AnimReader(void)
 	zend_class_entry ce, *class_entry;
 
 	INIT_NS_CLASS_ENTRY(ce, "Gd\\Jxl", "AnimReader", class_Gd_Jxl_AnimReader_methods);
+	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL|ZEND_ACC_NO_DYNAMIC_PROPERTIES|ZEND_ACC_NOT_SERIALIZABLE);
+
+	return class_entry;
+}
+#endif
+
+#if defined(HAVE_GD_JXL_CODEC)
+static zend_class_entry *register_class_Gd_Jxl_Reader(void)
+{
+	zend_class_entry ce, *class_entry;
+
+	INIT_NS_CLASS_ENTRY(ce, "Gd\\Jxl", "Reader", class_Gd_Jxl_Reader_methods);
 	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL|ZEND_ACC_NO_DYNAMIC_PROPERTIES|ZEND_ACC_NOT_SERIALIZABLE);
 
 	return class_entry;

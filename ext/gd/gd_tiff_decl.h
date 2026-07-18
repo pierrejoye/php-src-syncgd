@@ -1,8 +1,8 @@
 /* This is a generated file, edit gd_tiff.stub.php instead.
- * Stub hash: ca71933429f04399b0a2a89515bbb1ae770f2677 */
+ * Stub hash: d6c4296d30ee85e978b13c10f899017ba5dbbd72 */
 
-#ifndef ZEND_GD_TIFF_DECL_ca71933429f04399b0a2a89515bbb1ae770f2677_H
-#define ZEND_GD_TIFF_DECL_ca71933429f04399b0a2a89515bbb1ae770f2677_H
+#ifndef ZEND_GD_TIFF_DECL_d6c4296d30ee85e978b13c10f899017ba5dbbd72_H
+#define ZEND_GD_TIFF_DECL_d6c4296d30ee85e978b13c10f899017ba5dbbd72_H
 
 #if defined(HAVE_GD_TIFF_WRITE_API) || defined(HAVE_GD_TIFF_READ_API)
 typedef enum zend_enum_Gd_Tiff_ColorSpace {
@@ -54,4 +54,4 @@ typedef enum zend_enum_Gd_Tiff_PlanarConfiguration {
 } zend_enum_Gd_Tiff_PlanarConfiguration;
 #endif
 
-#endif /* ZEND_GD_TIFF_DECL_ca71933429f04399b0a2a89515bbb1ae770f2677_H */
+#endif /* ZEND_GD_TIFF_DECL_d6c4296d30ee85e978b13c10f899017ba5dbbd72_H */
