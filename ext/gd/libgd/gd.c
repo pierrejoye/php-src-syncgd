@@ -1243,11 +1243,6 @@ static void gdImageVLine(gdImagePtr im, int x, int y1, int y2, int col)
     return;
 }
 
-/*
-        Function: gdImageLine
-
-        Bresenham as presented in Foley & Van Dam.
-*/
 BGD_DECLARE(void) gdImageLine(gdImagePtr im, int x1, int y1, int x2, int y2, int color)
 {
     int dx, dy, incr1, incr2, d, x, y, xend, yend, xdirflag, ydirflag;
@@ -1424,9 +1419,6 @@ TBB: but watch out for /0! */
 static void dashedSet(gdImagePtr im, int x, int y, int color, int *onP, int *dashStepP, int wid,
                       int vert);
 
-/*
-        Function: gdImageDashedLine
-*/
 BGD_DECLARE(void) gdImageDashedLine(gdImagePtr im, int x1, int y1, int x2, int y2, int color)
 {
     int dx, dy, incr1, incr2, d, x, y, xend, yend, xdirflag, ydirflag;
@@ -1702,18 +1694,12 @@ long lsqrt(long n)
    cx and cy are the center in pixels; w and h are the horizontal
    and vertical diameter in pixels. */
 
-/*
-        Function: gdImageArc
-*/
 BGD_DECLARE(void)
 gdImageArc(gdImagePtr im, int cx, int cy, int w, int h, int s, int e, int color)
 {
     gdImageFilledArc(im, cx, cy, w, h, s, e, color, gdNoFill);
 }
 
-/*
-        Function: gdImageFilledArc
-*/
 BGD_DECLARE(void)
 gdImageFilledArc(gdImagePtr im, int cx, int cy, int w, int h, int s, int e, int color, int style)
 {
@@ -1877,9 +1863,6 @@ BGD_DECLARE(void) gdImageEllipse(gdImagePtr im, int mx, int my, int w, int h, in
     }
 }
 
-/*
-        Function: gdImageFilledEllipse
-*/
 BGD_DECLARE(void)
 gdImageFilledEllipse(gdImagePtr im, int mx, int my, int w, int h, int c)
 {
@@ -1935,9 +1918,6 @@ gdImageFilledEllipse(gdImagePtr im, int mx, int my, int w, int h, int c)
     }
 }
 
-/*
-        Function: gdImageFillToBorder
-*/
 BGD_DECLARE(void) gdImageFillToBorder(gdImagePtr im, int x, int y, int border, int color)
 {
     int lastBorder;
@@ -2095,9 +2075,6 @@ struct seg {
 
 static void _gdImageFillTiled(gdImagePtr im, int x, int y, int nc);
 
-/*
-        Function: gdImageFill
-*/
 BGD_DECLARE(void) gdImageFill(gdImagePtr im, int x, int y, int nc)
 {
     int l, x1, x2, dy;
@@ -2462,9 +2439,6 @@ static void _gdImageFilledVRectangle(gdImagePtr im, int x1, int y1, int x2, int 
     }
 }
 
-/*
-        Function: gdImageFilledRectangle
-*/
 BGD_DECLARE(void) gdImageFilledRectangle(gdImagePtr im, int x1, int y1, int x2, int y2, int color)
 {
     _gdImageFilledVRectangle(im, x1, y1, x2, y2, color);
@@ -3359,20 +3333,6 @@ BGD_DECLARE(int) gdImageCompare(gdImagePtr im1, gdImagePtr im2)
         of gdAlphaBlend(), which merges alpha in the
         destination color much better. */
 
-/**
- * Function: gdAlphaBlend
- *
- * Blend two colors
- *
- * Parameters:
- *   dst - The color to blend onto.
- *   src - The color to blend.
- *
- * See also:
- *   - <gdImageAlphaBlending>
- *   - <gdLayerOverlay>
- *   - <gdLayerMultiply>
- */
 BGD_DECLARE(int) gdAlphaBlend(int dst, int src)
 {
 #if ENABLE_CORRECTED_LEGACY_COMPOSITING
