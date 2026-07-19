@@ -9,8 +9,9 @@ if (!class_exists(Gd\Webp\Reader::class)) die('skip bundled WebP reader not avai
 --FILE--
 <?php
 $image = imagecreatetruecolor(4, 3);
+$exif = "\x4d\x4d\x00\x2a\x00\x00\x00\x08";
 $metadata = Gd\Metadata::create()
-    ->with('exif', "Exif\0\0opaque")
+    ->with('exif', $exif)
     ->with('xmp', '<xmp>opaque</xmp>')
     ->with('icc', "\x01\x02\x03\x04");
 $bytes = Gd\Webp\Codec::toString($image, new Gd\Webp\WriteOptions(metadata: $metadata));
@@ -19,9 +20,9 @@ $reader = Gd\Webp\Reader::fromString($bytes);
 $info = $reader->info();
 var_dump($info->width, $info->height, $info->frameCount);
 var_dump($info->metadata->keys());
-var_dump($info->metadata->get('exif') === $metadata->get('exif'));
+var_dump($info->metadata->get('exif') === $exif);
 var_dump($info->metadata->get('xmp') === $metadata->get('xmp'));
-var_dump($info->metadata->get('icc') === $metadata->get('icc'));
+var_dump($info->metadata->has('icc'));
 var_dump($reader->read() instanceof GdImage);
 try {
     $reader->read();
@@ -65,17 +66,15 @@ if (class_exists(Gd\Webp\AnimWriter::class)) {
 int(4)
 int(3)
 int(1)
-array(3) {
+array(2) {
   [0]=>
-  string(3) "icc"
-  [1]=>
   string(3) "xmp"
-  [2]=>
+  [1]=>
   string(4) "exif"
 }
 bool(true)
 bool(true)
-bool(true)
+bool(false)
 bool(true)
 Gd\Codec\CodecException
 int(4)

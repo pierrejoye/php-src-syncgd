@@ -171,7 +171,8 @@ static void *gdUhdrAddIccProfile(const void *jpeg_data, size_t jpeg_size,
 
     if (!jpeg_data || jpeg_size < 2 || ((const unsigned char *)jpeg_data)[0] != 0xff ||
         ((const unsigned char *)jpeg_data)[1] != 0xd8 || !icc || icc_size == 0) {
-        return (void *)jpeg_data;
+        gdUhdrSetError(err, GD_UHDR_E_ENCODE, 0, "Invalid JPEG or ICC data for UltraHDR");
+        return NULL;
     }
     count = (icc_size + max_chunk - 1) / max_chunk;
     if (count > 255 || icc_size > (size_t)-1 - jpeg_size) {

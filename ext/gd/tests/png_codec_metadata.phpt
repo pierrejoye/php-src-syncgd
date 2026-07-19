@@ -11,8 +11,9 @@ if (!class_exists(Gd\Png\Codec::class) || !class_exists(Gd\Metadata::class)) {
 --FILE--
 <?php
 $image = imagecreatetruecolor(2, 2);
+$exif = "\x4d\x4d\x00\x2a\x00\x00\x00\x08";
 $metadata = Gd\Metadata::create()
-    ->with('exif', "Exif\0\0png test")
+    ->with('exif', $exif)
     ->with('icc', 'icc profile')
     ->with('xmp', '<xmp>png test</xmp>');
 $options = new Gd\Png\WriteOptions(
@@ -47,14 +48,14 @@ array(1) {
   ["Title"]=>
   string(17) "PNG metadata test"
 }
-string(28) "457869660000706e672074657374"
+string(28) "4578696600004d4d002a00000008"
 NULL
 string(38) "3c786d703e706e6720746573743c2f786d703e"
 array(1) {
   ["Title"]=>
   string(17) "PNG metadata test"
 }
-string(28) "457869660000706e672074657374"
+string(28) "4578696600004d4d002a00000008"
 NULL
 string(38) "3c786d703e706e6720746573743c2f786d703e"
 bool(true)
@@ -62,6 +63,6 @@ array(1) {
   ["Title"]=>
   string(17) "PNG metadata test"
 }
-string(28) "457869660000706e672074657374"
+string(28) "4578696600004d4d002a00000008"
 NULL
 string(38) "3c786d703e706e6720746573743c2f786d703e"

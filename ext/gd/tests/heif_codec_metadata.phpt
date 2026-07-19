@@ -34,7 +34,7 @@ sort($keys);
 var_dump($keys);
 
 foreach ([
-    'exif' => '550b46a1380ab1730a3a32b068db8a19e50bfd60c55b3e9c49f03f0d17f96d97',
+    'exif' => '995837e4b7a256c310a3fbebf1cb8dcbd214e31275ba99405683dbd3d63041b1',
     'xmp' => '4f64a8160825b493396d9873aff61c0f95956dd2c6553fd28b9ca8c48207bdb5',
     'iptc' => 'cd275e5a511b2d3b1fffdc9513e28d11a7eca0286767246a5c471ef4f4839fc3',
 ] as $key => $hash) {
@@ -82,7 +82,7 @@ bool(true)
 bool(true)
 bool(true)
 bool(false)
-string(8) "00000006"
+string(8) "4d4d002a"
 bool(true)
 bool(true)
 bool(false)

@@ -30,8 +30,9 @@ imagefill($im, 0, 0, 0x336699);
 
 $xmp = "<x:xmpmeta/>";
 $iptc = "\x1c\x02\x05\0\x04test";
+$exif = "\x4d\x4d\x00\x2a\x00\x00\x00\x08";
 $metadata = Gd\Metadata::create()
-    ->with('exif', "Exif\0\0abc")
+    ->with('exif', $exif)
     ->with('xmp', $xmp)
     ->with('icc', 'icc-profile')
     ->with('iptc', $iptc);
