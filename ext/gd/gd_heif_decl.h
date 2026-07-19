@@ -1,8 +1,8 @@
 /* This is a generated file, edit gd_heif.stub.php instead.
- * Stub hash: 0327fc7ce0fe4992e5883374389e6b1ce725c915 */
+ * Stub hash: ea966c81d6fc7026357df50ea1cb6e5fdac4f7e8 */
 
-#ifndef ZEND_GD_HEIF_DECL_0327fc7ce0fe4992e5883374389e6b1ce725c915_H
-#define ZEND_GD_HEIF_DECL_0327fc7ce0fe4992e5883374389e6b1ce725c915_H
+#ifndef ZEND_GD_HEIF_DECL_ea966c81d6fc7026357df50ea1cb6e5fdac4f7e8_H
+#define ZEND_GD_HEIF_DECL_ea966c81d6fc7026357df50ea1cb6e5fdac4f7e8_H
 
 #if defined(HAVE_GD_HEIF)
 typedef enum zend_enum_Gd_Heif_CompressionFormat {
@@ -19,4 +19,4 @@ typedef enum zend_enum_Gd_Heif_ChromaSubsampling {
 } zend_enum_Gd_Heif_ChromaSubsampling;
 #endif
 
-#endif /* ZEND_GD_HEIF_DECL_0327fc7ce0fe4992e5883374389e6b1ce725c915_H */
+#endif /* ZEND_GD_HEIF_DECL_ea966c81d6fc7026357df50ea1cb6e5fdac4f7e8_H */

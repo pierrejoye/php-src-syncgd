@@ -5,13 +5,6 @@
  * @generate-c-enums
  */
 
-namespace Gd\Codec {
-    /** @strict-properties */
-    class CodecException extends \RuntimeException
-    {
-    }
-}
-
 namespace Gd\Png {
 #ifdef HAVE_GD_PNG_CODEC
     enum ColorType: int

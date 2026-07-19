@@ -5,13 +5,6 @@
  * @generate-c-enums
  */
 
-namespace Gd\Codec {
-    /** @strict-properties */
-    class CodecException extends \RuntimeException
-    {
-    }
-}
-
 namespace Gd\Avif {
 #ifdef HAVE_GD_AVIF
     enum ChromaSubsampling

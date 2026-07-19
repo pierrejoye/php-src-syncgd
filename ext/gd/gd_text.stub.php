@@ -7,7 +7,7 @@
 
 namespace Gd\Text {
     /** @strict-properties */
-    class TextException extends \RuntimeException
+    class TextException extends \Gd\GdException
     {
     }
 

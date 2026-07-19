@@ -514,7 +514,7 @@ dnl Various checks for GD features
     ])
 
     PHP_NEW_EXTENSION([gd],
-      [gd.c gd_2d.c gd_text.c gd_image.c gd_codec_write.c gd_metadata.c gd_png.c gd_gif.c gd_webp.c gd_bmp.c gd_avif.c gd_heif.c gd_jxl.c gd_qoi.c gd_tiff.c gd_jpeg.c $extra_sources],
+      [gd.c gd_exception.c gd_2d.c gd_text.c gd_image.c gd_codec_write.c gd_metadata.c gd_png.c gd_gif.c gd_webp.c gd_bmp.c gd_avif.c gd_heif.c gd_jxl.c gd_qoi.c gd_tiff.c gd_jpeg.c $extra_sources],
       [$ext_shared],,
       [-Wno-strict-prototypes -I@ext_srcdir@/libgd])
     PHP_ADD_BUILD_DIR([$ext_builddir/libgd])
@@ -695,7 +695,7 @@ int main(void) {
       ])
     ])
 
-    PHP_NEW_EXTENSION([gd], [gd.c gd_image.c gd_codec_write.c gd_metadata.c gd_png.c gd_gif.c gd_webp.c gd_bmp.c gd_avif.c gd_heif.c gd_jxl.c gd_qoi.c gd_tiff.c gd_jpeg.c $extra_sources], [$ext_shared])
+    PHP_NEW_EXTENSION([gd], [gd.c gd_exception.c gd_image.c gd_codec_write.c gd_metadata.c gd_png.c gd_gif.c gd_webp.c gd_bmp.c gd_avif.c gd_heif.c gd_jxl.c gd_qoi.c gd_tiff.c gd_jpeg.c $extra_sources], [$ext_shared])
     PHP_INSTALL_HEADERS([ext/gd], [php_gd.h])
     PHP_CHECK_LIBRARY([gd], [gdImageCreate],
       [],

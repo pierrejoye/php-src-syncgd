@@ -1,5 +1,5 @@
 /* This is a generated file, edit gd_heif.stub.php instead.
- * Stub hash: 0327fc7ce0fe4992e5883374389e6b1ce725c915
+ * Stub hash: ea966c81d6fc7026357df50ea1cb6e5fdac4f7e8
  * Has decl header: yes */
 
 #if defined(HAVE_GD_HEIF)

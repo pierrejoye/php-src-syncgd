@@ -1,5 +1,5 @@
 /* This is a generated file, edit gd_webp.stub.php instead.
- * Stub hash: 37625afafcb78d26a06be42441e0df4853fb1123
+ * Stub hash: e682e3637b1c454e2a1c3f4e1e8223bd80c4f773
  * Has decl header: yes */
 
 #if defined(HAVE_GD_WEBP)

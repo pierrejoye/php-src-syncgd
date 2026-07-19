@@ -5,13 +5,6 @@
  * @generate-c-enums
  */
 
-namespace Gd\Codec {
-    /** @strict-properties */
-    class CodecException extends \RuntimeException
-    {
-    }
-}
-
 namespace Gd\Jxl {
 #ifdef HAVE_GD_JXL_CODEC
     /** @strict-properties */

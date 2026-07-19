@@ -10,7 +10,8 @@ if (!class_exists(Gd\Png\Codec::class)) {
 ?>
 --FILE--
 <?php
-var_dump(is_subclass_of(Gd\Codec\CodecException::class, RuntimeException::class));
+var_dump(get_parent_class(Gd\GdException::class));
+var_dump(is_subclass_of(Gd\Codec\CodecException::class, Gd\GdException::class));
 
 $options = new Gd\Png\WriteOptions();
 var_dump($options->compressionLevel);
@@ -40,6 +41,7 @@ foreach ([Gd\Png\Reader::class, Gd\Png\Codec::class] as $class) {
 }
 ?>
 --EXPECT--
+string(9) "Exception"
 bool(true)
 int(-1)
 array(0) {

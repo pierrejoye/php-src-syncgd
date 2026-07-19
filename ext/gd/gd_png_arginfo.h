@@ -1,5 +1,5 @@
 /* This is a generated file, edit gd_png.stub.php instead.
- * Stub hash: 8b99d48972c7cedd790fb1b9b24df258944af696
+ * Stub hash: 694cb227dc6b7c3ab0e6da2c9d593a114ceee25a
  * Has decl header: yes */
 
 #if defined(HAVE_GD_PNG_CODEC)

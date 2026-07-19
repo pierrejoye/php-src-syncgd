@@ -1,5 +1,5 @@
 /* This is a generated file, edit gd_jpeg.stub.php instead.
- * Stub hash: 6c0b4ad81d522ed34e3a531143cc9a96439afb52
+ * Stub hash: 779e5e7c0a852d49ac864aa89361cbbc02f15252
  * Has decl header: yes */
 
 #if defined(HAVE_GD_JPEG_CODEC)

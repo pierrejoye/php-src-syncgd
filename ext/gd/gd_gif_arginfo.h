@@ -1,5 +1,5 @@
 /* This is a generated file, edit gd_gif.stub.php instead.
- * Stub hash: b612bb080a22516e6ca4a67810f98d3f86d49d34
+ * Stub hash: aa533b9cbba92785fafdaa455ca800f58697dec5
  * Has decl header: yes */
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Gd_Gif_WriteOptions___construct, 0, 0, 0)

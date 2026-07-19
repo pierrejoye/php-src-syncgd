@@ -1,8 +1,8 @@
 /* This is a generated file, edit gd_qoi.stub.php instead.
- * Stub hash: a41e84f3539e5260245336af624222c6ae9bca94 */
+ * Stub hash: caf53a633b662438c0805ad9e5018ea19fbf764c */
 
-#ifndef ZEND_GD_QOI_DECL_a41e84f3539e5260245336af624222c6ae9bca94_H
-#define ZEND_GD_QOI_DECL_a41e84f3539e5260245336af624222c6ae9bca94_H
+#ifndef ZEND_GD_QOI_DECL_caf53a633b662438c0805ad9e5018ea19fbf764c_H
+#define ZEND_GD_QOI_DECL_caf53a633b662438c0805ad9e5018ea19fbf764c_H
 
 #if defined(HAVE_GD_QOI)
 typedef enum zend_enum_Gd_Qoi_Colorspace {
@@ -11,4 +11,4 @@ typedef enum zend_enum_Gd_Qoi_Colorspace {
 } zend_enum_Gd_Qoi_Colorspace;
 #endif
 
-#endif /* ZEND_GD_QOI_DECL_a41e84f3539e5260245336af624222c6ae9bca94_H */
+#endif /* ZEND_GD_QOI_DECL_caf53a633b662438c0805ad9e5018ea19fbf764c_H */

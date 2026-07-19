@@ -1,5 +1,5 @@
 /* This is a generated file, edit gd_qoi.stub.php instead.
- * Stub hash: a41e84f3539e5260245336af624222c6ae9bca94
+ * Stub hash: caf53a633b662438c0805ad9e5018ea19fbf764c
  * Has decl header: yes */
 
 #if defined(HAVE_GD_QOI)

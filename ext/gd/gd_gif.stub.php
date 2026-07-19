@@ -5,13 +5,6 @@
  * @generate-c-enums
  */
 
-namespace Gd\Codec {
-    /** @strict-properties */
-    class CodecException extends \RuntimeException
-    {
-    }
-}
-
 namespace Gd\Gif {
     /** @strict-properties */
     final readonly class WriteOptions implements \Gd\Codec\WriteOptions

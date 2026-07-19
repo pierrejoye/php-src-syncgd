@@ -33,6 +33,7 @@
 #endif
 
 #include "gd_2d.h"
+#include "gd_exception.h"
 #include "gd_text_decl.h"
 #include "gd_text_arginfo.h"
 
@@ -470,7 +471,7 @@ void php_gd_text_minit(void)
 {
 	zend_class_entry *context_ce;
 
-	php_gd_text_exception_ce = register_class_Gd_Text_TextException(spl_ce_RuntimeException);
+	php_gd_text_exception_ce = register_class_Gd_Text_TextException(php_gd_get_exception_ce());
 	php_gd_text_invalid_exception_ce = register_class_Gd_Text_InvalidTextException(php_gd_text_exception_ce);
 	php_gd_text_unavailable_exception_ce = register_class_Gd_Text_UnavailableException(php_gd_text_exception_ce);
 	php_gd_text_font_exception_ce = register_class_Gd_Text_FontException(php_gd_text_exception_ce);

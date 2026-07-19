@@ -17,7 +17,7 @@ try {
     $ctx->textExtents('Hi');
 } catch (Throwable $e) {
     echo get_class($e), "\n";
-    var_dump($e instanceof RuntimeException);
+    var_dump($e instanceof Gd\GdException);
 }
 
 $font = Gd\FontFace::fromFile(__DIR__ . '/Tuffy.ttf');

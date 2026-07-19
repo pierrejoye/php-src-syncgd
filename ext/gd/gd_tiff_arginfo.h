@@ -1,5 +1,5 @@
 /* This is a generated file, edit gd_tiff.stub.php instead.
- * Stub hash: d6c4296d30ee85e978b13c10f899017ba5dbbd72
+ * Stub hash: 48906b33c4e83d6435bb0de628bb9060bc5cce9f
  * Has decl header: yes */
 
 #if defined(HAVE_GD_TIFF_WRITE_API)

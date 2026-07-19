@@ -1,8 +1,8 @@
 /* This is a generated file, edit gd_gif.stub.php instead.
- * Stub hash: b612bb080a22516e6ca4a67810f98d3f86d49d34 */
+ * Stub hash: aa533b9cbba92785fafdaa455ca800f58697dec5 */
 
-#ifndef ZEND_GD_GIF_DECL_b612bb080a22516e6ca4a67810f98d3f86d49d34_H
-#define ZEND_GD_GIF_DECL_b612bb080a22516e6ca4a67810f98d3f86d49d34_H
+#ifndef ZEND_GD_GIF_DECL_aa533b9cbba92785fafdaa455ca800f58697dec5_H
+#define ZEND_GD_GIF_DECL_aa533b9cbba92785fafdaa455ca800f58697dec5_H
 
 #if defined(HAVE_GD_GIF_ANIM_READ_API) || defined(HAVE_GD_GIF_ANIM_WRITE_API)
 typedef enum zend_enum_Gd_Gif_DisposalMethod {
@@ -13,4 +13,4 @@ typedef enum zend_enum_Gd_Gif_DisposalMethod {
 } zend_enum_Gd_Gif_DisposalMethod;
 #endif
 
-#endif /* ZEND_GD_GIF_DECL_b612bb080a22516e6ca4a67810f98d3f86d49d34_H */
+#endif /* ZEND_GD_GIF_DECL_aa533b9cbba92785fafdaa455ca800f58697dec5_H */

@@ -5,13 +5,6 @@
  * @generate-c-enums
  */
 
-namespace Gd\Codec {
-    /** @strict-properties */
-    class CodecException extends \RuntimeException
-    {
-    }
-}
-
 namespace Gd\Jpeg {
 #ifdef HAVE_GD_JPEG_CODEC
     enum ColorSpace: int

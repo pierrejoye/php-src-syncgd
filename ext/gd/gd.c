@@ -108,6 +108,7 @@ static void php_imagettftext_common(INTERNAL_FUNCTION_PARAMETERS, int);
 #include "gd_tiff.h"
 #include "gd_jpeg.h"
 #include "gd_metadata.h"
+#include "gd_exception.h"
 #include "gd_image.h"
 #ifdef HAVE_GD_BUNDLED
 # include "gd_2d.h"
@@ -355,6 +356,7 @@ void php_gd_error_method(int type, const char *format, va_list args)
 /* {{{ PHP_MINIT_FUNCTION */
 PHP_MINIT_FUNCTION(gd)
 {
+	php_gd_exception_minit();
 	php_gd_object_minit_helper();
 	php_gd_font_minit_helper();
 	php_gd_metadata_minit();
@@ -400,23 +402,6 @@ PHP_MINIT_FUNCTION(gd)
 	return SUCCESS;
 }
 /* }}} */
-
-PHP_GD_API zend_class_entry *php_gd_get_codec_exception_ce(void)
-{
-	static zend_class_entry *codec_exception_ce = NULL;
-
-	if (codec_exception_ce == NULL) {
-		codec_exception_ce = zend_hash_str_find_ptr(CG(class_table), "gd\\codec\\codecexception", sizeof("gd\\codec\\codecexception") - 1);
-		if (codec_exception_ce == NULL) {
-			zend_class_entry ce;
-
-			INIT_NS_CLASS_ENTRY(ce, "Gd\\Codec", "CodecException", NULL);
-			codec_exception_ce = zend_register_internal_class_with_flags(&ce, spl_ce_RuntimeException, ZEND_ACC_NO_DYNAMIC_PROPERTIES);
-		}
-	}
-
-	return codec_exception_ce;
-}
 
 /* {{{ PHP_MSHUTDOWN_FUNCTION */
 PHP_MSHUTDOWN_FUNCTION(gd)

@@ -1,5 +1,5 @@
 /* This is a generated file, edit gd_bmp.stub.php instead.
- * Stub hash: 35d3b831632dba976f14d867c71c868c77c1ff80
+ * Stub hash: c691e8d62c725cc20ce537e6095469f9857f921f
  * Has decl header: yes */
 
 #if defined(HAVE_GD_BUNDLED)

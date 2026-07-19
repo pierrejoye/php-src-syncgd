@@ -1,8 +1,8 @@
 /* This is a generated file, edit gd_webp.stub.php instead.
- * Stub hash: 37625afafcb78d26a06be42441e0df4853fb1123 */
+ * Stub hash: e682e3637b1c454e2a1c3f4e1e8223bd80c4f773 */
 
-#ifndef ZEND_GD_WEBP_DECL_37625afafcb78d26a06be42441e0df4853fb1123_H
-#define ZEND_GD_WEBP_DECL_37625afafcb78d26a06be42441e0df4853fb1123_H
+#ifndef ZEND_GD_WEBP_DECL_e682e3637b1c454e2a1c3f4e1e8223bd80c4f773_H
+#define ZEND_GD_WEBP_DECL_e682e3637b1c454e2a1c3f4e1e8223bd80c4f773_H
 
 #if defined(HAVE_GD_WEBP_ANIM_READ_API) || defined(HAVE_GD_WEBP_ANIM_WRITE_API)
 typedef enum zend_enum_Gd_Webp_DisposeMethod {
@@ -18,4 +18,4 @@ typedef enum zend_enum_Gd_Webp_BlendMethod {
 } zend_enum_Gd_Webp_BlendMethod;
 #endif
 
-#endif /* ZEND_GD_WEBP_DECL_37625afafcb78d26a06be42441e0df4853fb1123_H */
+#endif /* ZEND_GD_WEBP_DECL_e682e3637b1c454e2a1c3f4e1e8223bd80c4f773_H */

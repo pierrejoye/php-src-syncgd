@@ -11,6 +11,7 @@ if (!class_exists(Gd\FontFace::class)) {
 --FILE--
 <?php
 $classes = [
+    Gd\GdException::class,
     Gd\FontFace::class,
     Gd\TextOptions::class,
     Gd\TextExtents::class,
@@ -45,8 +46,9 @@ var_dump($ctor->getNumberOfParameters());
 $extents = new ReflectionClass(Gd\TextExtents::class);
 var_dump($extents->isFinal(), $extents->isReadOnly());
 
-foreach ([Gd\Text\TextException::class, Gd\Text\InvalidTextException::class, Gd\Text\UnavailableException::class, Gd\Text\FontException::class, Gd\Text\LayoutException::class, Gd\Text\MemoryException::class] as $class) {
-    var_dump(is_subclass_of($class, RuntimeException::class));
+var_dump(get_parent_class(Gd\Text\TextException::class));
+foreach ([Gd\Text\InvalidTextException::class, Gd\Text\UnavailableException::class, Gd\Text\FontException::class, Gd\Text\LayoutException::class, Gd\Text\MemoryException::class] as $class) {
+    var_dump(is_subclass_of($class, Gd\Text\TextException::class));
 }
 
 $context = new ReflectionClass(Gd\Context::class);
@@ -55,6 +57,7 @@ foreach (['setFontFace', 'setFontSize', 'textPath', 'showText', 'textExtents'] a
 }
 ?>
 --EXPECTF--
+bool(true)
 bool(true)
 bool(true)
 bool(true)
@@ -82,7 +85,7 @@ bool(true)
 int(2)
 bool(true)
 bool(true)
-bool(true)
+string(14) "Gd\GdException"
 bool(true)
 bool(true)
 bool(true)

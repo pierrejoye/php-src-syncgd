@@ -1,5 +1,5 @@
 /* This is a generated file, edit gd_jxl.stub.php instead.
- * Stub hash: a8e8750b9ab17f5cd99085c0b3f289eb2540e739 */
+ * Stub hash: 9c05690910db60e7d458231adaaab4adca273c3f */
 
 #if defined(HAVE_GD_JXL_CODEC)
 ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Gd_Jxl_WriteOptions___construct, 0, 0, 0)

@@ -1,5 +1,5 @@
 /* This is a generated file, edit gd_text.stub.php instead.
- * Stub hash: 29413ce3e63e8b6a11f2007063f770f69e0930e7
+ * Stub hash: b3b2e3b0624c1574e357da971dc2767b02df5e8b
  * Has decl header: yes */
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Gd_FontFace___construct, 0, 0, 0)
@@ -88,12 +88,12 @@ static const zend_function_entry class_Gd_Context_methods[] = {
 	ZEND_FE_END
 };
 
-static zend_class_entry *register_class_Gd_Text_TextException(zend_class_entry *class_entry_RuntimeException)
+static zend_class_entry *register_class_Gd_Text_TextException(zend_class_entry *class_entry_Gd_GdException)
 {
 	zend_class_entry ce, *class_entry;
 
 	INIT_NS_CLASS_ENTRY(ce, "Gd\\Text", "TextException", NULL);
-	class_entry = zend_register_internal_class_with_flags(&ce, class_entry_RuntimeException, ZEND_ACC_NO_DYNAMIC_PROPERTIES);
+	class_entry = zend_register_internal_class_with_flags(&ce, class_entry_Gd_GdException, ZEND_ACC_NO_DYNAMIC_PROPERTIES);
 
 	return class_entry;
 }
@@ -234,6 +234,16 @@ static zend_class_entry *register_class_Gd_TextExtents(void)
 	zend_string *property_yAdvance_name = zend_string_init("yAdvance", sizeof("yAdvance") - 1, true);
 	zend_declare_typed_property(class_entry, property_yAdvance_name, &property_yAdvance_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_DOUBLE));
 	zend_string_release_ex(property_yAdvance_name, true);
+
+	return class_entry;
+}
+
+static zend_class_entry *register_class_Gd_Context(void)
+{
+	zend_class_entry ce, *class_entry;
+
+	INIT_NS_CLASS_ENTRY(ce, "Gd", "Context", class_Gd_Context_methods);
+	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL);
 
 	return class_entry;
 }
