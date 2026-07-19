@@ -142,16 +142,6 @@ static const zend_function_entry class_Gd_Qoi_Codec_methods[] = {
 };
 #endif
 
-static zend_class_entry *register_class_Gd_Codec_CodecException(zend_class_entry *class_entry_RuntimeException)
-{
-	zend_class_entry ce, *class_entry;
-
-	INIT_NS_CLASS_ENTRY(ce, "Gd\\Codec", "CodecException", NULL);
-	class_entry = zend_register_internal_class_with_flags(&ce, class_entry_RuntimeException, ZEND_ACC_NO_DYNAMIC_PROPERTIES);
-
-	return class_entry;
-}
-
 #if defined(HAVE_GD_QOI)
 static zend_class_entry *register_class_Gd_Qoi_ReadOptions(void)
 {

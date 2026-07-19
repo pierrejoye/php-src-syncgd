@@ -1,5 +1,5 @@
 /* This is a generated file, edit gd_avif.stub.php instead.
- * Stub hash: ee5eada0832c776c04f595fc1c623dcabec3a66d
+ * Stub hash: 77478f9469ad6ac04e4a743a3e414b01a2821d79
  * Has decl header: yes */
 
 #if defined(HAVE_GD_AVIF)

@@ -219,7 +219,9 @@ static bool php_gd_heif_initialize_reader(zval *result, zend_string *bytes,
 	}
 #ifdef HAVE_GD_BUNDLED
 	gdHeifInfo gd_info;
-	if (ZSTR_LEN(bytes) > INT_MAX || gdHeifReadMetadataFromPtr((int) ZSTR_LEN(bytes), ZSTR_VAL(bytes), &gd_info, metadata) != GD_META_OK) {
+	gdHeifInfoInit(&gd_info);
+	gd_info.metadata = metadata;
+	if (ZSTR_LEN(bytes) > INT_MAX || gdHeifGetInfoPtr((int) ZSTR_LEN(bytes), ZSTR_VAL(bytes), &gd_info) != GD_META_OK) {
 		gdImageMetadataFree(metadata);
 		php_gd_heif_throw("Failed to read HEIF metadata");
 		return false;
@@ -372,6 +374,58 @@ static bool php_gd_heif_encode_to_string(zval *image_zv, zval *options_zv, zend_
 	gdFree(data);
 	return true;
 }
+
+#ifdef HAVE_GD_BUNDLED
+static void php_gd_heif_write_to_context(INTERNAL_FUNCTION_PARAMETERS, bool require_stream)
+{
+	zval *image_zv;
+	zval *destination;
+	zval *options_zv = NULL;
+	php_gd_heif_write_options options;
+	gdHeifWriteOptions gd_options;
+	gdIOCtx *ctx;
+	int result;
+
+	ZEND_PARSE_PARAMETERS_START(2, 3)
+		Z_PARAM_OBJECT_OF_CLASS(image_zv, gd_image_ce)
+		Z_PARAM_ZVAL(destination)
+		Z_PARAM_OPTIONAL
+		Z_PARAM_OBJECT_OF_CLASS(options_zv, php_gd_heif_write_options_ce)
+	ZEND_PARSE_PARAMETERS_END();
+
+	if (require_stream && Z_TYPE_P(destination) != IS_RESOURCE) {
+		zend_argument_type_error(2, "must be a valid stream resource");
+		RETURN_THROWS();
+	}
+	ZEND_ASSERT(require_stream || Z_TYPE_P(destination) == IS_STRING);
+
+	ctx = php_gd_create_output_context(destination, 2);
+	if (ctx == NULL) {
+		if (!EG(exception)) {
+			php_gd_heif_throw("Failed to open HEIF output");
+		}
+		RETURN_THROWS();
+	}
+
+	if (!php_gd_heif_read_write_options(options_zv, &options)) {
+		ctx->gd_free(ctx);
+		RETURN_THROWS();
+	}
+	gdHeifWriteOptionsInit(&gd_options);
+	gd_options.quality = options.quality;
+	gd_options.lossless = options.lossless ? 1 : 0;
+	gd_options.codec = options.codec;
+	gd_options.chroma = options.chroma;
+	gd_options.metadata = options.metadata;
+	result = gdImageHeifCtxWithOptions(php_gd_libgdimageptr_from_zval_p(image_zv), ctx, &gd_options);
+	ctx->gd_free(ctx);
+
+	if (result != 0) {
+		php_gd_heif_throw("Failed to encode HEIF image");
+		RETURN_THROWS();
+	}
+}
+#endif
 
 PHP_METHOD(Gd_Heif_ReadOptions, __construct)
 {
@@ -665,6 +719,9 @@ PHP_METHOD(Gd_Heif_Codec, toString)
 
 PHP_METHOD(Gd_Heif_Codec, toFile)
 {
+#ifdef HAVE_GD_BUNDLED
+	php_gd_heif_write_to_context(INTERNAL_FUNCTION_PARAM_PASSTHRU, false);
+#else
 	zval *image_zv, *options_zv = NULL;
 	zend_string *path, *bytes;
 	php_stream *stream;
@@ -693,10 +750,14 @@ PHP_METHOD(Gd_Heif_Codec, toFile)
 	}
 	php_stream_close(stream);
 	zend_string_release_ex(bytes, 0);
+#endif
 }
 
 PHP_METHOD(Gd_Heif_Codec, toStream)
 {
+#ifdef HAVE_GD_BUNDLED
+	php_gd_heif_write_to_context(INTERNAL_FUNCTION_PARAM_PASSTHRU, true);
+#else
 	zval *image_zv, *stream_zv, *options_zv = NULL;
 	zend_string *bytes;
 	php_stream *stream;
@@ -726,6 +787,7 @@ PHP_METHOD(Gd_Heif_Codec, toStream)
 		RETURN_THROWS();
 	}
 	zend_string_release_ex(bytes, 0);
+#endif
 }
 #endif
 

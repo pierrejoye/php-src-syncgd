@@ -262,6 +262,10 @@ BGD_DECLARE(int) gdJpegGetInfo(FILE *infile, gdJpegInfo *info)
     gdIOCtx *in;
     int result;
 
+    if (infile == NULL || info == NULL) {
+        return 1;
+    }
+
     in = gdNewFileCtx(infile);
     if (in == NULL) {
         return 1;
@@ -276,7 +280,7 @@ BGD_DECLARE(int) gdJpegGetInfoPtr(int size, const void *data, gdJpegInfo *info)
     gdIOCtx *in;
     int result;
 
-    if (size <= 0 || data == NULL) {
+    if (size <= 0 || data == NULL || info == NULL) {
         return 1;
     }
     in = gdNewDynamicCtxEx(size, (void *)data, 0);

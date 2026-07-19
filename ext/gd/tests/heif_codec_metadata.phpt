@@ -34,18 +34,20 @@ sort($keys);
 var_dump($keys);
 
 foreach ([
-    'exif' => 'a724fb1bad81da5aeea284d7e23887c889d3eac76447c58e802346fcfa1e134e',
+    'exif' => '550b46a1380ab1730a3a32b068db8a19e50bfd60c55b3e9c49f03f0d17f96d97',
     'xmp' => '4f64a8160825b493396d9873aff61c0f95956dd2c6553fd28b9ca8c48207bdb5',
-    'icc' => '20789fdbea9835251a4f0796c8bf45cbd964896044886540da21ffc7457af0ab',
     'iptc' => 'cd275e5a511b2d3b1fffdc9513e28d11a7eca0286767246a5c471ef4f4839fc3',
 ] as $key => $hash) {
     var_dump(hash('sha256', $metadata->get($key)) === $hash);
 }
+var_dump($metadata->has('icc'));
 
-/* The EXIF prefix is part of the opaque public value. */
+/* HEIF's four-byte EXIF container prefix is not part of the public value. */
 var_dump(bin2hex(substr($metadata->get('exif'), 0, 4)));
 
-$changed = $metadata->with('iptc', 'changed opaque IPTC');
+$changed = $metadata
+    ->with('iptc', 'changed opaque IPTC')
+    ->with('icc', 'ignored color profile');
 $file = tempnam(sys_get_temp_dir(), 'heif-metadata-');
 Gd\Heif\Codec::toFile($reader->read(), $file, new Gd\Heif\WriteOptions(
     quality: 20,
@@ -55,7 +57,7 @@ Gd\Heif\Codec::toFile($reader->read(), $file, new Gd\Heif\WriteOptions(
 $roundTrip = Gd\Heif\Reader::fromFile($file)->info()->metadata;
 var_dump($roundTrip->get('exif') === $changed->get('exif'));
 var_dump($roundTrip->get('xmp') === $changed->get('xmp'));
-var_dump($roundTrip->get('icc') === $changed->get('icc'));
+var_dump($roundTrip->has('icc'));
 var_dump($roundTrip->get('iptc') === $changed->get('iptc'));
 unlink($file);
 ?>
@@ -68,22 +70,20 @@ int(8)
 bool(false)
 bool(true)
 bool(true)
-array(4) {
+array(3) {
   [0]=>
   string(4) "exif"
   [1]=>
-  string(3) "icc"
-  [2]=>
   string(4) "iptc"
-  [3]=>
+  [2]=>
   string(3) "xmp"
 }
 bool(true)
 bool(true)
 bool(true)
+bool(false)
+string(8) "00000006"
 bool(true)
-string(8) "0000000a"
 bool(true)
-bool(true)
-bool(true)
+bool(false)
 bool(true)

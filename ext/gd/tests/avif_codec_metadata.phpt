@@ -36,10 +36,12 @@ var_dump($keys);
 var_dump(hash('sha256', $metadata->get('exif')));
 var_dump(hash('sha256', $metadata->get('xmp')));
 
-/* EXIF is opaque, including the libavif four-byte TIFF offset prefix. */
+/* AVIF's four-byte EXIF container prefix is not part of the public value. */
 var_dump(bin2hex(substr($metadata->get('exif'), 0, 4)));
 
-$changed = $metadata->with('xmp', '<x:xmpmeta xmlns:x="adobe:ns:meta/"><rdf:RDF/></x:xmpmeta>');
+$changed = $metadata
+    ->with('xmp', '<x:xmpmeta xmlns:x="adobe:ns:meta/"><rdf:RDF/></x:xmpmeta>')
+    ->with('icc', 'ignored color profile');
 $file = tempnam(sys_get_temp_dir(), 'avif-metadata-');
 Gd\Avif\Codec::toFile($reader->read(), $file, new Gd\Avif\WriteOptions(metadata: $changed));
 
@@ -67,9 +69,9 @@ array(2) {
   [1]=>
   string(3) "xmp"
 }
-string(64) "a724fb1bad81da5aeea284d7e23887c889d3eac76447c58e802346fcfa1e134e"
+string(64) "550b46a1380ab1730a3a32b068db8a19e50bfd60c55b3e9c49f03f0d17f96d97"
 string(64) "4f64a8160825b493396d9873aff61c0f95956dd2c6553fd28b9ca8c48207bdb5"
-string(8) "0000000a"
+string(8) "00000006"
 bool(true)
 bool(true)
 bool(false)

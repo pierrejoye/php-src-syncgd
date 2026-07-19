@@ -6,6 +6,7 @@
 #include "gd.h"
 #include "gd_errors.h"
 #include "gdhelpers.h"
+#include <limits.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -157,6 +158,7 @@ static gdImagePtr GifCloneImage(gdImagePtr src);
 static void GifApplyPreviousDisposal(gdGifRead *gif);
 static int GifCompositeFrame(gdGifRead *gif, gdImagePtr rawFrame);
 static int GifProbeIsAnimated(gdIOCtxPtr in);
+static int GifGetSeekPosition(gdIOCtxPtr in, int *position);
 
 static void GifResetGraphicControl(GifGraphicControl *gce)
 {
@@ -176,6 +178,23 @@ static void GifTrimColorTable(gdImagePtr im)
             break;
         }
     }
+}
+
+static int GifGetSeekPosition(gdIOCtxPtr in, int *position)
+{
+    long current_position;
+
+    if (in == NULL || position == NULL || in->tell == NULL || in->seek == NULL) {
+        return 0;
+    }
+
+    current_position = gdTell(in);
+    if (current_position < 0 || current_position > INT_MAX) {
+        return 0;
+    }
+
+    *position = (int) current_position;
+    return 1;
 }
 
 static int GifReadHeader(gdGifRead *gif)
@@ -568,8 +587,7 @@ BGD_DECLARE(int) gdGifIsAnimated(FILE *fdFile)
     if (fd == NULL) {
         return -1;
     }
-    pos = (int)gdTell(fd);
-    if (pos < 0) {
+    if (!GifGetSeekPosition(fd, &pos)) {
         fd->gd_free(fd);
         return -1;
     }
@@ -585,11 +603,7 @@ BGD_DECLARE(int) gdGifIsAnimatedCtx(gdIOCtxPtr in)
 {
     int result, pos;
 
-    if (in == NULL || in->tell == NULL || in->seek == NULL) {
-        return -1;
-    }
-    pos = (int)gdTell(in);
-    if (pos < 0) {
+    if (!GifGetSeekPosition(in, &pos)) {
         return -1;
     }
     result = GifProbeIsAnimated(in);
@@ -674,7 +688,7 @@ BGD_DECLARE(gdGifReadPtr) gdGifReadOpenCtx(gdIOCtxPtr in)
     gif->ownsCtx = 0;
     GifResetGraphicControl(&gif->gce);
     if (!GifReadHeader(gif) || !GifPrimeFirstImage(gif)) {
-        gdFree(gif);
+        gdGifReadClose(gif);
         return NULL;
     }
 
@@ -721,11 +735,7 @@ BGD_DECLARE(int) gdGifGetInfoCtx(gdIOCtxPtr input, gdGifInfo *info)
     int position;
     int result;
 
-    if (input == NULL || info == NULL || input->tell == NULL || input->seek == NULL) {
-        return 0;
-    }
-    position = (int) gdTell(input);
-    if (position < 0) {
+    if (info == NULL || !GifGetSeekPosition(input, &position)) {
         return 0;
     }
     gif = gdGifReadOpenCtx(input);

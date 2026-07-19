@@ -1,8 +1,11 @@
 /* This is a generated file, edit gd_png.stub.php instead.
- * Stub hash: 0c954796d295e130169be68c95a773b28f939a96
+ * Stub hash: 8b99d48972c7cedd790fb1b9b24df258944af696
  * Has decl header: yes */
 
 #if defined(HAVE_GD_PNG_CODEC)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Gd_Png_ReadOptions___construct, 0, 0, 0)
+ZEND_END_ARG_INFO()
+
 ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Gd_Png_WriteOptions___construct, 0, 0, 0)
 	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, compressionLevel, IS_LONG, 0, "-1")
 	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, filters, IS_ARRAY, 0, "[]")
@@ -32,19 +35,21 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Gd_Png_Info___construct, 0, 0, 18)
 	ZEND_ARG_TYPE_INFO(0, decodedTrueColor, _IS_BOOL, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Gd_Png_Reader___construct, 0, 0, 0)
-ZEND_END_ARG_INFO()
+#define arginfo_class_Gd_Png_Reader___construct arginfo_class_Gd_Png_ReadOptions___construct
 
 ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Gd_Png_Reader_fromFile, 0, 1, Gd\\Png\\Reader, 0)
 	ZEND_ARG_TYPE_INFO(0, path, IS_STRING, 0)
+	ZEND_ARG_OBJ_INFO_WITH_DEFAULT_VALUE(0, options, Gd\\Png\\ReadOptions, 0, "new Gd\\Png\\ReadOptions()")
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Gd_Png_Reader_fromString, 0, 1, Gd\\Png\\Reader, 0)
 	ZEND_ARG_TYPE_INFO(0, bytes, IS_STRING, 0)
+	ZEND_ARG_OBJ_INFO_WITH_DEFAULT_VALUE(0, options, Gd\\Png\\ReadOptions, 0, "new Gd\\Png\\ReadOptions()")
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Gd_Png_Reader_fromStream, 0, 1, Gd\\Png\\Reader, 0)
 	ZEND_ARG_INFO(0, stream)
+	ZEND_ARG_OBJ_INFO_WITH_DEFAULT_VALUE(0, options, Gd\\Png\\ReadOptions, 0, "new Gd\\Png\\ReadOptions()")
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Gd_Png_Reader_info, 0, 0, Gd\\Png\\Info, 0)
@@ -53,18 +58,21 @@ ZEND_END_ARG_INFO()
 ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Gd_Png_Reader_read, 0, 0, GdImage, 0)
 ZEND_END_ARG_INFO()
 
-#define arginfo_class_Gd_Png_Codec___construct arginfo_class_Gd_Png_Reader___construct
+#define arginfo_class_Gd_Png_Codec___construct arginfo_class_Gd_Png_ReadOptions___construct
 
 ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Gd_Png_Codec_fromFile, 0, 1, GdImage, 0)
 	ZEND_ARG_TYPE_INFO(0, path, IS_STRING, 0)
+	ZEND_ARG_OBJ_INFO_WITH_DEFAULT_VALUE(0, options, Gd\\Png\\ReadOptions, 0, "new Gd\\Png\\ReadOptions()")
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Gd_Png_Codec_fromString, 0, 1, GdImage, 0)
 	ZEND_ARG_TYPE_INFO(0, bytes, IS_STRING, 0)
+	ZEND_ARG_OBJ_INFO_WITH_DEFAULT_VALUE(0, options, Gd\\Png\\ReadOptions, 0, "new Gd\\Png\\ReadOptions()")
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Gd_Png_Codec_fromStream, 0, 1, GdImage, 0)
 	ZEND_ARG_INFO(0, stream)
+	ZEND_ARG_OBJ_INFO_WITH_DEFAULT_VALUE(0, options, Gd\\Png\\ReadOptions, 0, "new Gd\\Png\\ReadOptions()")
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Gd_Png_Codec_toFile, 0, 2, IS_VOID, 0)
@@ -86,6 +94,7 @@ ZEND_END_ARG_INFO()
 #endif
 
 #if defined(HAVE_GD_PNG_CODEC)
+ZEND_METHOD(Gd_Png_ReadOptions, __construct);
 ZEND_METHOD(Gd_Png_WriteOptions, __construct);
 ZEND_METHOD(Gd_Png_Info, __construct);
 ZEND_METHOD(Gd_Png_Reader, __construct);
@@ -101,6 +110,13 @@ ZEND_METHOD(Gd_Png_Codec, fromStream);
 ZEND_METHOD(Gd_Png_Codec, toFile);
 ZEND_METHOD(Gd_Png_Codec, toStream);
 ZEND_METHOD(Gd_Png_Codec, toString);
+#endif
+
+#if defined(HAVE_GD_PNG_CODEC)
+static const zend_function_entry class_Gd_Png_ReadOptions_methods[] = {
+	ZEND_ME(Gd_Png_ReadOptions, __construct, arginfo_class_Gd_Png_ReadOptions___construct, ZEND_ACC_PUBLIC)
+	ZEND_FE_END
+};
 #endif
 
 #if defined(HAVE_GD_PNG_CODEC)
@@ -238,6 +254,18 @@ static zend_class_entry *register_class_Gd_Png_CompressionStrategy(void)
 	zend_enum_add_case_cstr(class_entry, "Rle", NULL);
 
 	zend_enum_add_case_cstr(class_entry, "Fixed", NULL);
+
+	return class_entry;
+}
+#endif
+
+#if defined(HAVE_GD_PNG_CODEC)
+static zend_class_entry *register_class_Gd_Png_ReadOptions(void)
+{
+	zend_class_entry ce, *class_entry;
+
+	INIT_NS_CLASS_ENTRY(ce, "Gd\\Png", "ReadOptions", class_Gd_Png_ReadOptions_methods);
+	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL|ZEND_ACC_NO_DYNAMIC_PROPERTIES|ZEND_ACC_READONLY_CLASS);
 
 	return class_entry;
 }

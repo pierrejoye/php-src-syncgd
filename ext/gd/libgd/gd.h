@@ -1803,6 +1803,7 @@ gdImageCreateFromJpegCtxEx(gdIOCtxPtr infile, int ignore_warning);
  * 
  * @return Returns a gdImagePtr on success, or NULL on failure.
  */
+
 /**
  * @brief Create an image from a JPEG gdIOCtx using read options.
  * 
@@ -1869,6 +1870,7 @@ gdImageCreateFromJpegPtrWithOptions(int size, void *data, const gdJpegReadOption
  * 
  * @return Returns a gdImagePtr on success, or NULL on failure.
  */
+
 /**
  * @brief Return a string describing the linked JPEG library version.
  * 
@@ -2932,7 +2934,17 @@ typedef struct {
     const gdImageMetadata *metadata; /**< Optional metadata to embed in the HEIF file. */
 } gdHeifWriteOptions;
 
-/** @brief Information extracted from the primary HEIF image and container. */
+/**
+ * @brief Information extracted from a HEIF image and its container.
+ *
+ * Info reports facts available in the input independently of whether GD can
+ * decode or write every feature. Width, height, alpha, and bit depth describe
+ * the primary image. top_level_image_count and is_animation describe the
+ * container when available; they do not add a frame/page decoding API.
+ * metadata is caller-owned and is populated with canonical exif, xmp, and
+ * iptc profiles. HEIF's ICC color profile is intentionally not exposed as
+ * metadata.
+ */
 typedef struct {
     int width;
     int height;
@@ -2940,11 +2952,31 @@ typedef struct {
     int has_alpha;
     int bit_depth;
     int is_animation;
+    gdImageMetadata *metadata;
 } gdHeifInfo;
 
-BGD_DECLARE(int)
-gdHeifReadMetadataFromPtr(int size, const void *data, gdHeifInfo *info,
-                          gdImageMetadata *metadata);
+/**
+ * @brief Initialize HEIF information with gd defaults.
+ *
+ * Set info->metadata to a caller-owned metadata object after initialization
+ * when metadata should be collected.
+ */
+BGD_DECLARE(void) gdHeifInfoInit(gdHeifInfo *info);
+
+/**
+ * @brief Read HEIF information from a stdio stream.
+ *
+ * The input stream is borrowed and remains open. Returns GD_META_OK on
+ * success; otherwise returns a GD_META_* error code.
+ */
+BGD_DECLARE(int) gdHeifGetInfo(FILE *inFile, gdHeifInfo *info);
+
+/** @brief Read HEIF information from a gdIOCtx without closing it. */
+BGD_DECLARE(int) gdHeifGetInfoCtx(gdIOCtxPtr in, gdHeifInfo *info);
+
+/** @brief Read HEIF information from an in-memory buffer without taking ownership. */
+BGD_DECLARE(int) gdHeifGetInfoPtr(int size, const void *data, gdHeifInfo *info);
+
 
 /**
  * @brief Initialize HEIF read options with gd defaults.
@@ -3012,12 +3044,6 @@ BGD_DECLARE(gdImagePtr) gdImageCreateFromHeifPtr(int size, void *data);
  */
 BGD_DECLARE(gdImagePtr)
 gdImageCreateFromHeifPtrWithOptions(int size, void *data, const gdHeifReadOptions *options);
-
-/** Create a truecolor image from HEIF data and collect metadata. */
-BGD_DECLARE(gdImagePtr)
-gdImageCreateFromHeifPtrWithOptionsAndMetadata(int size, void *data,
-                                                const gdHeifReadOptions *options,
-                                                gdImageMetadata *metadata);
 
 /**
  * @brief Create a truecolor image from HEIF data in an IO context.
@@ -3111,6 +3137,24 @@ gdImageHeifPtrEx(gdImagePtr im, int *size, int quality, gdHeifCodec codec, gdHei
  */
 BGD_DECLARE(void *)
 gdImageHeifPtrWithOptions(gdImagePtr im, int *size, const gdHeifWriteOptions *options);
+
+/**
+ * @brief Write HEIF data to a stdio stream using write options.
+ *
+ * The stream is borrowed and remains open. Returns 0 on success and nonzero
+ * on failure. Pass NULL for options to use gd defaults.
+ */
+BGD_DECLARE(int)
+gdImageHeifWithOptions(gdImagePtr im, FILE *outFile, const gdHeifWriteOptions *options);
+
+/**
+ * @brief Write HEIF data to a gdIOCtx using write options.
+ *
+ * The context is borrowed and remains open. Returns 0 on success and nonzero
+ * on failure. Pass NULL for options to use gd defaults.
+ */
+BGD_DECLARE(int)
+gdImageHeifCtxWithOptions(gdImagePtr im, gdIOCtxPtr outfile, const gdHeifWriteOptions *options);
 
 /**
  * @brief Write a truecolor image as HEIF data to an IO context.
@@ -3251,7 +3295,15 @@ typedef struct {
     const gdImageMetadata *metadata; /**< Optional EXIF/XMP metadata to embed. */
 } gdAvifWriteOptions;
 
-/** @brief Basic information extracted from the primary AVIF image. */
+/**
+ * @brief Information extracted from the AVIF image and container.
+ *
+ * The fields describe facts available from the input, independently of the
+ * features currently decoded or written by GD. Dimensions, alpha, bit depth,
+ * and YUV format describe the primary image. Sequence fields describe the
+ * AVIF input when present. metadata is caller-owned and contains canonical
+ * EXIF and XMP profiles; ICC is not part of the public metadata path.
+ */
 typedef struct {
     int width;
     int height;
@@ -3262,11 +3314,20 @@ typedef struct {
     int has_alpha;
     int bit_depth;
     int yuv_format;
+    gdImageMetadata *metadata;
 } gdAvifInfo;
 
-BGD_DECLARE(int)
-gdAvifReadMetadataFromPtr(int size, const void *data, gdAvifInfo *info,
-                          gdImageMetadata *metadata);
+/** @brief Initialize AVIF information and clear the metadata pointer. */
+BGD_DECLARE(void) gdAvifInfoInit(gdAvifInfo *info);
+
+/** @brief Read AVIF information from a stdio stream without closing it. */
+BGD_DECLARE(int) gdAvifGetInfo(FILE *inFile, gdAvifInfo *info);
+
+/** @brief Read AVIF information from a gdIOCtx without closing it. */
+BGD_DECLARE(int) gdAvifGetInfoCtx(gdIOCtxPtr in, gdAvifInfo *info);
+
+/** @brief Read AVIF information from memory without taking ownership. */
+BGD_DECLARE(int) gdAvifGetInfoPtr(int size, const void *data, gdAvifInfo *info);
 
 /**
  * @brief Initialize AVIF write options with gd defaults.
@@ -3357,6 +3418,14 @@ gdImageAvifPtrEx(gdImagePtr im, int *size, int quality, int speed);
  */
 BGD_DECLARE(void *)
 gdImageAvifPtrWithOptions(gdImagePtr im, int *size, const gdAvifWriteOptions *options);
+
+/** @brief Write AVIF data to a stdio stream using write options. */
+BGD_DECLARE(int)
+gdImageAvifWithOptions(gdImagePtr im, FILE *outFile, const gdAvifWriteOptions *options);
+
+/** @brief Write AVIF data to a gdIOCtx using write options. */
+BGD_DECLARE(int)
+gdImageAvifCtxWithOptions(gdImagePtr im, gdIOCtxPtr outfile, const gdAvifWriteOptions *options);
 
 /**
  * @brief Write a truecolor image as AVIF data to an IO context.
@@ -5314,6 +5383,7 @@ BGD_DECLARE(void *) gdImageJpegPtr(gdImagePtr im, int *size, int quality);
  * 
  * @return A pointer to the newly allocated buffer containing the JPEG data, or NULL on failure.
  */
+
 /**
  * @brief Write an image as JPEG data to a memory buffer using write options.
  * 
@@ -6428,6 +6498,8 @@ BGD_DECLARE(void)
 gdImageFilledEllipse(gdImagePtr im, int cx, int cy, int w, int h, int color);
 
 BGD_DECLARE(void) gdImageAABlend(gdImagePtr im);
+
+BGD_DECLARE(void) gdImageAALine(gdImagePtr im, int x1, int y1, int x2, int y2, int col);
 
 BGD_DECLARE(void) gdImageLine(gdImagePtr im, int x1, int y1, int x2, int y2, int color);
 

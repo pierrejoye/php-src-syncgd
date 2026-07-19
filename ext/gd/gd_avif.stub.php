@@ -20,7 +20,11 @@ namespace Gd\Avif {
         case Yuv444;
     }
 
-    /** @strict-properties */
+    /**
+     * AVIF read options are reserved for future decoder options. The current
+     * implementation has no active read options.
+     * @strict-properties
+     */
     final readonly class ReadOptions
     {
         public function __construct() {}

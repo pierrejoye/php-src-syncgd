@@ -16,6 +16,7 @@ $options = new Gd\Png\WriteOptions();
 var_dump($options->compressionLevel);
 var_dump($options->filters);
 var_dump($options->compressionStrategy);
+var_dump(new Gd\Png\ReadOptions() instanceof Gd\Png\ReadOptions);
 
 $optionsReflection = new ReflectionClass(Gd\Png\WriteOptions::class);
 $codecReflection = new ReflectionClass(Gd\Png\Codec::class);
@@ -29,6 +30,14 @@ foreach (['toFile', 'toStream', 'toString'] as $method) {
     $reflection = $codecReflection->getMethod($method);
     echo $method, ':', $reflection->getReturnType(), ':', $reflection->getNumberOfRequiredParameters(), "\n";
 }
+
+foreach ([Gd\Png\Reader::class, Gd\Png\Codec::class] as $class) {
+    foreach (['fromFile', 'fromString', 'fromStream'] as $method) {
+        $reflection = new ReflectionMethod($class, $method);
+        $parameter = $reflection->getParameters()[1];
+        echo $class, '::', $method, ':', $parameter->getType(), ':', $parameter->isDefaultValueAvailable(), "\n";
+    }
+}
 ?>
 --EXPECT--
 bool(true)
@@ -36,6 +45,7 @@ int(-1)
 array(0) {
 }
 enum(Gd\Png\CompressionStrategy::Default)
+bool(true)
 bool(true)
 bool(true)
 bool(true)
@@ -67,3 +77,9 @@ array(5) {
 toFile:void:2
 toStream:void:2
 toString:string:1
+Gd\Png\Reader::fromFile:Gd\Png\ReadOptions:1
+Gd\Png\Reader::fromString:Gd\Png\ReadOptions:1
+Gd\Png\Reader::fromStream:Gd\Png\ReadOptions:1
+Gd\Png\Codec::fromFile:Gd\Png\ReadOptions:1
+Gd\Png\Codec::fromString:Gd\Png\ReadOptions:1
+Gd\Png\Codec::fromStream:Gd\Png\ReadOptions:1

@@ -6,28 +6,54 @@
 #include "gdhelpers.h"
 
 #include <limits.h>
+#include <string.h>
 
 #ifdef HAVE_LIBAVIF
 
 static int gd_avif_set_profile(gdImageMetadata *metadata, const char *key,
                                const avifRWData *profile)
 {
+    const unsigned char *data = profile->data;
+    size_t size = profile->size;
+
+    if (metadata == NULL) {
+        return GD_META_OK;
+    }
     if (profile->size == 0) {
         return GD_META_OK;
     }
-    return gdImageMetadataSetProfile(metadata, key, profile->data, profile->size);
+    if (strcmp(key, "exif") == 0) {
+        if (size < 4) {
+            return GD_META_ERR_PARSE;
+        }
+        data += 4;
+        size -= 4;
+    }
+    return gdImageMetadataSetProfile(metadata, key, data, size);
 }
 
-int gdAvifReadMetadataFromPtr(int size, const void *data, gdAvifInfo *info,
-                              gdImageMetadata *metadata)
+BGD_DECLARE(void) gdAvifInfoInit(gdAvifInfo *info)
+{
+    if (info == NULL) {
+        return;
+    }
+    memset(info, 0, sizeof(*info));
+}
+
+BGD_DECLARE(int) gdAvifGetInfoPtr(int size, const void *data, gdAvifInfo *info)
 {
     avifDecoder *decoder = NULL;
     avifResult result;
     int status;
+    gdImageMetadata *metadata;
 
-    if (size < 0 || data == NULL || info == NULL || metadata == NULL) {
+    if (size < 0 || data == NULL || info == NULL) {
         return GD_META_ERR_INVALID;
     }
+
+    metadata = info->metadata;
+    memset(info, 0, sizeof(*info));
+    info->metadata = metadata;
 
     decoder = avifDecoderCreate();
     if (decoder == NULL) {
@@ -63,7 +89,7 @@ int gdAvifReadMetadataFromPtr(int size, const void *data, gdAvifInfo *info,
     info->width = (int) decoder->image->width;
     info->height = (int) decoder->image->height;
     info->is_progressive = decoder->progressiveState != AVIF_PROGRESSIVE_STATE_UNAVAILABLE;
-    info->is_animation = !info->is_progressive && decoder->imageCount > 1;
+    info->is_animation = decoder->imageCount > 1;
     info->frame_count = decoder->imageCount;
     info->duration = decoder->duration;
     info->has_alpha = decoder->alphaPresent == AVIF_TRUE;
@@ -85,12 +111,84 @@ int gdAvifReadMetadataFromPtr(int size, const void *data, gdAvifInfo *info,
             info->yuv_format = GD_AVIF_PIXEL_FORMAT_NONE;
             break;
     }
-    status = gd_avif_set_profile(metadata, "exif", &decoder->image->exif);
+    status = gd_avif_set_profile(info->metadata, "exif", &decoder->image->exif);
     if (status == GD_META_OK) {
-        status = gd_avif_set_profile(metadata, "xmp", &decoder->image->xmp);
+        status = gd_avif_set_profile(info->metadata, "xmp", &decoder->image->xmp);
     }
 
     avifDecoderDestroy(decoder);
+    return status;
+}
+
+static int gd_avif_read_ctx_to_memory(gdIOCtxPtr in, void **data, int *size)
+{
+    unsigned char *buffer = NULL;
+    size_t used = 0;
+    size_t capacity = 0;
+    int count;
+
+    if (in == NULL || data == NULL || size == NULL) {
+        return GD_META_ERR_INVALID;
+    }
+    for (;;) {
+        unsigned char *next;
+
+        if (used > INT_MAX - 4096) {
+            gdFree(buffer);
+            return GD_META_ERR_LIMIT;
+        }
+        if (capacity - used < 4096) {
+            capacity += 4096;
+            next = gdRealloc(buffer, capacity);
+            if (next == NULL) {
+                gdFree(buffer);
+                return GD_META_ERR_NOMEM;
+            }
+            buffer = next;
+        }
+        count = gdGetBuf(buffer + used, 4096, in);
+        if (count < 0) {
+            gdFree(buffer);
+            return GD_META_ERR_PARSE;
+        }
+        used += (size_t) count;
+        if (count != 4096) {
+            break;
+        }
+    }
+    *data = buffer;
+    *size = (int) used;
+    return GD_META_OK;
+}
+
+BGD_DECLARE(int) gdAvifGetInfoCtx(gdIOCtxPtr in, gdAvifInfo *info)
+{
+    void *data;
+    int size;
+    int status = gd_avif_read_ctx_to_memory(in, &data, &size);
+
+    if (status != GD_META_OK) {
+        return status;
+    }
+    status = gdAvifGetInfoPtr(size, data, info);
+    gdFree(data);
+    return status;
+}
+
+BGD_DECLARE(int) gdAvifGetInfo(FILE *inFile, gdAvifInfo *info)
+{
+    gdIOCtx *in;
+    int status;
+
+    if (inFile == NULL) {
+        return GD_META_ERR_INVALID;
+    }
+    in = gdNewFileCtx(inFile);
+    if (in == NULL) {
+        return GD_META_ERR_NOMEM;
+    }
+    status = gdAvifGetInfoCtx(in, info);
+    in->gd_free(in);
     return status;
 }
 
@@ -109,7 +207,14 @@ int gdAvifApplyMetadata(avifImage *image, const gdImageMetadata *metadata)
         if (size > INT_MAX) {
             return GD_META_ERR_LIMIT;
         }
-        result = avifImageSetMetadataExif(image, data, size);
+        unsigned char *exif = gdMalloc(size + 4);
+        if (exif == NULL) {
+            return GD_META_ERR_NOMEM;
+        }
+        memset(exif, 0, 4);
+        memcpy(exif + 4, data, size);
+        result = avifImageSetMetadataExif(image, exif, size + 4);
+        gdFree(exif);
         if (result != AVIF_RESULT_OK) {
             return GD_META_ERR_INVALID;
         }
@@ -127,6 +232,37 @@ int gdAvifApplyMetadata(avifImage *image, const gdImageMetadata *metadata)
     }
 
     return GD_META_OK;
+}
+
+#else
+
+BGD_DECLARE(void) gdAvifInfoInit(gdAvifInfo *info)
+{
+    if (info != NULL) {
+        memset(info, 0, sizeof(*info));
+    }
+}
+
+BGD_DECLARE(int) gdAvifGetInfoPtr(int size, const void *data, gdAvifInfo *info)
+{
+    (void) size;
+    (void) data;
+    (void) info;
+    return GD_META_ERR_UNSUPPORTED;
+}
+
+BGD_DECLARE(int) gdAvifGetInfoCtx(gdIOCtxPtr in, gdAvifInfo *info)
+{
+    (void) in;
+    (void) info;
+    return GD_META_ERR_UNSUPPORTED;
+}
+
+BGD_DECLARE(int) gdAvifGetInfo(FILE *inFile, gdAvifInfo *info)
+{
+    (void) inFile;
+    (void) info;
+    return GD_META_ERR_UNSUPPORTED;
 }
 
 #endif

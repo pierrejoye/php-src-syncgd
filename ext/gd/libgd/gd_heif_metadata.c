@@ -10,6 +10,8 @@
 
 #ifdef HAVE_LIBHEIF
 
+#define GD_HEIF_METADATA_ALLOC_STEP (4 * 1024)
+
 static int gd_heif_set_profile(gdImageMetadata *metadata, const char *key,
                                 const void *data, size_t size)
 {
@@ -25,8 +27,12 @@ static int gd_heif_collect_metadata(const struct heif_image_handle *handle,
     int count, i;
     heif_item_id *ids = NULL;
 
-    if (handle == NULL || metadata == NULL) {
+    if (handle == NULL) {
         return GD_META_ERR_INVALID;
+    }
+
+    if (metadata == NULL) {
+        return GD_META_OK;
     }
 
     count = heif_image_handle_get_number_of_metadata_blocks(handle, NULL);
@@ -47,6 +53,7 @@ static int gd_heif_collect_metadata(const struct heif_image_handle *handle,
         const char *key = NULL;
         size_t size;
         unsigned char *data;
+        unsigned char *profile_data;
         struct heif_error error;
 
         if (type != NULL && strcmp(type, "Exif") == 0) {
@@ -73,7 +80,17 @@ static int gd_heif_collect_metadata(const struct heif_image_handle *handle,
             gdFree(ids);
             return GD_META_ERR_PARSE;
         }
-        if (gd_heif_set_profile(metadata, key, data, size) != GD_META_OK) {
+        profile_data = data;
+        if (key != NULL && strcmp(key, "exif") == 0) {
+            if (size < 4) {
+                gdFree(data);
+                gdFree(ids);
+                return GD_META_ERR_PARSE;
+            }
+            profile_data += 4;
+            size -= 4;
+        }
+        if (gd_heif_set_profile(metadata, key, profile_data, size) != GD_META_OK) {
             gdFree(data);
             gdFree(ids);
             return GD_META_ERR_LIMIT;
@@ -81,25 +98,6 @@ static int gd_heif_collect_metadata(const struct heif_image_handle *handle,
         gdFree(data);
     }
     gdFree(ids);
-
-    size_t size = heif_image_handle_get_raw_color_profile_size(handle);
-    if (size > 0 && gdImageMetadataGetProfile(metadata, "icc", NULL) == NULL) {
-        unsigned char *data = (unsigned char *) gdMalloc(size);
-        struct heif_error error;
-        if (data == NULL) {
-            return GD_META_ERR_NOMEM;
-        }
-        error = heif_image_handle_get_raw_color_profile(handle, data);
-        if (error.code != heif_error_Ok) {
-            gdFree(data);
-            return GD_META_ERR_PARSE;
-        }
-        if (gdImageMetadataSetProfile(metadata, "icc", data, size) != GD_META_OK) {
-            gdFree(data);
-            return GD_META_ERR_LIMIT;
-        }
-        gdFree(data);
-    }
 
     return GD_META_OK;
 }
@@ -119,17 +117,28 @@ static int gd_heif_is_animation(const void *data, int size)
     return 0;
 }
 
-int gdHeifReadMetadataFromPtr(int size, const void *data, gdHeifInfo *info,
-                              gdImageMetadata *metadata)
+BGD_DECLARE(void) gdHeifInfoInit(gdHeifInfo *info)
+{
+    if (info == NULL) {
+        return;
+    }
+    memset(info, 0, sizeof(*info));
+}
+
+BGD_DECLARE(int) gdHeifGetInfoPtr(int size, const void *data, gdHeifInfo *info)
 {
     struct heif_context *context;
     struct heif_image_handle *handle = NULL;
     struct heif_error error;
     int status;
+    gdImageMetadata *metadata;
 
-    if (size < 0 || data == NULL || info == NULL || metadata == NULL) {
+    if (size < 0 || data == NULL || info == NULL) {
         return GD_META_ERR_INVALID;
     }
+    metadata = info->metadata;
+    memset(info, 0, sizeof(*info));
+    info->metadata = metadata;
     context = heif_context_alloc();
     if (context == NULL) {
         return GD_META_ERR_NOMEM;
@@ -150,9 +159,81 @@ int gdHeifReadMetadataFromPtr(int size, const void *data, gdHeifInfo *info,
     info->has_alpha = heif_image_handle_has_alpha_channel(handle) != 0;
     info->bit_depth = heif_image_handle_get_luma_bits_per_pixel(handle);
     info->is_animation = gd_heif_is_animation(data, size);
-    status = gd_heif_collect_metadata(handle, metadata);
+    status = gd_heif_collect_metadata(handle, info->metadata);
     heif_image_handle_release(handle);
     heif_context_free(context);
+    return status;
+}
+
+static int gd_heif_read_ctx_to_memory(gdIOCtxPtr in, void **data, int *size)
+{
+    unsigned char *buffer = NULL;
+    size_t used = 0;
+    size_t capacity = 0;
+    int count;
+
+    if (in == NULL || data == NULL || size == NULL) {
+        return GD_META_ERR_INVALID;
+    }
+    for (;;) {
+        unsigned char *next;
+
+        if (used > INT_MAX - GD_HEIF_METADATA_ALLOC_STEP) {
+            gdFree(buffer);
+            return GD_META_ERR_LIMIT;
+        }
+        if (capacity - used < GD_HEIF_METADATA_ALLOC_STEP) {
+            capacity += GD_HEIF_METADATA_ALLOC_STEP;
+            next = (unsigned char *) gdRealloc(buffer, capacity);
+            if (next == NULL) {
+                gdFree(buffer);
+                return GD_META_ERR_NOMEM;
+            }
+            buffer = next;
+        }
+        count = gdGetBuf(buffer + used, GD_HEIF_METADATA_ALLOC_STEP, in);
+        if (count < 0) {
+            gdFree(buffer);
+            return GD_META_ERR_PARSE;
+        }
+        used += (size_t) count;
+        if (count != GD_HEIF_METADATA_ALLOC_STEP) {
+            break;
+        }
+    }
+    *data = buffer;
+    *size = (int) used;
+    return GD_META_OK;
+}
+
+BGD_DECLARE(int) gdHeifGetInfoCtx(gdIOCtxPtr in, gdHeifInfo *info)
+{
+    void *data;
+    int size;
+    int status = gd_heif_read_ctx_to_memory(in, &data, &size);
+
+    if (status != GD_META_OK) {
+        return status;
+    }
+    status = gdHeifGetInfoPtr(size, data, info);
+    gdFree(data);
+    return status;
+}
+
+BGD_DECLARE(int) gdHeifGetInfo(FILE *inFile, gdHeifInfo *info)
+{
+    gdIOCtx *in;
+    int status;
+
+    if (inFile == NULL) {
+        return GD_META_ERR_INVALID;
+    }
+    in = gdNewFileCtx(inFile);
+    if (in == NULL) {
+        return GD_META_ERR_NOMEM;
+    }
+    status = gdHeifGetInfoCtx(in, info);
+    in->gd_free(in);
     return status;
 }
 
@@ -164,32 +245,6 @@ static int gd_heif_apply_profile(const gdImageMetadata *metadata, const char *ke
         return GD_META_OK;
     }
     return *size > INT_MAX ? GD_META_ERR_LIMIT : GD_META_OK;
-}
-
-static int gd_heif_apply_icc(struct heif_image *image, const gdImageMetadata *metadata)
-{
-    const unsigned char *data;
-    size_t size;
-    struct heif_error error;
-
-    if (metadata == NULL || image == NULL) {
-        return GD_META_OK;
-    }
-    if (gd_heif_apply_profile(metadata, "icc", &data, &size) != GD_META_OK) {
-        return GD_META_ERR_LIMIT;
-    }
-    if (data != NULL) {
-        error = heif_image_set_raw_color_profile(image, "prof", data, size);
-        if (error.code != heif_error_Ok) {
-            return GD_META_ERR_INVALID;
-        }
-    }
-    return GD_META_OK;
-}
-
-int gdHeifApplyImageMetadata(struct heif_image *image, const gdImageMetadata *metadata)
-{
-    return gd_heif_apply_icc(image, metadata);
 }
 
 int gdHeifApplyMetadata(struct heif_context *context, struct heif_image *image,
@@ -212,12 +267,7 @@ int gdHeifApplyMetadata(struct heif_context *context, struct heif_image *image,
         return GD_META_ERR_LIMIT;
     }
     if (data != NULL) {
-        /* libheif returns the stored EXIF item including its four-byte
-         * TIFF-offset prefix, while the add API expects the EXIF payload. */
-        if (size < 4) {
-            return GD_META_ERR_INVALID;
-        }
-        error = heif_context_add_exif_metadata(context, handle, data + 4, (int) (size - 4));
+        error = heif_context_add_exif_metadata(context, handle, data, (int) size);
         if (error.code != heif_error_Ok) {
             return GD_META_ERR_INVALID;
         }
@@ -242,6 +292,37 @@ int gdHeifApplyMetadata(struct heif_context *context, struct heif_image *image,
         }
     }
     return GD_META_OK;
+}
+
+#else
+
+BGD_DECLARE(void) gdHeifInfoInit(gdHeifInfo *info)
+{
+    if (info != NULL) {
+        memset(info, 0, sizeof(*info));
+    }
+}
+
+BGD_DECLARE(int) gdHeifGetInfoPtr(int size, const void *data, gdHeifInfo *info)
+{
+    (void) size;
+    (void) data;
+    (void) info;
+    return GD_META_ERR_UNSUPPORTED;
+}
+
+BGD_DECLARE(int) gdHeifGetInfoCtx(gdIOCtxPtr in, gdHeifInfo *info)
+{
+    (void) in;
+    (void) info;
+    return GD_META_ERR_UNSUPPORTED;
+}
+
+BGD_DECLARE(int) gdHeifGetInfo(FILE *inFile, gdHeifInfo *info)
+{
+    (void) inFile;
+    (void) info;
+    return GD_META_ERR_UNSUPPORTED;
 }
 
 #endif

@@ -6,8 +6,9 @@
 #ifdef HAVE_LIBAVIF
 #include <avif/avif.h>
 
-int gdAvifReadMetadataFromPtr(int size, const void *data, gdAvifInfo *info,
-                              gdImageMetadata *metadata);
+int gdAvifGetInfoPtr(int size, const void *data, gdAvifInfo *info);
+int gdAvifGetInfoCtx(gdIOCtxPtr in, gdAvifInfo *info);
+int gdAvifGetInfo(FILE *inFile, gdAvifInfo *info);
 int gdAvifApplyMetadata(avifImage *image, const gdImageMetadata *metadata);
 #endif
 

@@ -53,6 +53,16 @@ namespace Gd\Png {
         case Fixed;
     }
 
+    /**
+     * PNG read options are reserved for future decoder options. The current
+     * implementation has no active read options.
+     * @strict-properties
+     */
+    final readonly class ReadOptions
+    {
+        public function __construct() {}
+    }
+
     /** @strict-properties */
     final readonly class WriteOptions implements \Gd\Codec\WriteOptions
     {
@@ -128,11 +138,11 @@ namespace Gd\Png {
     {
         private function __construct() {}
 
-        public static function fromFile(string $path): \Gd\Png\Reader {}
-        public static function fromString(string $bytes): \Gd\Png\Reader {}
+        public static function fromFile(string $path, ReadOptions $options = new ReadOptions()): \Gd\Png\Reader {}
+        public static function fromString(string $bytes, ReadOptions $options = new ReadOptions()): \Gd\Png\Reader {}
 
         /** @param resource $stream */
-        public static function fromStream($stream): \Gd\Png\Reader {}
+        public static function fromStream($stream, ReadOptions $options = new ReadOptions()): \Gd\Png\Reader {}
 
         public function info(): \Gd\Png\Info {}
         public function read(): \GdImage {}
@@ -142,11 +152,11 @@ namespace Gd\Png {
     {
         private function __construct() {}
 
-        public static function fromFile(string $path): \GdImage {}
-        public static function fromString(string $bytes): \GdImage {}
+        public static function fromFile(string $path, ReadOptions $options = new ReadOptions()): \GdImage {}
+        public static function fromString(string $bytes, ReadOptions $options = new ReadOptions()): \GdImage {}
 
         /** @param resource $stream */
-        public static function fromStream($stream): \GdImage {}
+        public static function fromStream($stream, ReadOptions $options = new ReadOptions()): \GdImage {}
 
         public static function toFile(
             \GdImage $image,

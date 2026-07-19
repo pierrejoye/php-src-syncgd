@@ -41,6 +41,7 @@ static zend_class_entry *php_gd_png_interlace_method_ce;
 static zend_class_entry *php_gd_png_physical_unit_ce;
 static zend_class_entry *php_gd_png_filter_ce;
 static zend_class_entry *php_gd_png_compression_strategy_ce;
+static zend_class_entry *php_gd_png_read_options_ce;
 static zend_class_entry *php_gd_png_write_options_ce;
 static zend_class_entry *php_gd_png_info_ce;
 static zend_class_entry *php_gd_png_reader_ce;
@@ -482,14 +483,23 @@ PHP_METHOD(Gd_Png_Codec, __construct)
 	ZEND_PARSE_PARAMETERS_NONE();
 }
 
+PHP_METHOD(Gd_Png_ReadOptions, __construct)
+{
+	ZEND_PARSE_PARAMETERS_NONE();
+}
+
 PHP_METHOD(Gd_Png_Codec, fromString)
 {
 	zend_string *bytes;
+	zval *options_zv = NULL;
 	gdImagePtr image;
 
-	ZEND_PARSE_PARAMETERS_START(1, 1)
+	ZEND_PARSE_PARAMETERS_START(1, 2)
 		Z_PARAM_STR(bytes)
+		Z_PARAM_OPTIONAL
+		Z_PARAM_OBJECT_OF_CLASS(options_zv, php_gd_png_read_options_ce)
 	ZEND_PARSE_PARAMETERS_END();
+	(void) options_zv;
 
 	if (!php_gd_png_validate_bytes(bytes, 1)) {
 		RETURN_THROWS();
@@ -508,11 +518,15 @@ PHP_METHOD(Gd_Png_Codec, fromString)
 PHP_METHOD(Gd_Png_Codec, fromFile)
 {
 	zend_string *path, *bytes;
+	zval *options_zv = NULL;
 	gdImagePtr image;
 
-	ZEND_PARSE_PARAMETERS_START(1, 1)
+	ZEND_PARSE_PARAMETERS_START(1, 2)
 		Z_PARAM_PATH_STR(path)
+		Z_PARAM_OPTIONAL
+		Z_PARAM_OBJECT_OF_CLASS(options_zv, php_gd_png_read_options_ce)
 	ZEND_PARSE_PARAMETERS_END();
+	(void) options_zv;
 
 	if (!php_gd_png_read_file_bytes(path, &bytes)) {
 		RETURN_THROWS();
@@ -536,12 +550,16 @@ PHP_METHOD(Gd_Png_Codec, fromFile)
 PHP_METHOD(Gd_Png_Codec, fromStream)
 {
 	zval *stream_zv;
+	zval *options_zv = NULL;
 	zend_string *bytes;
 	gdImagePtr image;
 
-	ZEND_PARSE_PARAMETERS_START(1, 1)
+	ZEND_PARSE_PARAMETERS_START(1, 2)
 		Z_PARAM_ZVAL(stream_zv)
+		Z_PARAM_OPTIONAL
+		Z_PARAM_OBJECT_OF_CLASS(options_zv, php_gd_png_read_options_ce)
 	ZEND_PARSE_PARAMETERS_END();
+	(void) options_zv;
 
 	if (!php_gd_png_read_stream_bytes(stream_zv, &bytes)) {
 		RETURN_THROWS();
@@ -689,10 +707,14 @@ static gdImagePtr php_gd_png_decode_bytes(zend_string *bytes)
 PHP_METHOD(Gd_Png_Reader, fromString)
 {
 	zend_string *bytes;
+	zval *options_zv = NULL;
 
-	ZEND_PARSE_PARAMETERS_START(1, 1)
+	ZEND_PARSE_PARAMETERS_START(1, 2)
 		Z_PARAM_STR(bytes)
+		Z_PARAM_OPTIONAL
+		Z_PARAM_OBJECT_OF_CLASS(options_zv, php_gd_png_read_options_ce)
 	ZEND_PARSE_PARAMETERS_END();
+	(void) options_zv;
 
 	if (!php_gd_png_validate_bytes(bytes, 1)) {
 		RETURN_THROWS();
@@ -705,10 +727,14 @@ PHP_METHOD(Gd_Png_Reader, fromString)
 PHP_METHOD(Gd_Png_Reader, fromFile)
 {
 	zend_string *path, *bytes;
+	zval *options_zv = NULL;
 
-	ZEND_PARSE_PARAMETERS_START(1, 1)
+	ZEND_PARSE_PARAMETERS_START(1, 2)
 		Z_PARAM_PATH_STR(path)
+		Z_PARAM_OPTIONAL
+		Z_PARAM_OBJECT_OF_CLASS(options_zv, php_gd_png_read_options_ce)
 	ZEND_PARSE_PARAMETERS_END();
+	(void) options_zv;
 
 	if (!php_gd_png_read_file_bytes(path, &bytes)) {
 		RETURN_THROWS();
@@ -727,11 +753,15 @@ PHP_METHOD(Gd_Png_Reader, fromFile)
 PHP_METHOD(Gd_Png_Reader, fromStream)
 {
 	zval *stream_zv;
+	zval *options_zv = NULL;
 	zend_string *bytes;
 
-	ZEND_PARSE_PARAMETERS_START(1, 1)
+	ZEND_PARSE_PARAMETERS_START(1, 2)
 		Z_PARAM_ZVAL(stream_zv)
+		Z_PARAM_OPTIONAL
+		Z_PARAM_OBJECT_OF_CLASS(options_zv, php_gd_png_read_options_ce)
 	ZEND_PARSE_PARAMETERS_END();
+	(void) options_zv;
 
 	if (!php_gd_png_read_stream_bytes(stream_zv, &bytes)) {
 		RETURN_THROWS();
@@ -899,6 +929,7 @@ void php_gd_png_minit(void)
 	php_gd_png_physical_unit_ce = register_class_Gd_Png_PhysicalUnit();
 	php_gd_png_filter_ce = register_class_Gd_Png_Filter();
 	php_gd_png_compression_strategy_ce = register_class_Gd_Png_CompressionStrategy();
+	php_gd_png_read_options_ce = register_class_Gd_Png_ReadOptions();
 	php_gd_png_write_options_ce = register_class_Gd_Png_WriteOptions(php_gd_get_codec_write_options_ce());
 	php_gd_png_info_ce = register_class_Gd_Png_Info();
 	php_gd_png_reader_ce = register_class_Gd_Png_Reader();
