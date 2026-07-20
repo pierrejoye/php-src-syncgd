@@ -38,7 +38,7 @@ var_dump(Gd\Webp\AnimReader::isAnimatedString($bytes));
 
 $reader = Gd\Webp\AnimReader::fromString($bytes);
 $info = $reader->info();
-var_dump($info->width, $info->height, $info->frameCount, $info->loopCount);
+var_dump($info->width, $info->height, $info->frameCount, $info->loopCount, $info->isAnimated);
 
 $first = $reader->next();
 $firstImage = $first->image;
@@ -59,6 +59,7 @@ int(4)
 int(4)
 int(2)
 int(2)
+bool(true)
 int(0)
 int(100)
 int(0)

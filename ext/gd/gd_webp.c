@@ -406,10 +406,11 @@ static void php_gd_webp_create_info(zval *result, const gdWebpInfo *info, gdImag
 	object_init_ex(result, php_gd_webp_info_ce);
 	zend_update_property_long(php_gd_webp_info_ce, Z_OBJ_P(result), ZEND_STRL("width"), info->width);
 	zend_update_property_long(php_gd_webp_info_ce, Z_OBJ_P(result), ZEND_STRL("height"), info->height);
-	zend_update_property_long(php_gd_webp_info_ce, Z_OBJ_P(result), ZEND_STRL("frameCount"), info->frameCount);
-	zend_update_property_long(php_gd_webp_info_ce, Z_OBJ_P(result), ZEND_STRL("loopCount"), info->loopCount);
-	zend_update_property_long(php_gd_webp_info_ce, Z_OBJ_P(result), ZEND_STRL("backgroundColor"), info->backgroundColor);
-	zend_update_property_long(php_gd_webp_info_ce, Z_OBJ_P(result), ZEND_STRL("formatFlags"), info->formatFlags);
+	zend_update_property_long(php_gd_webp_info_ce, Z_OBJ_P(result), ZEND_STRL("frameCount"), info->frame_count);
+	zend_update_property_long(php_gd_webp_info_ce, Z_OBJ_P(result), ZEND_STRL("loopCount"), info->loop_count);
+	zend_update_property_long(php_gd_webp_info_ce, Z_OBJ_P(result), ZEND_STRL("backgroundColor"), info->background_color);
+	zend_update_property_long(php_gd_webp_info_ce, Z_OBJ_P(result), ZEND_STRL("formatFlags"), info->format_flags);
+	zend_update_property_bool(php_gd_webp_info_ce, Z_OBJ_P(result), ZEND_STRL("isAnimated"), info->is_animation != 0);
 	php_gd_metadata_create_zval(&value, metadata);
 	zend_update_property(php_gd_webp_info_ce, Z_OBJ_P(result), ZEND_STRL("metadata"), &value);
 	zval_ptr_dtor(&value);
@@ -424,7 +425,7 @@ static void php_gd_webp_create_frame(zval *result, gdImagePtr image, const gdWeb
 	php_gd_assign_libgdimageptr_as_extgdimage(&value, image);
 	zend_update_property(php_gd_webp_frame_ce, Z_OBJ_P(result), ZEND_STRL("image"), &value);
 	zval_ptr_dtor(&value);
-	zend_update_property_long(php_gd_webp_frame_ce, Z_OBJ_P(result), ZEND_STRL("frameIndex"), info->frameIndex);
+	zend_update_property_long(php_gd_webp_frame_ce, Z_OBJ_P(result), ZEND_STRL("frameIndex"), info->frame_index);
 	zend_update_property_long(php_gd_webp_frame_ce, Z_OBJ_P(result), ZEND_STRL("x"), info->x);
 	zend_update_property_long(php_gd_webp_frame_ce, Z_OBJ_P(result), ZEND_STRL("y"), info->y);
 	zend_update_property_long(php_gd_webp_frame_ce, Z_OBJ_P(result), ZEND_STRL("width"), info->width);
@@ -437,7 +438,7 @@ static void php_gd_webp_create_frame(zval *result, gdImagePtr image, const gdWeb
 	zend_update_property_long(php_gd_webp_frame_ce, Z_OBJ_P(result), ZEND_STRL("blendTag"), info->blend);
 	php_gd_webp_blend(&value, info->blend);
 	zend_update_property(php_gd_webp_frame_ce, Z_OBJ_P(result), ZEND_STRL("blend"), &value);
-	zend_update_property_bool(php_gd_webp_frame_ce, Z_OBJ_P(result), ZEND_STRL("hasAlpha"), info->hasAlpha != 0);
+	zend_update_property_bool(php_gd_webp_frame_ce, Z_OBJ_P(result), ZEND_STRL("hasAlpha"), info->has_alpha != 0);
 	zend_update_property_bool(php_gd_webp_frame_ce, Z_OBJ_P(result), ZEND_STRL("complete"), info->complete != 0);
 }
 #endif
@@ -590,15 +591,17 @@ static bool php_gd_webp_is_animated_bytes(zend_string *bytes)
 PHP_METHOD(Gd_Webp_Info, __construct)
 {
 	zend_long width, height, frame_count, loop_count, background_color, format_flags;
+	zend_bool is_animated;
 	zval *metadata;
 
-	ZEND_PARSE_PARAMETERS_START(7, 7)
+	ZEND_PARSE_PARAMETERS_START(8, 8)
 		Z_PARAM_LONG(width)
 		Z_PARAM_LONG(height)
 		Z_PARAM_LONG(frame_count)
 		Z_PARAM_LONG(loop_count)
 		Z_PARAM_LONG(background_color)
 		Z_PARAM_LONG(format_flags)
+		Z_PARAM_BOOL(is_animated)
 		Z_PARAM_OBJECT_OF_CLASS(metadata, php_gd_metadata_ce)
 	ZEND_PARSE_PARAMETERS_END();
 
@@ -608,6 +611,7 @@ PHP_METHOD(Gd_Webp_Info, __construct)
 	zend_update_property_long(php_gd_webp_info_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("loopCount"), loop_count);
 	zend_update_property_long(php_gd_webp_info_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("backgroundColor"), background_color);
 	zend_update_property_long(php_gd_webp_info_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("formatFlags"), format_flags);
+	zend_update_property_bool(php_gd_webp_info_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("isAnimated"), is_animated);
 	zend_update_property(php_gd_webp_info_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("metadata"), metadata);
 }
 
@@ -961,13 +965,13 @@ static void php_gd_webp_build_options(zval *options_zv, gdWebpAnimWriteOptions *
 	}
 
 	value = zend_read_property(php_gd_webp_anim_write_options_ce, Z_OBJ_P(options_zv), ZEND_STRL("canvasWidth"), true, &rv);
-	options->canvasWidth = (int) Z_LVAL_P(value);
+	options->canvas_width = (int) Z_LVAL_P(value);
 	value = zend_read_property(php_gd_webp_anim_write_options_ce, Z_OBJ_P(options_zv), ZEND_STRL("canvasHeight"), true, &rv);
-	options->canvasHeight = (int) Z_LVAL_P(value);
+	options->canvas_height = (int) Z_LVAL_P(value);
 	value = zend_read_property(php_gd_webp_anim_write_options_ce, Z_OBJ_P(options_zv), ZEND_STRL("loopCount"), true, &rv);
-	options->loopCount = (int) Z_LVAL_P(value);
+	options->loop_count = (int) Z_LVAL_P(value);
 	value = zend_read_property(php_gd_webp_anim_write_options_ce, Z_OBJ_P(options_zv), ZEND_STRL("backgroundColor"), true, &rv);
-	options->backgroundColor = (int) Z_LVAL_P(value);
+	options->background_color = (int) Z_LVAL_P(value);
 	value = zend_read_property(php_gd_webp_anim_write_options_ce, Z_OBJ_P(options_zv), ZEND_STRL("quality"), true, &rv);
 	options->quality = (int) Z_LVAL_P(value);
 	value = zend_read_property(php_gd_webp_anim_write_options_ce, Z_OBJ_P(options_zv), ZEND_STRL("lossless"), true, &rv);
@@ -975,13 +979,13 @@ static void php_gd_webp_build_options(zval *options_zv, gdWebpAnimWriteOptions *
 	value = zend_read_property(php_gd_webp_anim_write_options_ce, Z_OBJ_P(options_zv), ZEND_STRL("method"), true, &rv);
 	options->method = (int) Z_LVAL_P(value);
 	value = zend_read_property(php_gd_webp_anim_write_options_ce, Z_OBJ_P(options_zv), ZEND_STRL("minimizeSize"), true, &rv);
-	options->minimizeSize = Z_TYPE_P(value) == IS_TRUE;
+	options->minimize_size = Z_TYPE_P(value) == IS_TRUE;
 	value = zend_read_property(php_gd_webp_anim_write_options_ce, Z_OBJ_P(options_zv), ZEND_STRL("kmin"), true, &rv);
 	options->kmin = (int) Z_LVAL_P(value);
 	value = zend_read_property(php_gd_webp_anim_write_options_ce, Z_OBJ_P(options_zv), ZEND_STRL("kmax"), true, &rv);
 	options->kmax = (int) Z_LVAL_P(value);
 	value = zend_read_property(php_gd_webp_anim_write_options_ce, Z_OBJ_P(options_zv), ZEND_STRL("allowMixed"), true, &rv);
-	options->allowMixed = Z_TYPE_P(value) == IS_TRUE;
+	options->allow_mixed = Z_TYPE_P(value) == IS_TRUE;
 }
 
 static bool php_gd_webp_create_writer(zval *return_value, gdWebpWritePtr webp,
@@ -1002,8 +1006,8 @@ static bool php_gd_webp_create_writer(zval *return_value, gdWebpWritePtr webp,
 	writer->writer = webp;
 	writer->ctx = ctx;
 	writer->destination = destination;
-	writer->canvas_width = options != NULL ? options->canvasWidth : 0;
-	writer->canvas_height = options != NULL ? options->canvasHeight : 0;
+	writer->canvas_width = options != NULL ? options->canvas_width : 0;
+	writer->canvas_height = options != NULL ? options->canvas_height : 0;
 	return true;
 }
 
@@ -1264,6 +1268,7 @@ void php_gd_webp_minit(void)
 #endif
 
 #if defined(HAVE_GD_BUNDLED) || defined(HAVE_GD_WEBP_ANIM_READ_API)
+	register_class_Gd_Webp_FormatFlag();
 	php_gd_webp_info_ce = register_class_Gd_Webp_Info();
 #ifdef HAVE_GD_BUNDLED
 	php_gd_webp_reader_ce = register_class_Gd_Webp_Reader();

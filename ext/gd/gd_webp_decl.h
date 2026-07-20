@@ -1,8 +1,8 @@
 /* This is a generated file, edit gd_webp.stub.php instead.
- * Stub hash: e682e3637b1c454e2a1c3f4e1e8223bd80c4f773 */
+ * Stub hash: f42175d77aadb74c7207a8e33bff4838d173e552 */
 
-#ifndef ZEND_GD_WEBP_DECL_e682e3637b1c454e2a1c3f4e1e8223bd80c4f773_H
-#define ZEND_GD_WEBP_DECL_e682e3637b1c454e2a1c3f4e1e8223bd80c4f773_H
+#ifndef ZEND_GD_WEBP_DECL_f42175d77aadb74c7207a8e33bff4838d173e552_H
+#define ZEND_GD_WEBP_DECL_f42175d77aadb74c7207a8e33bff4838d173e552_H
 
 #if defined(HAVE_GD_WEBP_ANIM_READ_API) || defined(HAVE_GD_WEBP_ANIM_WRITE_API)
 typedef enum zend_enum_Gd_Webp_DisposeMethod {
@@ -18,4 +18,14 @@ typedef enum zend_enum_Gd_Webp_BlendMethod {
 } zend_enum_Gd_Webp_BlendMethod;
 #endif
 
-#endif /* ZEND_GD_WEBP_DECL_e682e3637b1c454e2a1c3f4e1e8223bd80c4f773_H */
+#if defined(HAVE_GD_BUNDLED) || defined(HAVE_GD_WEBP_ANIM_READ_API)
+typedef enum zend_enum_Gd_Webp_FormatFlag {
+	ZEND_ENUM_Gd_Webp_FormatFlag_Animation = 1,
+	ZEND_ENUM_Gd_Webp_FormatFlag_Xmp = 2,
+	ZEND_ENUM_Gd_Webp_FormatFlag_Exif = 3,
+	ZEND_ENUM_Gd_Webp_FormatFlag_Alpha = 4,
+	ZEND_ENUM_Gd_Webp_FormatFlag_Iccp = 5,
+} zend_enum_Gd_Webp_FormatFlag;
+#endif
+
+#endif /* ZEND_GD_WEBP_DECL_f42175d77aadb74c7207a8e33bff4838d173e552_H */

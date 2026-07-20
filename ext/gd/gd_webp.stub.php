@@ -64,6 +64,15 @@ namespace Gd\Webp {
 #endif
 
 #if defined(HAVE_GD_BUNDLED) || defined(HAVE_GD_WEBP_ANIM_READ_API)
+    enum FormatFlag: int
+    {
+        case Animation = 0x00000002;
+        case Xmp = 0x00000004;
+        case Exif = 0x00000008;
+        case Alpha = 0x00000010;
+        case Iccp = 0x00000020;
+    }
+
     /** @strict-properties */
     final readonly class Info
     {
@@ -73,6 +82,7 @@ namespace Gd\Webp {
         public int $loopCount;
         public int $backgroundColor;
         public int $formatFlags;
+        public bool $isAnimated;
         public \Gd\Metadata $metadata;
 
         public function __construct(
@@ -82,6 +92,7 @@ namespace Gd\Webp {
             int $loopCount,
             int $backgroundColor,
             int $formatFlags,
+            bool $isAnimated,
             \Gd\Metadata $metadata,
         ) {}
     }

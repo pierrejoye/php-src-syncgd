@@ -15,8 +15,8 @@ $info = $reader->info();
 
 var_dump($info instanceof Gd\Bmp\Info);
 var_dump($info->width, $info->height, $info->bitsPerPixel);
-var_dump($info->compressionTag, $info->topDown, $info->headerSize, $info->headerType);
-var_dump($info->pixelOffset > $info->headerSize, $info->fileSize === strlen($bytes));
+var_dump($info->compressionTag, $info->topDown, $info->headerType);
+var_dump(property_exists($info, 'fileSize'), property_exists($info, 'pixelOffset'), property_exists($info, 'headerSize'));
 var_dump($reader->info() === $reader->info());
 var_dump($reader->read() instanceof GdImage);
 try {
@@ -36,10 +36,10 @@ int(2)
 int(24)
 int(0)
 bool(false)
-int(40)
 int(1)
-bool(true)
-bool(true)
+bool(false)
+bool(false)
+bool(false)
 bool(true)
 bool(true)
 Gd\Codec\CodecException

@@ -150,9 +150,9 @@ static void php_gd_tiff_create_info(zval *result, const gdTiffInfo *info, gdImag
 	object_init_ex(result, php_gd_tiff_info_ce);
 	zend_update_property_long(php_gd_tiff_info_ce, Z_OBJ_P(result), ZEND_STRL("width"), info->width);
 	zend_update_property_long(php_gd_tiff_info_ce, Z_OBJ_P(result), ZEND_STRL("height"), info->height);
-	zend_update_property_long(php_gd_tiff_info_ce, Z_OBJ_P(result), ZEND_STRL("pageCount"), info->pageCount);
-	zend_update_property_long(php_gd_tiff_info_ce, Z_OBJ_P(result), ZEND_STRL("bitsPerSample"), info->bitsPerSample);
-	zend_update_property_long(php_gd_tiff_info_ce, Z_OBJ_P(result), ZEND_STRL("samplesPerPixel"), info->samplesPerPixel);
+	zend_update_property_long(php_gd_tiff_info_ce, Z_OBJ_P(result), ZEND_STRL("pageCount"), info->page_count);
+	zend_update_property_long(php_gd_tiff_info_ce, Z_OBJ_P(result), ZEND_STRL("bitsPerSample"), info->bits_per_sample);
+	zend_update_property_long(php_gd_tiff_info_ce, Z_OBJ_P(result), ZEND_STRL("samplesPerPixel"), info->samples_per_pixel);
 	zend_update_property_long(php_gd_tiff_info_ce, Z_OBJ_P(result), ZEND_STRL("compressionTag"), info->compression);
 	php_gd_tiff_read_compression(&value, info->compression);
 	zend_update_property(php_gd_tiff_info_ce, Z_OBJ_P(result), ZEND_STRL("compression"), &value);
@@ -160,9 +160,9 @@ static void php_gd_tiff_create_info(zval *result, const gdTiffInfo *info, gdImag
 	php_gd_tiff_read_photometric(&value, info->photometric);
 	zend_update_property(php_gd_tiff_info_ce, Z_OBJ_P(result), ZEND_STRL("photometric"), &value);
 	zend_update_property_bool(php_gd_tiff_info_ce, Z_OBJ_P(result), ZEND_STRL("minIsWhite"), info->photometric == GD_TIFF_PHOTOMETRIC_MINISWHITE);
-	php_gd_tiff_update_nullable_double(php_gd_tiff_info_ce, Z_OBJ_P(result), ZEND_STRL("xResolution"), info->xResolution);
-	php_gd_tiff_update_nullable_double(php_gd_tiff_info_ce, Z_OBJ_P(result), ZEND_STRL("yResolution"), info->yResolution);
-	php_gd_tiff_read_resolution_unit(&value, info->resolutionUnit);
+	php_gd_tiff_update_nullable_double(php_gd_tiff_info_ce, Z_OBJ_P(result), ZEND_STRL("xResolution"), info->x_resolution);
+	php_gd_tiff_update_nullable_double(php_gd_tiff_info_ce, Z_OBJ_P(result), ZEND_STRL("yResolution"), info->y_resolution);
+	php_gd_tiff_read_resolution_unit(&value, info->resolution_unit);
 	zend_update_property(php_gd_tiff_info_ce, Z_OBJ_P(result), ZEND_STRL("resolutionUnit"), &value);
 	php_gd_metadata_create_zval(&value, metadata);
 	zend_update_property(php_gd_tiff_info_ce, Z_OBJ_P(result), ZEND_STRL("metadata"), &value);
@@ -177,11 +177,11 @@ static void php_gd_tiff_create_page(zval *result, gdImagePtr image, const gdTiff
 	php_gd_assign_libgdimageptr_as_extgdimage(&value, image);
 	zend_update_property(php_gd_tiff_page_ce, Z_OBJ_P(result), ZEND_STRL("image"), &value);
 	zval_ptr_dtor(&value);
-	zend_update_property_long(php_gd_tiff_page_ce, Z_OBJ_P(result), ZEND_STRL("pageIndex"), info->pageIndex);
+	zend_update_property_long(php_gd_tiff_page_ce, Z_OBJ_P(result), ZEND_STRL("pageIndex"), info->page_index);
 	zend_update_property_long(php_gd_tiff_page_ce, Z_OBJ_P(result), ZEND_STRL("width"), info->width);
 	zend_update_property_long(php_gd_tiff_page_ce, Z_OBJ_P(result), ZEND_STRL("height"), info->height);
-	zend_update_property_long(php_gd_tiff_page_ce, Z_OBJ_P(result), ZEND_STRL("bitsPerSample"), info->bitsPerSample);
-	zend_update_property_long(php_gd_tiff_page_ce, Z_OBJ_P(result), ZEND_STRL("samplesPerPixel"), info->samplesPerPixel);
+	zend_update_property_long(php_gd_tiff_page_ce, Z_OBJ_P(result), ZEND_STRL("bitsPerSample"), info->bits_per_sample);
+	zend_update_property_long(php_gd_tiff_page_ce, Z_OBJ_P(result), ZEND_STRL("samplesPerPixel"), info->samples_per_pixel);
 	zend_update_property_long(php_gd_tiff_page_ce, Z_OBJ_P(result), ZEND_STRL("compressionTag"), info->compression);
 	php_gd_tiff_read_compression(&value, info->compression);
 	zend_update_property(php_gd_tiff_page_ce, Z_OBJ_P(result), ZEND_STRL("compression"), &value);
@@ -192,11 +192,11 @@ static void php_gd_tiff_create_page(zval *result, gdImagePtr image, const gdTiff
 	php_gd_tiff_read_planar_configuration(&value, info->planar);
 	zend_update_property(php_gd_tiff_page_ce, Z_OBJ_P(result), ZEND_STRL("planarConfiguration"), &value);
 	zend_update_property_bool(php_gd_tiff_page_ce, Z_OBJ_P(result), ZEND_STRL("minIsWhite"), info->photometric == GD_TIFF_PHOTOMETRIC_MINISWHITE);
-	zend_update_property_bool(php_gd_tiff_page_ce, Z_OBJ_P(result), ZEND_STRL("hasAlpha"), info->hasAlpha != 0);
-	zend_update_property_bool(php_gd_tiff_page_ce, Z_OBJ_P(result), ZEND_STRL("isTiled"), info->isTiled != 0);
-	php_gd_tiff_update_nullable_double(php_gd_tiff_page_ce, Z_OBJ_P(result), ZEND_STRL("xResolution"), info->xResolution);
-	php_gd_tiff_update_nullable_double(php_gd_tiff_page_ce, Z_OBJ_P(result), ZEND_STRL("yResolution"), info->yResolution);
-	php_gd_tiff_read_resolution_unit(&value, info->resolutionUnit);
+	zend_update_property_bool(php_gd_tiff_page_ce, Z_OBJ_P(result), ZEND_STRL("hasAlpha"), info->has_alpha != 0);
+	zend_update_property_bool(php_gd_tiff_page_ce, Z_OBJ_P(result), ZEND_STRL("isTiled"), info->is_tiled != 0);
+	php_gd_tiff_update_nullable_double(php_gd_tiff_page_ce, Z_OBJ_P(result), ZEND_STRL("xResolution"), info->x_resolution);
+	php_gd_tiff_update_nullable_double(php_gd_tiff_page_ce, Z_OBJ_P(result), ZEND_STRL("yResolution"), info->y_resolution);
+	php_gd_tiff_read_resolution_unit(&value, info->resolution_unit);
 	zend_update_property(php_gd_tiff_page_ce, Z_OBJ_P(result), ZEND_STRL("resolutionUnit"), &value);
 }
 
@@ -889,7 +889,7 @@ static gdImagePtr php_gd_tiff_decode_single_page(gdTiffReadPtr tiff)
 		php_gd_tiff_throw("Failed to open TIFF input");
 		return NULL;
 	}
-	if (info.pageCount != 1) {
+	if (info.page_count != 1) {
 		gdTiffReadClose(tiff);
 		php_gd_tiff_throw("TIFF input contains multiple pages; use Gd\\Tiff\\Reader");
 		return NULL;

@@ -18,7 +18,8 @@ $bytes = Gd\Webp\Codec::toString($image, new Gd\Webp\WriteOptions(metadata: $met
 
 $reader = Gd\Webp\Reader::fromString($bytes);
 $info = $reader->info();
-var_dump($info->width, $info->height, $info->frameCount);
+var_dump($info->width, $info->height, $info->frameCount, $info->isAnimated);
+var_dump(Gd\Webp\FormatFlag::Animation->value, Gd\Webp\FormatFlag::Alpha->value);
 var_dump($info->metadata->keys());
 var_dump($info->metadata->get('exif') === $exif);
 var_dump($info->metadata->get('xmp') === $metadata->get('xmp'));
@@ -57,8 +58,8 @@ if (class_exists(Gd\Webp\AnimWriter::class)) {
         ->finish();
     $genericInfo = Gd\Webp\Reader::fromString($animated)->info();
     $animInfo = Gd\Webp\AnimReader::fromString($animated)->info();
-    var_dump($genericInfo->frameCount, $genericInfo->loopCount);
-    var_dump($animInfo->frameCount, $animInfo->loopCount, $genericInfo->metadata->count());
+    var_dump($genericInfo->frameCount, $genericInfo->loopCount, $genericInfo->isAnimated);
+    var_dump($animInfo->frameCount, $animInfo->loopCount, $animInfo->isAnimated, $genericInfo->metadata->count());
     var_dump(Gd\Webp\Reader::fromString($animated)->read() instanceof GdImage);
 }
 ?>
@@ -66,6 +67,9 @@ if (class_exists(Gd\Webp\AnimWriter::class)) {
 int(4)
 int(3)
 int(1)
+bool(false)
+int(2)
+int(16)
 array(2) {
   [0]=>
   string(3) "xmp"
@@ -83,7 +87,9 @@ Gd\Codec\CodecException
 Gd\Codec\CodecException
 int(2)
 int(2)
+bool(true)
 int(2)
 int(2)
+bool(true)
 int(0)
 bool(true)

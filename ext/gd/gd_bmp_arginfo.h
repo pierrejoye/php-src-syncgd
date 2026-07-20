@@ -1,12 +1,9 @@
 /* This is a generated file, edit gd_bmp.stub.php instead.
- * Stub hash: c691e8d62c725cc20ce537e6095469f9857f921f
+ * Stub hash: 81b8a484ca8975bb218883a8bec6cfe4eda7582c
  * Has decl header: yes */
 
 #if defined(HAVE_GD_BUNDLED)
-ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Gd_Bmp_Info___construct, 0, 0, 21)
-	ZEND_ARG_TYPE_INFO(0, fileSize, IS_LONG, 0)
-	ZEND_ARG_TYPE_INFO(0, pixelOffset, IS_LONG, 0)
-	ZEND_ARG_TYPE_INFO(0, headerSize, IS_LONG, 0)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Gd_Bmp_Info___construct, 0, 0, 18)
 	ZEND_ARG_TYPE_INFO(0, headerType, IS_LONG, 0)
 	ZEND_ARG_TYPE_INFO(0, width, IS_LONG, 0)
 	ZEND_ARG_TYPE_INFO(0, height, IS_LONG, 0)
@@ -164,24 +161,6 @@ static zend_class_entry *register_class_Gd_Bmp_Info(void)
 
 	INIT_NS_CLASS_ENTRY(ce, "Gd\\Bmp", "Info", class_Gd_Bmp_Info_methods);
 	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL|ZEND_ACC_NO_DYNAMIC_PROPERTIES|ZEND_ACC_READONLY_CLASS);
-
-	zval property_fileSize_default_value;
-	ZVAL_UNDEF(&property_fileSize_default_value);
-	zend_string *property_fileSize_name = zend_string_init("fileSize", sizeof("fileSize") - 1, true);
-	zend_declare_typed_property(class_entry, property_fileSize_name, &property_fileSize_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_LONG));
-	zend_string_release_ex(property_fileSize_name, true);
-
-	zval property_pixelOffset_default_value;
-	ZVAL_UNDEF(&property_pixelOffset_default_value);
-	zend_string *property_pixelOffset_name = zend_string_init("pixelOffset", sizeof("pixelOffset") - 1, true);
-	zend_declare_typed_property(class_entry, property_pixelOffset_name, &property_pixelOffset_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_LONG));
-	zend_string_release_ex(property_pixelOffset_name, true);
-
-	zval property_headerSize_default_value;
-	ZVAL_UNDEF(&property_headerSize_default_value);
-	zend_string *property_headerSize_name = zend_string_init("headerSize", sizeof("headerSize") - 1, true);
-	zend_declare_typed_property(class_entry, property_headerSize_name, &property_headerSize_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_LONG));
-	zend_string_release_ex(property_headerSize_name, true);
 
 	zval property_headerType_default_value;
 	ZVAL_UNDEF(&property_headerType_default_value);

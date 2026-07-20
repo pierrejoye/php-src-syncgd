@@ -449,18 +449,18 @@ static void php_gd_gif_create_info(zval *result, const gdGifInfo *info)
 #endif
 	zend_update_property_long(php_gd_gif_info_ce, Z_OBJ_P(result), ZEND_STRL("width"), info->width);
 	zend_update_property_long(php_gd_gif_info_ce, Z_OBJ_P(result), ZEND_STRL("height"), info->height);
-	zend_update_property_long(php_gd_gif_info_ce, Z_OBJ_P(result), ZEND_STRL("backgroundIndex"), info->backgroundIndex);
-	zend_update_property_bool(php_gd_gif_info_ce, Z_OBJ_P(result), ZEND_STRL("globalColorTable"), info->globalColorTable != 0);
+	zend_update_property_long(php_gd_gif_info_ce, Z_OBJ_P(result), ZEND_STRL("backgroundIndex"), info->background_index);
+	zend_update_property_bool(php_gd_gif_info_ce, Z_OBJ_P(result), ZEND_STRL("globalColorTable"), info->global_color_table != 0);
 #ifdef HAVE_GD_BUNDLED
-	zend_update_property_long(php_gd_gif_info_ce, Z_OBJ_P(result), ZEND_STRL("colorResolution"), info->colorResolution);
-	zend_update_property_double(php_gd_gif_info_ce, Z_OBJ_P(result), ZEND_STRL("pixelAspectRatio"), info->pixelAspectRatio);
-	if (info->loopCountPresent) {
-		zend_update_property_long(php_gd_gif_info_ce, Z_OBJ_P(result), ZEND_STRL("loopCount"), info->loopCount);
+	zend_update_property_long(php_gd_gif_info_ce, Z_OBJ_P(result), ZEND_STRL("colorResolution"), info->color_resolution);
+	zend_update_property_double(php_gd_gif_info_ce, Z_OBJ_P(result), ZEND_STRL("pixelAspectRatio"), info->pixel_aspect_ratio);
+	if (info->loop_count_present) {
+		zend_update_property_long(php_gd_gif_info_ce, Z_OBJ_P(result), ZEND_STRL("loopCount"), info->loop_count);
 	} else {
 		zend_update_property_null(php_gd_gif_info_ce, Z_OBJ_P(result), ZEND_STRL("loopCount"));
 	}
 #else
-	zend_update_property_long(php_gd_gif_info_ce, Z_OBJ_P(result), ZEND_STRL("loopCount"), info->loopCount);
+	zend_update_property_long(php_gd_gif_info_ce, Z_OBJ_P(result), ZEND_STRL("loopCount"), info->loop_count);
 #endif
 }
 
@@ -473,7 +473,7 @@ static void php_gd_gif_create_frame(zval *result, gdImagePtr image, const gdGifF
 	php_gd_assign_libgdimageptr_as_extgdimage(&value, image);
 	zend_update_property(php_gd_gif_frame_ce, Z_OBJ_P(result), ZEND_STRL("image"), &value);
 	zval_ptr_dtor(&value);
-	zend_update_property_long(php_gd_gif_frame_ce, Z_OBJ_P(result), ZEND_STRL("frameIndex"), info->frameIndex);
+	zend_update_property_long(php_gd_gif_frame_ce, Z_OBJ_P(result), ZEND_STRL("frameIndex"), info->frame_index);
 	zend_update_property_long(php_gd_gif_frame_ce, Z_OBJ_P(result), ZEND_STRL("x"), info->x);
 	zend_update_property_long(php_gd_gif_frame_ce, Z_OBJ_P(result), ZEND_STRL("y"), info->y);
 	zend_update_property_long(php_gd_gif_frame_ce, Z_OBJ_P(result), ZEND_STRL("width"), info->width);
@@ -482,12 +482,12 @@ static void php_gd_gif_create_frame(zval *result, gdImagePtr image, const gdGifF
 	zend_update_property_long(php_gd_gif_frame_ce, Z_OBJ_P(result), ZEND_STRL("disposalTag"), info->disposal);
 	php_gd_gif_disposal(&value, info->disposal);
 	zend_update_property(php_gd_gif_frame_ce, Z_OBJ_P(result), ZEND_STRL("disposal"), &value);
-	if (info->transparentIndex >= 0) {
-		zend_update_property_long(php_gd_gif_frame_ce, Z_OBJ_P(result), ZEND_STRL("transparentIndex"), info->transparentIndex);
+	if (info->transparent_index >= 0) {
+		zend_update_property_long(php_gd_gif_frame_ce, Z_OBJ_P(result), ZEND_STRL("transparentIndex"), info->transparent_index);
 	} else {
 		zend_update_property_null(php_gd_gif_frame_ce, Z_OBJ_P(result), ZEND_STRL("transparentIndex"));
 	}
-	zend_update_property_bool(php_gd_gif_frame_ce, Z_OBJ_P(result), ZEND_STRL("localColorTable"), info->localColorTable != 0);
+	zend_update_property_bool(php_gd_gif_frame_ce, Z_OBJ_P(result), ZEND_STRL("localColorTable"), info->local_color_table != 0);
 	zend_update_property_bool(php_gd_gif_frame_ce, Z_OBJ_P(result), ZEND_STRL("interlaced"), info->interlace != 0);
 }
 #endif

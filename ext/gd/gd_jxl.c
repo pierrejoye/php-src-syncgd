@@ -1030,12 +1030,12 @@ PHP_METHOD(Gd_Jxl_AnimWriter, addFrame)
 			writer->canvas_height = image->sy;
 		}
 		gdJxlAnimWriteOptionsInit(&options);
-		options.canvasWidth = writer->canvas_width;
-		options.canvasHeight = writer->canvas_height;
+		options.canvas_width = writer->canvas_width;
+		options.canvas_height = writer->canvas_height;
 		options.lossless = writer->lossless ? 1 : 0;
 		options.distance = (float) writer->distance;
 		options.effort = writer->effort;
-		options.loopCount = writer->loop_count;
+		options.loop_count = writer->loop_count;
 		if (writer->destination == PHP_GD_JXL_DESTINATION_MEMORY) {
 			writer->writer = gdJxlWriteOpenPtr(&options);
 		} else {

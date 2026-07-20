@@ -1,5 +1,5 @@
 /* This is a generated file, edit gd_webp.stub.php instead.
- * Stub hash: e682e3637b1c454e2a1c3f4e1e8223bd80c4f773
+ * Stub hash: f42175d77aadb74c7207a8e33bff4838d173e552
  * Has decl header: yes */
 
 #if defined(HAVE_GD_WEBP)
@@ -42,13 +42,14 @@ ZEND_END_ARG_INFO()
 #endif
 
 #if defined(HAVE_GD_BUNDLED) || defined(HAVE_GD_WEBP_ANIM_READ_API)
-ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Gd_Webp_Info___construct, 0, 0, 7)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Gd_Webp_Info___construct, 0, 0, 8)
 	ZEND_ARG_TYPE_INFO(0, width, IS_LONG, 0)
 	ZEND_ARG_TYPE_INFO(0, height, IS_LONG, 0)
 	ZEND_ARG_TYPE_INFO(0, frameCount, IS_LONG, 0)
 	ZEND_ARG_TYPE_INFO(0, loopCount, IS_LONG, 0)
 	ZEND_ARG_TYPE_INFO(0, backgroundColor, IS_LONG, 0)
 	ZEND_ARG_TYPE_INFO(0, formatFlags, IS_LONG, 0)
+	ZEND_ARG_TYPE_INFO(0, isAnimated, _IS_BOOL, 0)
 	ZEND_ARG_OBJ_INFO(0, metadata, Gd\\Metadata, 0)
 ZEND_END_ARG_INFO()
 #endif
@@ -365,6 +366,35 @@ static zend_class_entry *register_class_Gd_Webp_BlendMethod(void)
 #endif
 
 #if defined(HAVE_GD_BUNDLED) || defined(HAVE_GD_WEBP_ANIM_READ_API)
+static zend_class_entry *register_class_Gd_Webp_FormatFlag(void)
+{
+	zend_class_entry *class_entry = zend_register_internal_enum("Gd\\Webp\\FormatFlag", IS_LONG, NULL);
+
+	zval enum_case_Animation_value;
+	ZVAL_LONG(&enum_case_Animation_value, 0x2);
+	zend_enum_add_case_cstr(class_entry, "Animation", &enum_case_Animation_value);
+
+	zval enum_case_Xmp_value;
+	ZVAL_LONG(&enum_case_Xmp_value, 0x4);
+	zend_enum_add_case_cstr(class_entry, "Xmp", &enum_case_Xmp_value);
+
+	zval enum_case_Exif_value;
+	ZVAL_LONG(&enum_case_Exif_value, 0x8);
+	zend_enum_add_case_cstr(class_entry, "Exif", &enum_case_Exif_value);
+
+	zval enum_case_Alpha_value;
+	ZVAL_LONG(&enum_case_Alpha_value, 0x10);
+	zend_enum_add_case_cstr(class_entry, "Alpha", &enum_case_Alpha_value);
+
+	zval enum_case_Iccp_value;
+	ZVAL_LONG(&enum_case_Iccp_value, 0x20);
+	zend_enum_add_case_cstr(class_entry, "Iccp", &enum_case_Iccp_value);
+
+	return class_entry;
+}
+#endif
+
+#if defined(HAVE_GD_BUNDLED) || defined(HAVE_GD_WEBP_ANIM_READ_API)
 static zend_class_entry *register_class_Gd_Webp_Info(void)
 {
 	zend_class_entry ce, *class_entry;
@@ -407,6 +437,12 @@ static zend_class_entry *register_class_Gd_Webp_Info(void)
 	zend_string *property_formatFlags_name = zend_string_init("formatFlags", sizeof("formatFlags") - 1, true);
 	zend_declare_typed_property(class_entry, property_formatFlags_name, &property_formatFlags_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_LONG));
 	zend_string_release_ex(property_formatFlags_name, true);
+
+	zval property_isAnimated_default_value;
+	ZVAL_UNDEF(&property_isAnimated_default_value);
+	zend_string *property_isAnimated_name = zend_string_init("isAnimated", sizeof("isAnimated") - 1, true);
+	zend_declare_typed_property(class_entry, property_isAnimated_name, &property_isAnimated_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_BOOL));
+	zend_string_release_ex(property_isAnimated_name, true);
 
 	zval property_metadata_default_value;
 	ZVAL_UNDEF(&property_metadata_default_value);

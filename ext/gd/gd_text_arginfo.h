@@ -237,13 +237,3 @@ static zend_class_entry *register_class_Gd_TextExtents(void)
 
 	return class_entry;
 }
-
-static zend_class_entry *register_class_Gd_Context(void)
-{
-	zend_class_entry ce, *class_entry;
-
-	INIT_NS_CLASS_ENTRY(ce, "Gd", "Context", class_Gd_Context_methods);
-	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL);
-
-	return class_entry;
-}

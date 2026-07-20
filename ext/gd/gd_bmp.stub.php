@@ -10,9 +10,6 @@ namespace Gd\Bmp {
     /** @strict-properties */
     final readonly class Info
     {
-        public int $fileSize;
-        public int $pixelOffset;
-        public int $headerSize;
         public int $headerType;
         public int $width;
         public int $height;
@@ -33,9 +30,6 @@ namespace Gd\Bmp {
         public int $alphaMask;
 
         public function __construct(
-            int $fileSize,
-            int $pixelOffset,
-            int $headerSize,
             int $headerType,
             int $width,
             int $height,

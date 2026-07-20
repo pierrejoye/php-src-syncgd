@@ -140,9 +140,6 @@ static bool php_gd_bmp_create_info(zval *result, zend_string *bytes)
 	}
 	object_init_ex(result, php_gd_bmp_info_ce);
 #define BMP_INFO_LONG(name, value) zend_update_property_long(php_gd_bmp_info_ce, Z_OBJ_P(result), ZEND_STRL(name), (zend_long) (value))
-	BMP_INFO_LONG("fileSize", info.file_size);
-	BMP_INFO_LONG("pixelOffset", info.pixel_offset);
-	BMP_INFO_LONG("headerSize", info.header_size);
 	BMP_INFO_LONG("headerType", info.header_type);
 	BMP_INFO_LONG("width", info.width);
 	BMP_INFO_LONG("height", info.height);
@@ -431,15 +428,12 @@ PHP_METHOD(Gd_Bmp_WriteOptions, __construct)
 #ifdef HAVE_GD_BUNDLED
 PHP_METHOD(Gd_Bmp_Info, __construct)
 {
-	zend_long file_size, pixel_offset, header_size, header_type, width, height;
+	zend_long header_type, width, height;
 	zend_bool top_down;
 	zend_long planes, bits_per_pixel, compression_tag, image_size;
 	zend_long horizontal_resolution, vertical_resolution, colors_used, important_colors;
 	zend_long palette_type, palette_entries, red_mask, green_mask, blue_mask, alpha_mask;
-	ZEND_PARSE_PARAMETERS_START(21, 21)
-		Z_PARAM_LONG(file_size)
-		Z_PARAM_LONG(pixel_offset)
-		Z_PARAM_LONG(header_size)
+	ZEND_PARSE_PARAMETERS_START(18, 18)
 		Z_PARAM_LONG(header_type)
 		Z_PARAM_LONG(width)
 		Z_PARAM_LONG(height)
@@ -460,8 +454,7 @@ PHP_METHOD(Gd_Bmp_Info, __construct)
 		Z_PARAM_LONG(alpha_mask)
 	ZEND_PARSE_PARAMETERS_END();
 #define BMP_INFO_SET(name, value) zend_update_property_long(php_gd_bmp_info_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL(name), value)
-	BMP_INFO_SET("fileSize", file_size); BMP_INFO_SET("pixelOffset", pixel_offset);
-	BMP_INFO_SET("headerSize", header_size); BMP_INFO_SET("headerType", header_type);
+	BMP_INFO_SET("headerType", header_type);
 	BMP_INFO_SET("width", width); BMP_INFO_SET("height", height);
 	zend_update_property_bool(php_gd_bmp_info_ce, Z_OBJ_P(ZEND_THIS), ZEND_STRL("topDown"), top_down);
 	BMP_INFO_SET("planes", planes); BMP_INFO_SET("bitsPerPixel", bits_per_pixel);

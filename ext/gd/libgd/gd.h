@@ -939,31 +939,108 @@ BGD_DECLARE(gdImagePtr) gdImageCreateFromQoiCtx(gdIOCtxPtr in);
  */
 BGD_DECLARE(gdImagePtr) gdImageCreateFromQoiPtr(int size, void *data);
 
+/** 
+ * @brief Information read from a QOI data
+ */
 typedef struct {
-    unsigned int width;
-    unsigned int height;
-    int channels;
-    int colorspace;
+    unsigned int width; /**< Image width in pixels. */
+    unsigned int height; /**< Image height in pixels. */
+    int channels; /**< Number of color channels (3 for RGB, 4 for RGBA). */
+    int colorspace; /**< QOI colorspace flag (GD_QOI_SRGB or GD_QOI_LINEAR). */
 } gdQoiInfo;
 
+/**
+ * @brief Initialize a gdQoiInfo structure to default values.
+ * 
+ * The default may change in future versions, so it is recommended to call this function before using the structure.
+ * Default values update is not considered a breaking change, but it is still recommended to call this function to ensure proper initialization.
+ * 
+ * @param info Pointer to the gdQoiInfo structure to initialize.
+ */
 BGD_DECLARE(void) gdQoiInfoInit(gdQoiInfo *info);
+
+/**
+ * @brief Read QOI header information from a stdio file.
+ * 
+ * @param infile Pointer to the input FILE stream.
+ * @param info Pointer to the gdQoiInfo structure to populate.
+ * 
+ * @return Returns 0 on success, or 1 on failure.
+ */
 BGD_DECLARE(int) gdQoiGetInfo(FILE *infile, gdQoiInfo *info);
+
+/**
+ * @brief Read QOI header information from a gdIOCtx.
+ * 
+ * @param infile Pointer to the gdIOCtx input context.
+ * @param info Pointer to the gdQoiInfo structure to populate.
+ * 
+ * @return Returns 0 on success, or 1 on failure.
+ */
 BGD_DECLARE(int) gdQoiGetInfoCtx(gdIOCtxPtr infile, gdQoiInfo *info);
+
+/**
+ * @brief Read QOI header information from a memory buffer.
+ * 
+ * @param size Size of the QOI memory buffer in bytes.
+ * @param data Pointer to the QOI memory buffer.
+ * @param info Pointer to the gdQoiInfo structure to populate.
+ * 
+ * @return Returns 0 on success, or 1 on failure.
+ */
 BGD_DECLARE(int) gdQoiGetInfoPtr(int size, const void *data, gdQoiInfo *info);
 
+/**
+ * @brief Options for writing QOI data.
+ */
 typedef struct {
-    int colorspace;
+    int colorspace; /**< QOI colorspace flag, either GD_QOI_SRGB or GD_QOI_LINEAR. */
     const gdImageMetadata *metadata; /**< Optional metadata, ignored by QOI. */
 } gdQoiWriteOptions;
 
+/**
+ * @brief Initialize a gdQoiWriteOptions structure to default values.
+ * 
+ * The default may change in future versions, so it is recommended to call this function before using the structure.
+ * Default values update is not considered a breaking change, but it is still recommended to call this function to ensure proper initialization.
+ * 
+ * @param options Pointer to the gdQoiWriteOptions structure to initialize.
+ */
 BGD_DECLARE(void) gdQoiWriteOptionsInit(gdQoiWriteOptions *options);
 
+/**
+ * @brief Write an image as QOI data to a stdio file with options.
+ *
+ * @param im The image to write.
+ * @param out The stdio file to write the QOI data to.
+ * @param options Pointer to the gdQoiWriteOptions structure specifying write options.
+ *
+ * @return Returns 0 on success, or 1 on failure.
+ */
 BGD_DECLARE(int)
 gdImageQoiWithOptions(gdImagePtr im, FILE *out, const gdQoiWriteOptions *options);
 
+/** 
+ * @brief Write an image as QOI data to a gdIOCtx with options.
+ * 
+ * @param im The image to write.
+ * @param out The gdIOCtx to write the QOI data to.
+ * @param options Pointer to the gdQoiWriteOptions structure specifying write options.
+ *
+ * @return Returns 0 on success, or 1 on failure.
+ */
 BGD_DECLARE(int)
 gdImageQoiCtxWithOptions(gdImagePtr im, gdIOCtxPtr out, const gdQoiWriteOptions *options);
 
+/**
+ * @brief Write an image as QOI data to a newly allocated memory buffer with options.
+ * 
+ * @param im The image to write.
+ * @param size Pointer to an integer that receives the returned buffer size.
+ * @param options Pointer to the gdQoiWriteOptions structure specifying write options.
+ * 
+ * @return A pointer to the newly allocated QOI data, or NULL on failure.
+ */
 BGD_DECLARE(void *)
 gdImageQoiPtrWithOptions(gdImagePtr im, int *size, const gdQoiWriteOptions *options);
 
@@ -1021,7 +1098,20 @@ enum {
     GD_QOI_LINEAR = 1 /**< Pixel data is encoded with linear transfer characteristics. */
 };
 
+/**
+ * @brief Write an image as QOI data to a stdio file with an explicit colorspace flag.
+ * 
+ * @param im The image to write.
+ * @param out The stdio file to write the QOI data to.
+ */
 BGD_DECLARE(void) gdImageQoi(gdImagePtr im, FILE *out);
+
+/**
+ * @brief Write an image as QOI data to a gdIOCtx with an explicit colorspace flag.
+ * 
+ * @param im The image to write.
+ * @param out The gdIOCtx to write the QOI data to.
+  */
 BGD_DECLARE(void) gdImageQoiCtx(gdImagePtr im, gdIOCtxPtr out);
 
 /**
@@ -1181,31 +1271,31 @@ typedef struct gdGifReadStruct *gdGifReadPtr;
  * @brief Basic information read from a GIF stream.
  */
 typedef struct {
-    char version[4];       /**< GIF version, excluding the terminating NUL. */
-    int width;            /**< Logical screen width in pixels. */
-    int height;           /**< Logical screen height in pixels. */
-    int backgroundIndex;  /**< GIF logical screen background color index. */
-    int globalColorTable; /**< Non-zero if the GIF has a global color table. */
-    int colorResolution;  /**< GIF color resolution in bits per primary color. */
-    double pixelAspectRatio; /**< GIF pixel aspect ratio, or 1.0 when unspecified. */
-    int loopCount;        /**< Netscape loop count, 0 for infinite, or 1 when absent. */
-    int loopCountPresent;  /**< Non-zero if a Netscape loop count was present. */
+    char version[4];           /**< GIF version, excluding the terminating NUL. */
+    int width;                 /**< Logical screen width in pixels. */
+    int height;                /**< Logical screen height in pixels. */
+    int background_index;      /**< GIF logical screen background color index. */
+    int global_color_table;    /**< Non-zero if the GIF has a global color table. */
+    int color_resolution;      /**< GIF color resolution in bits per primary color. */
+    double pixel_aspect_ratio; /**< GIF pixel aspect ratio, or 1.0 when unspecified. */
+    int loop_count;            /**< Netscape loop count, 0 for infinite, or 1 when absent. */
+    int loop_count_present;    /**< Non-zero if a Netscape loop count was present. */
 } gdGifInfo;
 
 /**
  * @brief Per-frame information read from a GIF animation.
  */
 typedef struct {
-    int frameIndex;       /**< Zero-based frame index. */
+    int frame_index;       /**< Zero-based frame index. */
     int x;                /**< Frame left offset on the logical screen. */
     int y;                /**< Frame top offset on the logical screen. */
     int width;            /**< Frame width in pixels. */
     int height;           /**< Frame height in pixels. */
     int delay;            /**< Frame delay in hundredths of a second. */
-    int disposal;         /**< One of the GD_GIF_DISPOSAL_* constants. */
-    int transparentIndex; /**< Transparent color index, or -1 if not present. */
-    int localColorTable;  /**< Non-zero if this frame has a local color table. */
-    int interlace;        /**< Non-zero if this frame is interlaced. */
+    int disposal;          /**< One of the GD_GIF_DISPOSAL_* constants. */
+    int transparent_index; /**< Transparent color index, or -1 if not present. */
+    int local_color_table; /**< Non-zero if this frame has a local color table. */
+    int interlace;         /**< Non-zero if this frame is interlaced. */
 } gdGifFrameInfo;
 
 /**
@@ -2022,17 +2112,18 @@ typedef struct gdWebpWrite *gdWebpWritePtr;
 typedef struct {
     int width;           /**< Canvas width in pixels. */
     int height;          /**< Canvas height in pixels. */
-    int frameCount;      /**< Number of frames in the WebP container. */
-    int loopCount;       /**< Animation loop count, or 0 for infinite looping. */
-    int backgroundColor; /**< Canvas background color as stored in the WebP container. */
-    int formatFlags;     /**< WebP container feature flags reported by libwebp. */
+    int frame_count;     /**< Number of frames in the WebP container. */
+    int loop_count;      /**< Animation loop count, or 0 for infinite looping. */
+    int background_color; /**< Canvas background color as stored in the WebP container. */
+    int format_flags;    /**< WebP container feature flags reported by libwebp. */
+    int is_animation;    /**< Non-zero if the WebP container is animated. */
 } gdWebpInfo;
 
 /**
  * @brief WebP animation frame information.
  */
 typedef struct {
-    int frameIndex; /**< Zero-based frame index. */
+    int frame_index; /**< Zero-based frame index. */
     int x;          /**< Frame rectangle X offset in pixels. */
     int y;          /**< Frame rectangle Y offset in pixels. */
     int width;      /**< Frame rectangle width in pixels. */
@@ -2041,7 +2132,7 @@ typedef struct {
     int timestamp;  /**< Frame start timestamp in milliseconds. */
     int dispose;    /**< Disposal method, gdWebpDisposeNone or gdWebpDisposeBackground. */
     int blend;      /**< Blend method, gdWebpBlendAlpha or gdWebpBlendNone. */
-    int hasAlpha;   /**< Non-zero if the frame has alpha. */
+    int has_alpha;  /**< Non-zero if the frame has alpha. */
     int complete;   /**< Non-zero if the frame data is complete. */
 } gdWebpFrameInfo;
 
@@ -2064,17 +2155,17 @@ typedef struct {
  * @brief WebP animation writer options.
  */
 typedef struct {
-    int canvasWidth;     /**< Canvas width in pixels, or 0 to use the first image width. */
-    int canvasHeight;    /**< Canvas height in pixels, or 0 to use the first image height. */
-    int loopCount;       /**< Animation loop count, or 0 for infinite looping. */
-    int backgroundColor; /**< Canvas background color to store in the WebP container. */
-    int quality;         /**< Encoding quality, -1 for default, 0-100 for lossy, or gdWebpLossless. */
-    int lossless;        /**< Non-zero to force lossless encoding. */
-    int method;          /**< Compression method, or a negative value to use libwebp default. */
-    int minimizeSize;    /**< Non-zero to enable libwebp minimized-size animation encoding. */
-    int kmin;            /**< Minimum distance between key frames, or 0 for libwebp default. */
-    int kmax;            /**< Maximum distance between key frames, or 0 for libwebp default. */
-    int allowMixed;      /**< Non-zero to allow mixed lossy and lossless frames. */
+    int canvas_width;     /**< Canvas width in pixels, or 0 to use the first image width. */
+    int canvas_height;    /**< Canvas height in pixels, or 0 to use the first image height. */
+    int loop_count;       /**< Animation loop count, or 0 for infinite looping. */
+    int background_color; /**< Canvas background color to store in the WebP container. */
+    int quality;          /**< Encoding quality, -1 for default, 0-100 for lossy, or gdWebpLossless. */
+    int lossless;         /**< Non-zero to force lossless encoding. */
+    int method;           /**< Compression method, or a negative value to use libwebp default. */
+    int minimize_size;    /**< Non-zero to enable libwebp minimized-size animation encoding. */
+    int kmin;             /**< Minimum distance between key frames, or 0 for libwebp default. */
+    int kmax;             /**< Maximum distance between key frames, or 0 for libwebp default. */
+    int allow_mixed;      /**< Non-zero to allow mixed lossy and lossless frames. */
 } gdWebpAnimWriteOptions;
 
 /**
@@ -2631,12 +2722,12 @@ typedef struct {
  * @brief JPEG XL animation writer options.
  */
 typedef struct {
-    int canvasWidth;    /**< Canvas width in pixels, or 0 to use the first image width. */
-    int canvasHeight;   /**< Canvas height in pixels, or 0 to use the first image height. */
+    int canvas_width;    /**< Canvas width in pixels, or 0 to use the first image width. */
+    int canvas_height;   /**< Canvas height in pixels, or 0 to use the first image height. */
     int lossless;       /**< Non-zero to use lossless JPEG XL encoding. */
     float distance;     /**< Lossy encoding distance when lossless is zero. */
     int effort;         /**< Encoder effort setting. */
-    int loopCount;      /**< Animation loop count, or 0 for infinite looping. */
+    int loop_count;      /**< Animation loop count, or 0 for infinite looping. */
 } gdJxlAnimWriteOptions;
 
 /**
@@ -3305,16 +3396,16 @@ typedef struct {
  * EXIF and XMP profiles; ICC is not part of the public metadata path.
  */
 typedef struct {
-    int width;
-    int height;
-    int is_animation;
-    int is_progressive;
-    int frame_count;
-    double duration;
-    int has_alpha;
-    int bit_depth;
-    int yuv_format;
-    gdImageMetadata *metadata;
+    int width; /**< Image width in pixels. */
+    int height; /**< Image height in pixels. */
+    int is_animation; /**< Nonzero if the image is an animation. */
+    int is_progressive; /**< Nonzero if the image is progressive. */
+    int frame_count; /**< Number of frames in the animation. */
+    double duration; /**< Duration of the animation in seconds. */
+    int has_alpha; /**< Nonzero if the image has an alpha channel. */
+    int bit_depth; /**< Bit depth of the image. */
+    int yuv_format; /**< One of the GD_AVIF_PIXEL_FORMAT_* values. */
+    gdImageMetadata *metadata; /**< Pointer to the image metadata. */
 } gdAvifInfo;
 
 /** @brief Initialize AVIF information and clear the metadata pointer. */
@@ -3563,33 +3654,33 @@ typedef struct {
 typedef struct {
     int width;            /**< First page width in pixels. */
     int height;           /**< First page height in pixels. */
-    int pageCount;        /**< Number of TIFF directories/pages in the file. */
-    int bitsPerSample;    /**< First page bits per sample. */
-    int samplesPerPixel;  /**< First page samples per pixel. */
+    int page_count;         /**< Number of TIFF directories/pages in the file. */
+    int bits_per_sample;    /**< First page bits per sample. */
+    int samples_per_pixel;  /**< First page samples per pixel. */
     int compression;      /**< First page compression tag value, usually a GD_TIFF_COMPRESSION_* enum value. */
     int photometric;      /**< First page photometric tag value, usually a GD_TIFF_PHOTOMETRIC_* enum value. */
-    float xResolution;    /**< First page horizontal resolution. */
-    float yResolution;    /**< First page vertical resolution. */
-    int resolutionUnit;   /**< First page resolution unit, one of the GD_TIFF_RESUNIT_* enum values. */
+    float x_resolution;     /**< First page horizontal resolution. */
+    float y_resolution;     /**< First page vertical resolution. */
+    int resolution_unit;    /**< First page resolution unit, one of the GD_TIFF_RESUNIT_* enum values. */
 } gdTiffInfo;
 
 /**
  * @brief TIFF page information returned while reading pages.
  */
 typedef struct {
-    int pageIndex;        /**< Zero-based page index. */
+    int page_index;         /**< Zero-based page index. */
     int width;            /**< Page width in pixels. */
     int height;           /**< Page height in pixels. */
-    int bitsPerSample;    /**< Page bits per sample. */
-    int samplesPerPixel;  /**< Page samples per pixel. */
+    int bits_per_sample;    /**< Page bits per sample. */
+    int samples_per_pixel;  /**< Page samples per pixel. */
     int compression;      /**< Page compression tag value, usually a GD_TIFF_COMPRESSION_* enum value. */
     int photometric;      /**< Page photometric tag value, usually a GD_TIFF_PHOTOMETRIC_* enum value. */
     int planar;           /**< Page planar configuration, one of the GD_TIFF_PLANARCONFIG_* enum values. */
-    int hasAlpha;         /**< Non-zero if the page has extra alpha samples. */
-    int isTiled;          /**< Non-zero if the page is stored as TIFF tiles. */
-    float xResolution;    /**< Page horizontal resolution. */
-    float yResolution;    /**< Page vertical resolution. */
-    int resolutionUnit;   /**< Page resolution unit, one of the GD_TIFF_RESUNIT_* enum values. */
+    int has_alpha;          /**< Non-zero if the page has extra alpha samples. */
+    int is_tiled;           /**< Non-zero if the page is stored as TIFF tiles. */
+    float x_resolution;     /**< Page horizontal resolution. */
+    float y_resolution;     /**< Page vertical resolution. */
+    int resolution_unit;    /**< Page resolution unit, one of the GD_TIFF_RESUNIT_* enum values. */
 } gdTiffPageInfo;
 
 /** @} */
@@ -4084,9 +4175,6 @@ BGD_DECLARE(gdImagePtr) gdImageCreateFromTgaPtr(int size, void *data);
  * @{
  */
 
-/** @name BMP Reading */
-/** @{ */
-
 /**
  * @brief Create an image from a BMP stdio file.
  *
@@ -4126,27 +4214,24 @@ BGD_DECLARE(gdImagePtr) gdImageCreateFromBmpCtx(gdIOCtxPtr infile);
 
 /** Descriptive facts read from a BMP file header. */
 typedef struct {
-	int file_size;
-	int pixel_offset;
-	int header_size;
-	int header_type;
-	int width;
-	int height;
-	int top_down;
-	int planes;
-	int bits_per_pixel;
-	int compression;
-	int image_size;
-	int horizontal_resolution;
-	int vertical_resolution;
-	int colors_used;
-	int important_colors;
-	int palette_type;
-	int palette_entries;
-	unsigned int red_mask;
-	unsigned int green_mask;
-	unsigned int blue_mask;
-	unsigned int alpha_mask;
+	int header_type; /**< Type of the BMP header. */
+	int width; /**< Image width in pixels. */
+	int height; /**< Image height in pixels. */
+	int top_down; /**< Nonzero if the image is stored top-down. */
+	int planes; /**< Number of color planes. */
+	int bits_per_pixel; /**< Number of bits per pixel. */
+	int compression; /**< Compression method used. */
+	int image_size; /**< Size of the pixel data in bytes. */
+	int horizontal_resolution; /**< Horizontal resolution in pixels per meter. */
+	int vertical_resolution; /**< Vertical resolution in pixels per meter. */
+	int colors_used; /**< Number of colors used in the palette. */
+	int important_colors; /**< Number of important colors. */
+	int palette_type; /**< Type of the palette. */
+	int palette_entries; /**< Number of entries in the palette. */
+	unsigned int red_mask; /**< Red channel mask. */
+	unsigned int green_mask; /**< Green channel mask. */
+	unsigned int blue_mask; /**< Blue channel mask. */
+	unsigned int alpha_mask; /**< Alpha channel mask. */
 } gdBmpInfo;
 
 BGD_DECLARE(void) gdBmpInfoInit(gdBmpInfo *info);
@@ -4154,7 +4239,186 @@ BGD_DECLARE(int) gdBmpGetInfo(FILE *infile, gdBmpInfo *info);
 BGD_DECLARE(int) gdBmpGetInfoCtx(gdIOCtxPtr infile, gdBmpInfo *info);
 BGD_DECLARE(int) gdBmpGetInfoPtr(int size, const void *data, gdBmpInfo *info);
 
-/** @} */
+/**
+ * @brief Write an image as BMP data to a newly allocated memory buffer.
+ *
+ * gdImageBmpPtr() uses automatic BMP bit-depth selection. A zero compression
+ * value writes uncompressed BMP data; a nonzero value requests legacy RLE
+ * output when the automatically selected BMP bit depth supports it. The image
+ * is borrowed for the duration of the call. On success, the returned buffer
+ * must be freed with gdFree().
+ *
+ * @param im The image to write.
+ * @param size Output location for the returned buffer size in bytes.
+ * @param compression Legacy compression selector; zero disables RLE, nonzero
+ *        requests RLE when supported by the selected output bit depth.
+ * @return A newly allocated BMP buffer, or NULL on error.
+ */
+BGD_DECLARE(void *) gdImageBmpPtr(gdImagePtr im, int *size, int compression);
+
+/**
+ * @brief Write an image as BMP data to a stdio file.
+ *
+ * gdImageBmp() uses automatic BMP bit-depth selection. A zero compression
+ * value writes uncompressed BMP data; a nonzero value requests legacy RLE
+ * output when the automatically selected BMP bit depth supports it. The image
+ * and outFile are borrowed for the duration of the call, and outFile is not
+ * closed by gd.
+ *
+ * @param im The image to write.
+ * @param outFile Pointer to the output FILE stream.
+ * @param compression Legacy compression selector; zero disables RLE, nonzero
+ *        requests RLE when supported by the selected output bit depth.
+ */
+BGD_DECLARE(void) gdImageBmp(gdImagePtr im, FILE *outFile, int compression);
+
+/**
+ * @brief Write an image as BMP data to a gdIOCtx.
+ *
+ * gdImageBmpCtx() uses automatic BMP bit-depth selection. A zero compression
+ * value writes uncompressed BMP data; a nonzero value requests legacy RLE
+ * output when the automatically selected BMP bit depth supports it. The image
+ * and out context are borrowed for the duration of the call, and out is not
+ * closed by gd.
+ *
+ * @param im The image to write.
+ * @param out Pointer to the gdIOCtx output context.
+ * @param compression Legacy compression selector; zero disables RLE, nonzero
+ *        requests RLE when supported by the selected output bit depth.
+ */
+BGD_DECLARE(void) gdImageBmpCtx(gdImagePtr im, gdIOCtxPtr out, int compression);
+
+/** @brief Write uncompressed BMP pixel data. */
+#define GD_BMP_COMPRESS_NONE 0 
+/** @brief Write BI_RLE8 compressed pixel data; valid only for 8 bpp output. */
+#define GD_BMP_COMPRESS_RLE8 1
+/** @brief Write BI_RLE4 compressed pixel data; valid only for 4 bpp output. */
+#define GD_BMP_COMPRESS_RLE4 2
+
+/** @brief Use default BMP writer behavior. */
+#define GD_BMP_FLAG_NONE 0
+/** @brief Force output to use a BITMAPV4HEADER. */
+#define GD_BMP_FLAG_FORCE_V4HDR (1 << 0)
+/** @brief Allow lossy truecolor-to-indexed conversion for 1, 4, or 8 bpp output. */
+#define GD_BMP_FLAG_QUANTIZE (1 << 1)
+/** @brief Use RGB555 bit masks instead of RGB565 for 16 bpp output. */
+#define GD_BMP_FLAG_RGB555 (1 << 2)
+
+/**
+ * @brief Structured BMP writer options.
+ */
+typedef struct {
+	int bits_per_pixel; /**< Requested output bit depth, or 0 for automatic selection. */
+	int compression; /**< One of GD_BMP_COMPRESS_* values. */
+	int flags; /**< Bitwise OR of GD_BMP_FLAG_* values. */
+	const gdImageMetadata *metadata; /**< Reserved and ignored for BMP. */
+} gdBmpWriteOptions;
+
+/**
+ * @brief Initialize a gdBmpWriteOptions structure to default values.
+ * 
+ * Updates or changes to the default values are not guaranteed to be compatible with future versions of gd. Callers should not assume that the default values will remain the same across versions.
+ * This is not considered part of the API contract and may change without notice. Callers should always explicitly set the fields they care about after calling this function.
+ */
+BGD_DECLARE(void) gdBmpWriteOptionsInit(gdBmpWriteOptions *options);
+
+/**
+ * @brief Write an image as BMP data to a stdio file with explicit options.
+ * 
+ * @param im The image to write.
+ * @param outFile Pointer to the output FILE stream.
+ * @param options Pointer to a gdBmpWriteOptions structure specifying output options.
+ * 
+ * @return 0 on success, or a nonzero error code on failure.
+ * 
+ * @see gdBmpWriteOptionsInit gdBmpWriteOptions
+ */
+BGD_DECLARE(int) gdImageBmpWithOptions(gdImagePtr im, FILE *outFile, const gdBmpWriteOptions *options);
+
+/**
+ * @brief Write an image as BMP data to a gdIOCtx with explicit options.
+ * 
+ * @param im The image to write.
+ * @param out Pointer to the gdIOCtx output context.
+ * @param options Pointer to a gdBmpWriteOptions structure specifying output options.
+ * 
+ * @return 0 on success, or a nonzero error code on failure.
+ * @see gdBmpWriteOptionsInit gdBmpWriteOptions
+ */
+BGD_DECLARE(int) gdImageBmpCtxWithOptions(gdImagePtr im, gdIOCtxPtr out, const gdBmpWriteOptions *options);
+
+/**
+ * @brief Write an image as BMP data to a newly allocated memory buffer with explicit options.
+ * 
+ * @param im The image to write.
+ * @param size Output location for the returned buffer size in bytes.
+ * @param options Pointer to a gdBmpWriteOptions structure specifying output options.
+ * 
+ * @return A newly allocated BMP buffer, or NULL on error. The caller is responsible for freeing the buffer with gdFree().
+ * 
+ * @see gdBmpWriteOptionsInit gdBmpWriteOptions
+ */
+BGD_DECLARE(void *) gdImageBmpPtrWithOptions(gdImagePtr im, int *size, const gdBmpWriteOptions *options);
+
+/**
+ * @brief Write an image as BMP data to a newly allocated memory buffer.
+ *
+ * gdImageBmpPtrEx() writes BMP output with explicit control over output bit
+ * depth, compression, and writer flags. Pass bpp as 0 for automatic selection,
+ * or as one of 1, 4, 8, 16, 24, or 32. Explicit indexed output from a
+ * truecolor image is lossy and fails unless GD_BMP_FLAG_QUANTIZE is set. The
+ * image is borrowed for the duration of the call. On success, the returned
+ * buffer must be freed with gdFree().
+ *
+ * @param im The image to write.
+ * @param size Output location for the returned buffer size in bytes.
+ * @param bpp Requested output bit depth, or 0 for automatic selection.
+ * @param compression One of GD_BMP_COMPRESS_NONE, GD_BMP_COMPRESS_RLE8, or
+ *        GD_BMP_COMPRESS_RLE4.
+ * @param flags Bitwise OR of GD_BMP_FLAG_* values.
+ * @return A newly allocated BMP buffer, or NULL on error.
+ */
+BGD_DECLARE(void *)
+gdImageBmpPtrEx(gdImagePtr im, int *size, int bpp, int compression, int flags);
+
+/**
+ * @brief Write an image as BMP data to a stdio file.
+ *
+ * gdImageBmpEx() writes BMP output with explicit control over output bit
+ * depth, compression, and writer flags. Pass bpp as 0 for automatic selection,
+ * or as one of 1, 4, 8, 16, 24, or 32. RLE4 is valid only for 4 bpp output and
+ * RLE8 is valid only for 8 bpp output. The image and outFile are borrowed for
+ * the duration of the call, and outFile is not closed by gd.
+ *
+ * @param im The image to write.
+ * @param outFile Pointer to the output FILE stream.
+ * @param bpp Requested output bit depth, or 0 for automatic selection.
+ * @param compression One of GD_BMP_COMPRESS_NONE, GD_BMP_COMPRESS_RLE8, or
+ *        GD_BMP_COMPRESS_RLE4.
+ * @param flags Bitwise OR of GD_BMP_FLAG_* values.
+ */
+BGD_DECLARE(void)
+gdImageBmpEx(gdImagePtr im, FILE *outFile, int bpp, int compression, int flags);
+
+/**
+ * @brief Write an image as BMP data to a gdIOCtx.
+ *
+ * gdImageBmpCtxEx() writes BMP output with explicit control over output bit
+ * depth, compression, and writer flags. Pass bpp as 0 for automatic selection,
+ * or as one of 1, 4, 8, 16, 24, or 32. For 16 bpp output, RGB565 masks are
+ * used by default and GD_BMP_FLAG_RGB555 selects RGB555 masks. The image and
+ * out context are borrowed for the duration of the call, and out is not closed
+ * by gd.
+ *
+ * @param im The image to write.
+ * @param out Pointer to the gdIOCtx output context.
+ * @param bpp Requested output bit depth, or 0 for automatic selection.
+ * @param compression One of GD_BMP_COMPRESS_NONE, GD_BMP_COMPRESS_RLE8, or
+ *        GD_BMP_COMPRESS_RLE4.
+ * @param flags Bitwise OR of GD_BMP_FLAG_* values.
+ */
+BGD_DECLARE(void)
+gdImageBmpCtxEx(gdImagePtr im, gdIOCtxPtr out, int bpp, int compression, int flags);
 
 /** @} */
 
@@ -4356,15 +4620,16 @@ BGD_DECLARE(void) gdUhdrImageDestroy(gdUhdrImagePtr im);
    'context' will be passed to your source function.
 
 */
+/** @deprecated in favor of gdIOCtx */
 typedef struct {
     int (*source)(void *context, char *buffer, int len);
     void *context;
 } gdSource, *gdSourcePtr;
 
-/* Deprecated in favor of gdImageCreateFromPngCtx */
+/** @deprecated in favor of gdImageCreateFromPngCtx */
 BGD_DECLARE(gdImagePtr) gdImageCreateFromPngSource(gdSourcePtr in);
 
-/* for completeness with Sink 2.x APIs, will be removed in 3.0 with all Sink APIs */
+/** @deprecated for completeness with Sink 2.x APIs, will be removed in 3.0 with all Sink APIs */
 BGD_DECLARE(gdImagePtr) gdImageCreateFromQoiSource(gdSourcePtr in);
 
 /**
@@ -4452,7 +4717,6 @@ BGD_DECLARE(gdImagePtr) gdImageCreateFromGdPtr(int size, void *data);
 /** @name GD Writing */
 /** @{ */
 
-/* Best to free this memory with gdFree(), not free() */
 /**
  * @brief Write an image as GD data to a newly allocated memory buffer.
  *
@@ -4711,9 +4975,9 @@ gdImageXbmCtx(gdImagePtr image, char *file_name, int fg, gdIOCtxPtr out);
 
 /**
  * @defgroup gdCodecXpm XPM
- * @{
+ * @brief Read and write X PixMap images.
+ * @ingroup gdCodecs
  */
-
  /** 
  * @brief Read X PixMap images.
  * @ingroup gdCodecs
@@ -4749,165 +5013,6 @@ gdImageXbmCtx(gdImagePtr image, char *file_name, int fg, gdIOCtxPtr out);
  * @return A newly allocated palette image, or NULL on error.
  */
 BGD_DECLARE(gdImagePtr) gdImageCreateFromXpm(char *filename);
-
-/** @} */
-
-/** @} */
-
-/**
- * @addtogroup gdCodecBmp
- * @{
- */
-
-/** @name BMP Legacy Writing */
-/** @{ */
-
-/**
- * @brief Write an image as BMP data to a newly allocated memory buffer.
- *
- * gdImageBmpPtr() uses automatic BMP bit-depth selection. A zero compression
- * value writes uncompressed BMP data; a nonzero value requests legacy RLE
- * output when the automatically selected BMP bit depth supports it. The image
- * is borrowed for the duration of the call. On success, the returned buffer
- * must be freed with gdFree().
- *
- * @param im The image to write.
- * @param size Output location for the returned buffer size in bytes.
- * @param compression Legacy compression selector; zero disables RLE, nonzero
- *        requests RLE when supported by the selected output bit depth.
- * @return A newly allocated BMP buffer, or NULL on error.
- */
-BGD_DECLARE(void *) gdImageBmpPtr(gdImagePtr im, int *size, int compression);
-
-/**
- * @brief Write an image as BMP data to a stdio file.
- *
- * gdImageBmp() uses automatic BMP bit-depth selection. A zero compression
- * value writes uncompressed BMP data; a nonzero value requests legacy RLE
- * output when the automatically selected BMP bit depth supports it. The image
- * and outFile are borrowed for the duration of the call, and outFile is not
- * closed by gd.
- *
- * @param im The image to write.
- * @param outFile Pointer to the output FILE stream.
- * @param compression Legacy compression selector; zero disables RLE, nonzero
- *        requests RLE when supported by the selected output bit depth.
- */
-BGD_DECLARE(void) gdImageBmp(gdImagePtr im, FILE *outFile, int compression);
-
-/**
- * @brief Write an image as BMP data to a gdIOCtx.
- *
- * gdImageBmpCtx() uses automatic BMP bit-depth selection. A zero compression
- * value writes uncompressed BMP data; a nonzero value requests legacy RLE
- * output when the automatically selected BMP bit depth supports it. The image
- * and out context are borrowed for the duration of the call, and out is not
- * closed by gd.
- *
- * @param im The image to write.
- * @param out Pointer to the gdIOCtx output context.
- * @param compression Legacy compression selector; zero disables RLE, nonzero
- *        requests RLE when supported by the selected output bit depth.
- */
-BGD_DECLARE(void) gdImageBmpCtx(gdImagePtr im, gdIOCtxPtr out, int compression);
-
-/** @} */
-
-/** @name BMP Constants */
-/** @{ */
-
-/** Write uncompressed BMP pixel data. */
-#define GD_BMP_COMPRESS_NONE 0
-/** Write BI_RLE8 compressed pixel data; valid only for 8 bpp output. */
-#define GD_BMP_COMPRESS_RLE8 1
-/** Write BI_RLE4 compressed pixel data; valid only for 4 bpp output. */
-#define GD_BMP_COMPRESS_RLE4 2
-
-/** Use default BMP writer behavior. */
-#define GD_BMP_FLAG_NONE 0
-/** Force output to use a BITMAPV4HEADER. */
-#define GD_BMP_FLAG_FORCE_V4HDR (1 << 0)
-/** Allow lossy truecolor-to-indexed conversion for 1, 4, or 8 bpp output. */
-#define GD_BMP_FLAG_QUANTIZE (1 << 1)
-/** Use RGB555 bit masks instead of RGB565 for 16 bpp output. */
-#define GD_BMP_FLAG_RGB555 (1 << 2)
-
-typedef struct {
-	int bits_per_pixel;
-	int compression;
-	int flags;
-	const gdImageMetadata *metadata; /**< Reserved and ignored for BMP. */
-} gdBmpWriteOptions;
-
-BGD_DECLARE(void) gdBmpWriteOptionsInit(gdBmpWriteOptions *options);
-BGD_DECLARE(int) gdImageBmpWithOptions(gdImagePtr im, FILE *outFile, const gdBmpWriteOptions *options);
-BGD_DECLARE(int) gdImageBmpCtxWithOptions(gdImagePtr im, gdIOCtxPtr out, const gdBmpWriteOptions *options);
-BGD_DECLARE(void *) gdImageBmpPtrWithOptions(gdImagePtr im, int *size, const gdBmpWriteOptions *options);
-
-/** @} */
-
-/** @name BMP Extended Writing */
-/** @{ */
-
-/**
- * @brief Write an image as BMP data to a newly allocated memory buffer.
- *
- * gdImageBmpPtrEx() writes BMP output with explicit control over output bit
- * depth, compression, and writer flags. Pass bpp as 0 for automatic selection,
- * or as one of 1, 4, 8, 16, 24, or 32. Explicit indexed output from a
- * truecolor image is lossy and fails unless GD_BMP_FLAG_QUANTIZE is set. The
- * image is borrowed for the duration of the call. On success, the returned
- * buffer must be freed with gdFree().
- *
- * @param im The image to write.
- * @param size Output location for the returned buffer size in bytes.
- * @param bpp Requested output bit depth, or 0 for automatic selection.
- * @param compression One of GD_BMP_COMPRESS_NONE, GD_BMP_COMPRESS_RLE8, or
- *        GD_BMP_COMPRESS_RLE4.
- * @param flags Bitwise OR of GD_BMP_FLAG_* values.
- * @return A newly allocated BMP buffer, or NULL on error.
- */
-BGD_DECLARE(void *)
-gdImageBmpPtrEx(gdImagePtr im, int *size, int bpp, int compression, int flags);
-
-/**
- * @brief Write an image as BMP data to a stdio file.
- *
- * gdImageBmpEx() writes BMP output with explicit control over output bit
- * depth, compression, and writer flags. Pass bpp as 0 for automatic selection,
- * or as one of 1, 4, 8, 16, 24, or 32. RLE4 is valid only for 4 bpp output and
- * RLE8 is valid only for 8 bpp output. The image and outFile are borrowed for
- * the duration of the call, and outFile is not closed by gd.
- *
- * @param im The image to write.
- * @param outFile Pointer to the output FILE stream.
- * @param bpp Requested output bit depth, or 0 for automatic selection.
- * @param compression One of GD_BMP_COMPRESS_NONE, GD_BMP_COMPRESS_RLE8, or
- *        GD_BMP_COMPRESS_RLE4.
- * @param flags Bitwise OR of GD_BMP_FLAG_* values.
- */
-BGD_DECLARE(void)
-gdImageBmpEx(gdImagePtr im, FILE *outFile, int bpp, int compression, int flags);
-
-/**
- * @brief Write an image as BMP data to a gdIOCtx.
- *
- * gdImageBmpCtxEx() writes BMP output with explicit control over output bit
- * depth, compression, and writer flags. Pass bpp as 0 for automatic selection,
- * or as one of 1, 4, 8, 16, 24, or 32. For 16 bpp output, RGB565 masks are
- * used by default and GD_BMP_FLAG_RGB555 selects RGB555 masks. The image and
- * out context are borrowed for the duration of the call, and out is not closed
- * by gd.
- *
- * @param im The image to write.
- * @param out Pointer to the gdIOCtx output context.
- * @param bpp Requested output bit depth, or 0 for automatic selection.
- * @param compression One of GD_BMP_COMPRESS_NONE, GD_BMP_COMPRESS_RLE8, or
- *        GD_BMP_COMPRESS_RLE4.
- * @param flags Bitwise OR of GD_BMP_FLAG_* values.
- */
-BGD_DECLARE(void)
-gdImageBmpCtxEx(gdImagePtr im, gdIOCtxPtr out, int bpp, int compression, int flags);
 
 /** @} */
 
@@ -5289,7 +5394,6 @@ BGD_DECLARE(int) gdSupportsFileType(const char *filename, int writing);
    functions */
 BGD_DECLARE(void) gdFree(void *m);
 
-/* Best to free this memory with gdFree(), not free() */
 /**
  * @brief Write an image as WBMP data to a newly allocated memory buffer.
  * @ingroup gdCodecWbmp
@@ -5311,11 +5415,11 @@ BGD_DECLARE(void *) gdImageWBMPPtr(gdImagePtr im, int *size, int fg);
  * @{
  */
 
-/* 100 is highest quality (there is always a little loss with JPEG).
-       0 is lowest. 10 is about the lowest useful setting. */
 /**
  * @brief Write an image as JPEG data to a stdio file.
  * 
+ * 100 is the highest quality (there is always a little loss with JPEG).
+ * 0 is the lowest quality. 10 is about the lowest useful setting.
  * @param im The image to write.
  * @param out The stdio file to write the JPEG data to.
  * @param quality The JPEG quality (0-100).
@@ -5362,9 +5466,10 @@ gdImageJpegWithOptions(gdImagePtr im, FILE *out, const gdJpegWriteOptions *optio
 BGD_DECLARE(int)
 gdImageJpegCtxWithOptions(gdImagePtr im, gdIOCtxPtr out, const gdJpegWriteOptions *options);
 
-/* Best to free this memory with gdFree(), not free() */
 /**
  * @brief Write an image as JPEG data to a newly allocated memory buffer.
+ * 
+ * Result must be freed with gdFree(). The image is borrowed for the duration of the call.
  * 
  * @param im The image to write.
  * @param size Pointer to an integer that will receive the size of the returned buffer.
@@ -5552,12 +5657,15 @@ gdImageWebpCtx(gdImagePtr im, gdIOCtxPtr outfile, int quantization);
 
 */
 
+/** @deprecated in favor of gdIOCtx */
 typedef struct {
     int (*sink)(void *context, const char *buffer, int len);
     void *context;
 } gdSink, *gdSinkPtr;
 
+/** @deprecated in favor of gdIOCtx */
 BGD_DECLARE(void) gdImagePngToSink(gdImagePtr im, gdSinkPtr out);
+/** @deprecated in favor of gdIOCtx */
 BGD_DECLARE(void) gdImageQoiToSink(gdImagePtr im, gdSinkPtr out);
 
 /**
@@ -5570,6 +5678,7 @@ BGD_DECLARE(void) gdImageQoiToSink(gdImagePtr im, gdSinkPtr out);
 
 /**
  * @brief Write an image as GD2 data to a stdio file.
+ * @deprecated
  *
  * gdImageGd2() borrows im and out for the duration of the call and does not
  * close out. Pass cs as 0 to use GD2_CHUNKSIZE; otherwise values outside the
@@ -5584,9 +5693,9 @@ BGD_DECLARE(void) gdImageQoiToSink(gdImagePtr im, gdSinkPtr out);
  */
 BGD_DECLARE(void) gdImageGd2(gdImagePtr im, FILE *out, int cs, int fmt);
 
-/* Best to free this memory with gdFree(), not free() */
 /**
  * @brief Write an image as GD2 data to a newly allocated memory buffer.
+ * @deprecated
  *
  * gdImageGd2Ptr() borrows im for the duration of the call. Pass cs as 0 to use
  * GD2_CHUNKSIZE; otherwise values outside the GD2_CHUNKSIZE_MIN to
@@ -5769,9 +5878,16 @@ BGD_DECLARE(int) gdImageColorResolve(gdImagePtr im, int r, int g, int b);
 BGD_DECLARE(int)
 gdImageColorResolveAlpha(gdImagePtr im, int r, int g, int b, int a);
 
-/* A simpler way to obtain an opaque truecolor value for drawing on a
-        truecolor image. Not for use with palette images! */
-
+/**
+ * @brief Compose a truecolor value from its components
+ *
+ * use it only when needed an actual truecolor value, for example when drawing on a truecolor image.
+ * @param r The red channel (0-255)
+ * @param g The green channel (0-255)
+ * @param b The blue channel (0-255)
+ *
+ * @see gdTrueColorAlpha gdTrueColorGetAlpha gdTrueColorGetRed gdTrueColorGetGreen gdTrueColorGetBlue
+ */
 #define gdTrueColor(r, g, b) (((r) << 16) + ((g) << 8) + (b))
 
 /**
@@ -5817,16 +5933,6 @@ BGD_DECLARE(void) gdImageColorDeallocate(gdImagePtr im, int color);
  * @return 0 on success, or -1 on failure.
  */
 BGD_DECLARE(int) gdImageColorMatch(gdImagePtr im1, gdImagePtr im2);
-
-/* Specifies a color index (if a palette image) or an
-        RGB color (if a truecolor image) which should be
-        considered 100% transparent. FOR TRUECOLOR IMAGES,
-        THIS IS IGNORED IF AN ALPHA CHANNEL IS BEING
-        SAVED. Use gdImageSaveAlpha(im, 0); to
-        turn off the saving of a full alpha channel in
-        a truecolor image. Note that gdImageColorTransparent
-        is usually compatible with older browsers that
-        do not understand full alpha channels well. TBB */
 
 /**
  * @brief Sets the transparent color of the image
@@ -6506,11 +6612,11 @@ BGD_DECLARE(void) gdImageLine(gdImagePtr im, int x1, int y1, int x2, int y2, int
 /* For backwards compatibility only. Use gdImageSetStyle()
    for much more flexible line drawing. */
 BGD_DECLARE(void) gdImageDashedLine(gdImagePtr im, int x1, int y1, int x2, int y2, int color);
-/* Corners specified (not width and height). Upper left first, lower right
-   second. */
 
 /**
  * @brief Draws a rectangle.
+ *
+ * Corners are specified by their coordinates. The rectangle is drawn using the current line style and thickness.
  *
  * @param  im    The image.
  * @param  x1    The x-coordinate of one of the corners.
@@ -7492,26 +7598,57 @@ gdImageCopyGaussianBlurred(gdImagePtr src, int radius, double sigma);
 #define gdImageResolutionY(im) (im)->res_y
 
 /* I/O Support routines. */
-
+/**
+ * @defgroup gdIOCtx I/O Contexts
+ * @{
+ */
+/** 
+ * @brief Creates a new I/O context for reading/writing to a file
+ * 
+ * returns a new I/O context for reading/writing to the specified file. The caller is responsible for closing the file when done.
+ * @param file A pointer to a FILE object that identifies the file to be used for I/O.
+ * @return A pointer to a new gdIOCtx structure, or NULL on failure.
+ */
 BGD_DECLARE(gdIOCtxPtr) gdNewFileCtx(FILE *);
-/* If data is null, size is ignored and an initial data buffer is
-   allocated automatically. NOTE: this function assumes gd has the right
-   to free or reallocate "data" at will! Also note that gd will free
-   "data" when the IO context is freed. If data is not null, it must point
-   to memory allocated with gdMalloc, or by a call to gdImage[something]Ptr.
-   If not, see gdNewDynamicCtxEx for an alternative. */
+
+/**
+ * @brief Creates a new I/O context for reading/writing to a dynamic memory buffer
+ * 
+ * If data is null, size is ignored and an initial data buffer is allocated automatically.
+ * This function assumes gd has the right to free or reallocate "data" at will! 
+ * Also note that gd will free "data" when the IO context is freed. 
+ * If data is not null, it must point to memory allocated with gdMalloc, or
+ * by a call to gdImage[something]Ptr. If not, see gdNewDynamicCtxEx for an alternative.
+ * 
+ * @param size The initial size of the dynamic memory buffer.
+ * @param data A pointer to a memory buffer, or NULL to allocate a new buffer.
+ * @return A pointer to a new gdIOCtx structure, or NULL on failure.
+ */
 BGD_DECLARE(gdIOCtxPtr) gdNewDynamicCtx(int size, void *data);
-/* 2.0.21: if freeFlag is nonzero, gd will free and/or reallocate "data" as
-   needed as described above. If freeFlag is zero, gd will never free
-   or reallocate "data", which means that the context should only be used
-   for *reading* an image from a memory buffer, or writing an image to a
-   memory buffer which is already large enough. If the memory buffer is
-   not large enough and an image write is attempted, the write operation
-   will fail. Those wishing to write an image to a buffer in memory have
-   a much simpler alternative in the gdImage[something]Ptr functions. */
+
+/**
+ * @brief Creates a new I/O context for reading/writing to a dynamic memory buffer with control over memory management
+ * 2.0.21: if freeFlag is nonzero, gd will free and/or reallocate "data" as
+ * needed as described above. If freeFlag is zero, gd will never free
+ * or reallocate "data", which means that the context should only be used
+ * for *reading* an image from a memory buffer, or writing an image to a
+ * memory buffer which is already large enough. If the memory buffer is
+ * not large enough and an image write is attempted, the write operation
+ * will fail. Those wishing to write an image to a buffer in memory have
+ * a much simpler alternative in the gdImage[something]Ptr functions
+ * 
+ * @param size The initial size of the dynamic memory buffer.
+ * @param data A pointer to a memory buffer, or NULL to allocate a new buffer.
+ * @param freeFlag A flag indicating whether gd should manage the memory of "data". If nonzero, gd will free and/or reallocate "data" as needed. If zero, gd will not free or reallocate "data".
+ * 
+ * @return A pointer to a new gdIOCtx structure, or NULL on failure.
+ */
 BGD_DECLARE(gdIOCtxPtr) gdNewDynamicCtxEx(int size, void *data, int freeFlag);
+
+/** @deprecated will be removed in a future version in favor of gdNewDynamicCtxEx and retated CTX APIs */
 BGD_DECLARE(gdIOCtxPtr) gdNewSSCtx(gdSourcePtr in, gdSinkPtr out);
 BGD_DECLARE(void *) gdDPExtractData(gdIOCtxPtr ctx, int *size);
+/** @} */
 
 /**
  * @addtogroup gdCodecGd2
@@ -7568,21 +7705,25 @@ BGD_DECLARE(void *) gdDPExtractData(gdIOCtxPtr ctx, int *size);
  */
 BGD_DECLARE(int) gdImageCompare(gdImagePtr im1, gdImagePtr im2);
 
+/** @brief Options for perceptual image comparison mode
+ */
 typedef enum {
-    GD_IMAGE_DIFF_NONE,
-    GD_IMAGE_DIFF_OVERLAY,
-    GD_IMAGE_DIFF_MASK
+    GD_IMAGE_DIFF_NONE, /**< No difference */
+    GD_IMAGE_DIFF_OVERLAY, /**< Overlay difference */
+    GD_IMAGE_DIFF_MASK /**< Mask difference */
 } gdImageDiffMode;
 
+/** @brief Options for perceptual image comparison */
 typedef struct {
-    gdImageDiffMode mode;
-    int highlight_color;
+    gdImageDiffMode mode; /**< The mode of the perceptual difference. */
+    int highlight_color; /**< The color used to highlight differences. */
 } gdImagePerceptualDiffOptions;
 
+/** @brief Result of perceptual image comparison */
 typedef struct {
-    unsigned int pixels_changed;
+    unsigned int pixels_changed; /**< Number of pixels that changed. */
     /* Largest normalized perceptual distance, in the range 0.0 to 1.0. */
-    double maximum_delta;
+    double maximum_delta; /**< The maximum perceptual distance found. */
 } gdImagePerceptualDiffResult;
 
 /*
@@ -7664,12 +7805,12 @@ BGD_DECLARE(void) gdImageFlipBoth(gdImagePtr im);
  * @see gdImageCropAuto gdImageCropThreshold gdCrop
  **/
 enum gdCropMode {
-    GD_CROP_DEFAULT = 0, /*< Same as GD_CROP_TRANSPARENT */
-    GD_CROP_TRANSPARENT, /*< Crop using the transparent color */
-    GD_CROP_BLACK, /*< Crop black borders */
-    GD_CROP_WHITE, /*< Crop white borders */
-    GD_CROP_SIDES, /*< Crop using colors of the 4 corners */
-    GD_CROP_THRESHOLD /*< Crop using a threshold */
+    GD_CROP_DEFAULT = 0, /**< Same as GD_CROP_TRANSPARENT */
+    GD_CROP_TRANSPARENT, /**< Crop using the transparent color */
+    GD_CROP_BLACK, /**< Crop black borders */
+    GD_CROP_WHITE, /**< Crop white borders */
+    GD_CROP_SIDES, /**< Crop using colors of the 4 corners */
+    GD_CROP_THRESHOLD /**< Crop using a threshold */
 };
 
 /**
